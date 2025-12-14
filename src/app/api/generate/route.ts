@@ -195,7 +195,18 @@ export async function POST(req: NextRequest) {
     // Get refinement passes based on selected level (PRO) or tier (FREE)
     let refinementPasses = 0;
     if (userTier === "PRO" && selectedRefinementLevel) {
-      refinementPasses = getRefinementPasses(selectedRefinementLevel);
+      // Map refinement level to number of passes
+      switch (selectedRefinementLevel) {
+        case "REFINED":
+          refinementPasses = 1;
+          break;
+        case "ENHANCED":
+          refinementPasses = 2;
+          break;
+        case "ULTIMATE":
+          refinementPasses = 3;
+          break;
+      }
     } else {
       refinementPasses = getRefinementPasses(userTier);
     }
