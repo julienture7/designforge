@@ -649,14 +649,13 @@ export function ChatPanel({
               cursor: 'text',
             }}
           />
-          <div className="px-3 pb-2">
-            <div className="flex items-center gap-2 text-xs text-slate-600 mb-1">
-              <span>Refinement Level:</span>
-              {isPro && hasGenerated && lockedRefinementLevel.current && (
-                <span className="text-slate-400 italic">(locked after first generation)</span>
-              )}
-            </div>
-            <div className="flex gap-2">
+          {/* Only show refinement buttons before first generation */}
+          {!hasGenerated && (
+            <div className="px-3 pb-2">
+              <div className="flex items-center gap-2 text-xs text-slate-600 mb-1">
+                <span>Refinement Level:</span>
+              </div>
+              <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -743,7 +742,16 @@ export function ChatPanel({
                 Upgrade to Pro to access refinement levels
               </div>
             )}
-          </div>
+            </div>
+          )}
+          {/* Show locked message after first generation */}
+          {isPro && hasGenerated && lockedRefinementLevel.current && (
+            <div className="px-3 pb-2">
+              <div className="text-xs text-slate-500 italic">
+                Refinement level locked: {lockedRefinementLevel.current} (Subsequent edits cost 1 credit each)
+              </div>
+            </div>
+          )}
           <div className="flex items-end justify-between px-1 pb-1">
             <div className="flex items-center gap-x-2 gap-y-2" />
             <button
