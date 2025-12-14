@@ -268,7 +268,12 @@ CRITICAL REQUIREMENTS:
             let tokenUsage = { input: 0, output: 0 };
             try {
               const usage = await result.usage;
-              tokenUsage = { input: usage.inputTokens ?? 0, output: usage.outputTokens ?? 0 };
+              // Use type assertion to access token usage properties
+              const usageAny = usage as any;
+              tokenUsage = { 
+                input: usageAny.promptTokens ?? usageAny.inputTokens ?? 0, 
+                output: usageAny.completionTokens ?? usageAny.outputTokens ?? 0 
+              };
             } catch {
               // Token usage not available
             }
