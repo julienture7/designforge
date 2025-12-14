@@ -9,6 +9,7 @@ import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { env } from "~/env";
 
 import { getOrCreateUser } from "~/server/auth";
 import { acquireGenerationLock, releaseGenerationLock } from "~/server/lib/redis";
@@ -214,7 +215,9 @@ export async function POST(req: NextRequest) {
     // Initial generation with Gemini 3 Pro and high thinking level
     let html = "";
     let currentResult = await generateText({
-      model: google("gemini-3-pro-preview"),
+      model: google("gemini-3-pro-preview", {
+        apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY,
+      }),
       system: DESIGN_SYSTEM_PROMPT + contextPrompt,
       messages: aiMessages,
       temperature: 1.0, // Keep at 1.0 for Gemini 3 Pro per docs
@@ -258,7 +261,9 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
         ];
 
         currentResult = await generateText({
-          model: google("gemini-3-pro-preview"),
+          model: google("gemini-3-pro-preview", {
+            apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY,
+          }),
           system: REFINEMENT_PROMPT,
           messages: refinementMessages,
           temperature: 1.0, // Keep at 1.0 for Gemini 3 Pro per docs

@@ -3,6 +3,7 @@ import { google, type GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { type NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { auth } from "@clerk/nextjs/server";
+import { env } from "~/env";
 
 import { getOrCreateUser } from "~/server/auth";
 import {
