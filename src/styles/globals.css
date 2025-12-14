@@ -558,6 +558,12 @@ button:disabled {
   position: relative;
   font-weight: 700;
   letter-spacing: -0.02em;
+  overflow: visible;
+  line-height: 1.2;
+  padding-top: 0.1em;
+  padding-bottom: 0.1em;
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
 }
 
 .typing-dot {

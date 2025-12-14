@@ -118,17 +118,17 @@ export default function Home() {
       </nav>
 
       {/* Hero Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-16">
-        <div className="text-center max-w-4xl mx-auto mb-12">
-          <h1 className="animate-fade-in-up text-5xl md:text-7xl lg:text-8xl font-bold mb-4 tracking-tighter text-center leading-[0.95]">
-            <span className="block text-gray-900">Design</span>
-            <span className="block hero-gradient-text mt-1">Award-Winning</span>
-            <span className="block text-gray-900 mt-1">Websites</span>
-            <span className="block text-gray-600 text-3xl md:text-4xl lg:text-5xl font-normal mt-2 tracking-normal">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 md:py-12 -mt-16">
+        <div className="text-center max-w-4xl mx-auto mb-8 md:mb-12 w-full">
+          <h1 className="animate-fade-in-up text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-3 md:mb-4 tracking-tighter text-center leading-[1.15]">
+            <span className="block text-gray-900 pb-0.5">Design</span>
+            <span className="block hero-gradient-text mt-0.5 mb-0.5">Award-Winning</span>
+            <span className="block text-gray-900 mt-0.5 pb-0.5">Websites</span>
+            <span className="block text-gray-600 text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-normal mt-2 tracking-normal">
               in Seconds
             </span>
           </h1>
-          <p className="animate-fade-in-up text-gray-500 text-base md:text-lg mb-8 font-normal tracking-wide text-center max-w-xl mx-auto" style={{ animationDelay: '0.1s' }}>
+          <p className="animate-fade-in-up text-gray-500 text-sm sm:text-base md:text-lg mb-6 md:mb-8 font-normal tracking-wide text-center max-w-xl mx-auto px-4" style={{ animationDelay: '0.1s' }}>
             AI-powered website generation. Describe what you want, get a production-ready design instantly.
           </p>
         </div>
@@ -139,7 +139,7 @@ export default function Home() {
             e.preventDefault();
             startDesign();
           }}
-          className="animate-fade-in-scale w-full max-w-4xl rounded-3xl shadow-2xl border-2 border-gray-200 p-3 flex items-center gap-3 bg-white transition-all duration-300 hover:shadow-3xl hover:border-blue-400 focus-within:shadow-3xl focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100"
+          className="animate-fade-in-scale w-full max-w-4xl rounded-2xl md:rounded-3xl shadow-2xl border-2 border-gray-200 p-2 md:p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 bg-white transition-all duration-300 hover:shadow-3xl hover:border-blue-400 focus-within:shadow-3xl focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100 mx-4 sm:mx-auto"
           style={{ animationDelay: '0.15s' }}
         >
           <input
@@ -147,15 +147,15 @@ export default function Home() {
             type="text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe your website... e.g., 'Modern SaaS landing page with pricing'"
-            className="flex-1 text-lg md:text-xl py-4 px-5 outline-none border-none bg-transparent text-gray-900 placeholder:text-gray-400 transition-all duration-200 font-medium"
+            placeholder="Describe your website..."
+            className="flex-1 text-base sm:text-lg md:text-xl py-3 sm:py-4 px-4 sm:px-5 outline-none border-none bg-transparent text-gray-900 placeholder:text-gray-400 transition-all duration-200 font-medium"
             aria-label="Describe what you want to build"
           />
 
           <button
             type="submit"
             disabled={!isLoaded}
-            className={`relative text-white px-8 py-4 rounded-2xl text-base md:text-lg font-bold transition-all duration-300 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group active:scale-95 shadow-lg ${
+            className={`relative text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base md:text-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group active:scale-95 shadow-lg whitespace-nowrap ${
               isLoaded && prompt.trim()
                 ? "btn-generate-animated hover:scale-105 hover:shadow-xl"
                 : "bg-gray-900 hover:bg-gray-800 hover:scale-105 hover:shadow-xl"
@@ -182,7 +182,7 @@ export default function Home() {
         </form>
 
         {/* Examples - Simplified */}
-        <div className="animate-fade-in-up mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-gray-500" style={{ animationDelay: '0.2s' }}>
+        <div className="animate-fade-in-up mt-4 sm:mt-6 flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm text-gray-500 px-4" style={{ animationDelay: '0.2s' }}>
           {[
             "SaaS landing page",
             "Portfolio website",
@@ -192,7 +192,7 @@ export default function Home() {
               key={example}
               type="button"
               onClick={() => setPrompt(example)}
-              className="rounded-full border border-gray-300 bg-white px-4 py-2 hover:bg-gray-50 hover:border-gray-400 hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 font-medium"
+              className="rounded-full border border-gray-300 bg-white px-3 sm:px-4 py-1.5 sm:py-2 hover:bg-gray-50 hover:border-gray-400 hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 font-medium"
               style={{ animationDelay: `${0.25 + index * 0.05}s` }}
             >
               {example}
