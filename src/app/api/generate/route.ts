@@ -11,6 +11,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
 
+// Set Google API key for @ai-sdk/google (reads from GOOGLE_GENERATIVE_AI_API_KEY env var)
+if (typeof process !== "undefined") {
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY = env.GOOGLE_GENERATIVE_AI_API_KEY;
+}
+
 import { getOrCreateUser } from "~/server/auth";
 import { acquireGenerationLock, releaseGenerationLock } from "~/server/lib/redis";
 import { checkCredits, decrementCredits } from "~/server/services/credit.service";
@@ -215,9 +220,7 @@ export async function POST(req: NextRequest) {
     // Initial generation with Gemini 3 Pro and high thinking level
     let html = "";
     let currentResult = await generateText({
-      model: google("gemini-3-pro-preview", {
-        apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY,
-      }),
+      model: google("gemini-3-pro-preview"),
       system: DESIGN_SYSTEM_PROMPT + contextPrompt,
       messages: aiMessages,
       temperature: 1.0, // Keep at 1.0 for Gemini 3 Pro per docs

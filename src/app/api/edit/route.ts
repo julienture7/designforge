@@ -5,6 +5,11 @@ import crypto from "crypto";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
 
+// Set Google API key for @ai-sdk/google (reads from GOOGLE_GENERATIVE_AI_API_KEY env var)
+if (typeof process !== "undefined") {
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY = env.GOOGLE_GENERATIVE_AI_API_KEY;
+}
+
 import { getOrCreateUser } from "~/server/auth";
 import {
   parseSearchReplaceBlocks,
@@ -197,7 +202,9 @@ export async function POST(req: NextRequest) {
             // Call Gemini with low temperature for consistency
             // No thinking mode for edits - speed is priority
             const result = streamText({
-              model: google("gemini-3-pro-preview"),
+              model: google("gemini-3-pro-preview", {
+                apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY,
+              }),
               system: systemPrompt,
               messages: [{ role: "user", content: userPrompt }],
               temperature: 0.2, // Low temperature for deterministic edits
