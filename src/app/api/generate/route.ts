@@ -264,9 +264,7 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
         ];
 
         currentResult = await generateText({
-          model: google("gemini-3-pro-preview", {
-            apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY,
-          }),
+          model: google("gemini-3-pro-preview"),
           system: REFINEMENT_PROMPT,
           messages: refinementMessages,
           temperature: 1.0, // Keep at 1.0 for Gemini 3 Pro per docs
