@@ -5,7 +5,7 @@
  * Returns the full HTML in one response so the client can swap the preview atomically.
  */
 
-import { createOpenAI } from "@ai-sdk/openai-compatible";
+import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
