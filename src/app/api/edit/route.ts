@@ -1,12 +1,12 @@
 import { streamText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createDeepSeek } from "@ai-sdk/deepseek";
 import { type NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
 
 // Create DeepSeek client with beta endpoint
-const deepseek = createOpenAI({
+const deepseek = createDeepSeek({
   apiKey: env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com/beta",
 });

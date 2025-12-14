@@ -5,14 +5,14 @@
  * Returns the full HTML in one response so the client can swap the preview atomically.
  */
 
-import { createOpenAI } from "@ai-sdk/openai";
+import { createDeepSeek } from "@ai-sdk/deepseek";
 import { generateText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
 
 // Create DeepSeek client with beta endpoint
-const deepseek = createOpenAI({
+const deepseek = createDeepSeek({
   apiKey: env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com/beta",
 });
