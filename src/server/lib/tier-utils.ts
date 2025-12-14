@@ -3,7 +3,7 @@
  * Maps subscription tiers to their refinement pass counts
  */
 
-export type Tier = "FREE" | "REFINED" | "ENHANCED" | "ULTIMATE" | "PRO";
+export type Tier = "FREE" | "PRO";
 
 /**
  * Get the number of AI refinement passes for a given tier
@@ -14,14 +14,9 @@ export function getRefinementPasses(tier: Tier): number {
   switch (tier) {
     case "FREE":
       return 0;
-    case "REFINED":
-      return 1;
-    case "ENHANCED":
-      return 2;
-    case "ULTIMATE":
-      return 3;
     case "PRO":
-      // Legacy PRO tier gets 1 refinement pass for backward compatibility
+      // PRO tier users can choose refinement level (REFINED=1, ENHANCED=2, ULTIMATE=3)
+      // This function returns the base - actual passes are determined by refinement level selection
       return 1;
     default:
       return 0;
@@ -35,12 +30,6 @@ export function getTierDisplayName(tier: Tier): string {
   switch (tier) {
     case "FREE":
       return "Free";
-    case "REFINED":
-      return "Refined";
-    case "ENHANCED":
-      return "Enhanced";
-    case "ULTIMATE":
-      return "Ultimate";
     case "PRO":
       return "Pro";
     default:
@@ -55,14 +44,8 @@ export function getTierDescription(tier: Tier): string {
   switch (tier) {
     case "FREE":
       return "Perfect for trying out";
-    case "REFINED":
-      return "Single AI refinement pass";
-    case "ENHANCED":
-      return "Double AI refinement passes";
-    case "ULTIMATE":
-      return "Triple AI refinement passes";
     case "PRO":
-      return "For serious creators";
+      return "Access to all refinement levels with separate credit pools";
     default:
       return "";
   }

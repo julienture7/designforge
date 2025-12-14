@@ -43,7 +43,7 @@ export function getTierFromPriceId(priceId: string | null | undefined): Tier | n
  * Get all valid paid tiers (excludes FREE)
  */
 export function getPaidTiers(): Tier[] {
-  return ["REFINED", "ENHANCED", "ULTIMATE", "PRO"];
+  return ["PRO"];
 }
 
 /**

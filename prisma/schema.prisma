@@ -13,11 +13,8 @@ datasource db {
 
 // Enums
 enum Tier {
-    FREE        // Basic tier - no refinement
-    REFINED     // 1 AI refinement pass
-    ENHANCED    // 2 AI refinement passes
-    ULTIMATE    // 3 AI refinement passes
-    PRO         // Legacy tier (kept for backward compatibility)
+    FREE        // Basic tier - no refinement passes
+    PRO         // Pro tier - access to all refinement levels (REFINED, ENHANCED, ULTIMATE)
 }
 
 enum Visibility {

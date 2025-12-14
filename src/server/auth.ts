@@ -7,7 +7,6 @@
 
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "./db";
-import type { Tier } from "./lib/tier-utils";
 
 // Extended user type with tier and credits
 export interface AppUser {
@@ -15,7 +14,7 @@ export interface AppUser {
   clerkId: string;
   email: string;
   name: string | null;
-  tier: Tier;
+  tier: "FREE" | "PRO";
   credits: number;
   version: number;
 }
