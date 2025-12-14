@@ -119,50 +119,46 @@ export default function Home() {
 
       {/* Hero Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-16">
-        <div className="text-center max-w-5xl mx-auto">
-          <h1 className="animate-fade-in-up text-6xl md:text-8xl lg:text-9xl font-bold mb-6 tracking-tighter text-center leading-[0.9]">
+        <div className="text-center max-w-4xl mx-auto mb-12">
+          <h1 className="animate-fade-in-up text-5xl md:text-7xl lg:text-8xl font-bold mb-4 tracking-tighter text-center leading-[0.95]">
             <span className="block text-gray-900">Design</span>
-            <span className="block hero-gradient-text mt-2">Award-Winning</span>
-            <span className="block text-gray-900 mt-2">Websites</span>
-            <span className="block hero-gradient-text mt-2 text-5xl md:text-6xl lg:text-7xl font-normal tracking-normal">
-              in Seconds, Not Weeks
+            <span className="block hero-gradient-text mt-1">Award-Winning</span>
+            <span className="block text-gray-900 mt-1">Websites</span>
+            <span className="block text-gray-600 text-3xl md:text-4xl lg:text-5xl font-normal mt-2 tracking-normal">
+              in Seconds
             </span>
           </h1>
-          <p className="animate-fade-in-up text-gray-600 text-xl md:text-2xl mb-4 font-medium tracking-tight text-center max-w-3xl mx-auto" style={{ animationDelay: '0.1s' }}>
-            The only AI platform powered by Mixture of Experts architecture. 
-            <span className="text-gray-900 font-semibold"> Generate production-ready designs</span> that win awards.
-          </p>
-          <p className="animate-fade-in-up text-gray-500 text-base md:text-lg mb-10 font-normal tracking-wide text-center max-w-2xl mx-auto" style={{ animationDelay: '0.15s' }}>
-            Our proprietary system intelligently routes your request through specialized design models, selecting the optimal expert ensemble to create stunning, conversion-optimized websites.
+          <p className="animate-fade-in-up text-gray-500 text-base md:text-lg mb-8 font-normal tracking-wide text-center max-w-xl mx-auto" style={{ animationDelay: '0.1s' }}>
+            AI-powered website generation. Describe what you want, get a production-ready design instantly.
           </p>
         </div>
 
-        {/* Prompt box */}
+        {/* Prompt box - Made more prominent */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             startDesign();
           }}
-          className="animate-fade-in-scale w-full max-w-3xl rounded-2xl shadow-lg border border-gray-200 p-2 flex items-center gap-2 bg-white transition-all duration-300 hover:shadow-xl hover:border-gray-300 focus-within:shadow-xl focus-within:border-blue-300"
-          style={{ animationDelay: '0.2s' }}
+          className="animate-fade-in-scale w-full max-w-4xl rounded-3xl shadow-2xl border-2 border-gray-200 p-3 flex items-center gap-3 bg-white transition-all duration-300 hover:shadow-3xl hover:border-blue-400 focus-within:shadow-3xl focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100"
+          style={{ animationDelay: '0.15s' }}
         >
           <input
             ref={inputRef}
             type="text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g., Neo-brutalist landing page for a sushi bar with reservation CTA"
-            className="flex-1 text-base py-3 px-4 outline-none border-none bg-transparent text-gray-900 transition-all duration-200"
+            placeholder="Describe your website... e.g., 'Modern SaaS landing page with pricing'"
+            className="flex-1 text-lg md:text-xl py-4 px-5 outline-none border-none bg-transparent text-gray-900 placeholder:text-gray-400 transition-all duration-200 font-medium"
             aria-label="Describe what you want to build"
           />
 
           <button
             type="submit"
             disabled={!isLoaded}
-            className={`relative text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group active:scale-95 ${
+            className={`relative text-white px-8 py-4 rounded-2xl text-base md:text-lg font-bold transition-all duration-300 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group active:scale-95 shadow-lg ${
               isLoaded && prompt.trim()
-                ? "btn-generate-animated hover:scale-105"
-                : "bg-gray-900 hover:bg-gray-800 hover:scale-105"
+                ? "btn-generate-animated hover:scale-105 hover:shadow-xl"
+                : "bg-gray-900 hover:bg-gray-800 hover:scale-105 hover:shadow-xl"
             }`}
           >
             {/* Glow effect - only when prompt is valid */}
@@ -185,20 +181,19 @@ export default function Home() {
           </button>
         </form>
 
-        {/* Examples (fast, non-placeholder affordance) */}
-        <div className="animate-fade-in-up mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-gray-500" style={{ animationDelay: '0.3s' }}>
-          <span className="text-gray-400">Try:</span>
+        {/* Examples - Simplified */}
+        <div className="animate-fade-in-up mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-gray-500" style={{ animationDelay: '0.2s' }}>
           {[
-            "SaaS landing page for an AI meeting assistant with pricing + FAQ",
-            "Portfolio for a product designer with case studies and a contact form",
-            "Restaurant homepage with menu highlights and a booking section",
+            "SaaS landing page",
+            "Portfolio website",
+            "Restaurant homepage",
           ].map((example, index) => (
             <button
               key={example}
               type="button"
               onClick={() => setPrompt(example)}
-              className="rounded-full border border-gray-200 bg-white px-3 py-1 hover:bg-gray-50 hover:border-gray-300 hover:scale-105 active:scale-95 transition-all duration-200"
-              style={{ animationDelay: `${0.35 + index * 0.05}s` }}
+              className="rounded-full border border-gray-300 bg-white px-4 py-2 hover:bg-gray-50 hover:border-gray-400 hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 font-medium"
+              style={{ animationDelay: `${0.25 + index * 0.05}s` }}
             >
               {example}
             </button>
