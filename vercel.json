@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/reset-credits",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-webhooks",
+      "schedule": "0 2 * * 0"
+    }
+  ]
+}

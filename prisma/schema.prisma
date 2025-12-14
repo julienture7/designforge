@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+    output   = "../generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Tier {
+    FREE        // Basic tier - no refinement
+    REFINED     // 1 AI refinement pass
+    ENHANCED    // 2 AI refinement passes
+    ULTIMATE    // 3 AI refinement passes
+    PRO         // Legacy tier (kept for backward compatibility)
+}
+
+enum Visibility {
+    PUBLIC
+    PRIVATE
+}
+
+enum SubscriptionStatus {
+    ACTIVE
+    PAST_DUE
+    UNPAID
+    CANCELED
+}
+
+// User model with OCC version field and Stripe customer ID
+model User {
+    id                 String              @id @default(cuid())
+    clerkId            String              @unique // Clerk user ID for authentication
+    email              String              @unique
+    name               String?
+    tier               Tier                @default(FREE)
+    credits            Int                 @default(5) // FREE tier daily credits
+    refinedCredits     Int                 @default(0) // PRO tier: Refined (1 pass) generations
+    enhancedCredits    Int                 @default(0) // PRO tier: Enhanced (2 passes) generations
+    ultimateCredits    Int                 @default(0) // PRO tier: Ultimate (3 passes) generations
+    version            Int                 @default(0) // Optimistic Concurrency Control
+    stripeCustomerId   String?             @unique // Stripe customer ID for webhook mapping
+    subscriptionId     String?
+    subscriptionStatus SubscriptionStatus?
+    createdAt          DateTime            @default(now())
+    updatedAt          DateTime            @updatedAt
+    projects           Project[]
+}
+
+// Project model with visibility, tokenUsage, and versionHistory
+model Project {
+    id                  String     @id @default(cuid())
+    userId              String
+    user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+    title               String
+    htmlContent         String     @db.Text
+    conversationHistory Json // Array of {role: 'user'|'model', content: string}
+    visibility          Visibility @default(PUBLIC)
+    tokenUsage          Int        @default(0)
+    versionHistory      Json       @default("[]") // Array of {html: string, timestamp: string}
+    generationCount     Int        @default(0)
+    createdAt           DateTime   @default(now())
+    updatedAt           DateTime   @updatedAt
+
+    @@index([userId])
+}
+
+// ProcessedWebhook for Stripe webhook idempotency
+model ProcessedWebhook {
+    id          String   @id @default(cuid())
+    eventId     String   @unique // Stripe event ID for idempotency
+    eventType   String
+    processedAt DateTime @default(now())
+
+    @@index([eventId])
+    @@index([processedAt]) // Index for cleanup job
+}
+
+// Note: Sessions are now managed by Clerk, no local session model needed
