@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
     // Initial generation with DeepSeek Chat
     let html = "";
     let currentResult = await generateText({
-      model: deepseek("deepseek-chat"),
+      model: deepseek("deepseek-chat") as any, // Type assertion: deepseek returns LanguageModelV2 but generateText accepts it at runtime
       system: DESIGN_SYSTEM_PROMPT + contextPrompt,
       messages: aiMessages,
       temperature: 1.0,
@@ -263,7 +263,7 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
         ];
 
         currentResult = await generateText({
-          model: deepseek("deepseek-chat"),
+          model: deepseek("deepseek-chat") as any, // Type assertion: deepseek returns LanguageModelV2 but generateText accepts it at runtime
           system: REFINEMENT_PROMPT,
           messages: refinementMessages,
           temperature: 1.0,
