@@ -638,14 +638,13 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
       continue;
     }
     
-    const realUrl = await fetchUnsplashImage(query);
-    if (!realUrl) {
-      console.warn(`No Unsplash result for query: ${query}`);
-      continue;
-    }
+    // Replace with proxy API URL instead of fetching actual image URL
+    const proxyUrl = baseUrl 
+      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
+      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
     
-    // Replace ALL occurrences of this source URL with the real URL
-    processedHtml = processedHtml.split(sourceUrl).join(realUrl);
+    // Replace ALL occurrences of this source URL with the proxy URL
+    processedHtml = processedHtml.split(sourceUrl).join(proxyUrl);
   }
 
   // PASS 2: Handle ALL img tags - be more aggressive about finding and fixing images
@@ -657,24 +656,23 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
     const srcMatch = imgTag.match(/src=["']([^"']+)["']/i);
     const currentSrc = srcMatch?.[1] ?? '';
 
-    // Validate existing images.unsplash.com URLs - they might be invalid/expired
-    // Only skip if URL has proper format with photo ID
-    const isValidUnsplashUrl = currentSrc && 
-      currentSrc.includes('images.unsplash.com') && 
-      currentSrc.match(/photo-\d+/); // Must have photo-123456 format
-    
-    if (isValidUnsplashUrl) {
+    // Skip if already using proxy API
+    if (currentSrc && currentSrc.includes('/api/proxy/image')) {
       continue;
     }
     
-    // Skip if has a valid non-Unsplash URL (but not placeholders)
+    // Skip if has a valid non-Unsplash URL (but not placeholders or Unsplash URLs)
     if (currentSrc && 
         !currentSrc.includes('placeholder') &&
         !currentSrc.includes('source.unsplash.com') &&
+        !currentSrc.includes('images.unsplash.com') &&
+        !currentSrc.includes('unsplash.com') &&
         currentSrc.startsWith('http') &&
         !currentSrc.includes('data:image')) {
       continue;
     }
+    
+    // Replace ALL Unsplash URLs (source.unsplash.com, images.unsplash.com) with proxy API
 
     // Extract query from data attributes, alt text, or nearby context
     let query: string | null = extractImageQuery(imgTag);
@@ -706,32 +704,19 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
       query = 'modern design';
     }
 
-    // Fetch real image URL with retry logic
-    let realUrl = await fetchUnsplashImage(query);
-    
-    // If first query fails, try a simpler version
-    if (!realUrl && query.includes(' ')) {
-      const simpleQuery = query.split(' ').slice(0, 2).join(' ');
-      realUrl = await fetchUnsplashImage(simpleQuery);
-    }
-    
-    // Final fallback to generic query
-    if (!realUrl) {
-      realUrl = await fetchUnsplashImage('design modern');
-    }
-    
-    if (!realUrl) {
-      console.warn(`Failed to fetch image for query: ${query}`);
-      continue;
-    }
+    // Use proxy API URL instead of fetching the actual image URL
+    // The proxy will handle fetching and redirecting to the actual image
+    const proxyUrl = baseUrl 
+      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
+      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
 
-    // Replace the src attribute
+    // Replace the src attribute with proxy URL
     let newImgTag = imgTag;
     if (srcMatch) {
-      newImgTag = imgTag.replace(srcMatch[0], `src="${realUrl}"`);
+      newImgTag = imgTag.replace(srcMatch[0], `src="${proxyUrl}"`);
     } else {
       // Add src if missing
-      newImgTag = imgTag.replace(/<img/, `<img src="${realUrl}"`);
+      newImgTag = imgTag.replace(/<img/, `<img src="${proxyUrl}"`);
     }
 
     // Add loading="lazy" if not present
@@ -754,8 +739,8 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
   for (const match of dataBgMatches) {
     const element = match[0];
     
-    // Check if already has a background-image with a real URL
-    if (element.includes('images.unsplash.com') && element.includes('photo-')) continue;
+    // Skip if already using proxy API
+    if (element.includes('/api/proxy/image')) continue;
 
     let query: string | null = extractBgQuery(element);
     
@@ -772,67 +757,80 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
       query = 'abstract modern design';
     }
 
-    let realUrl = await fetchUnsplashImage(query);
-    
-    // Retry with simpler query if needed
-    if (!realUrl && query.includes(' ')) {
-      const simpleQuery = query.split(' ').slice(0, 2).join(' ');
-      realUrl = await fetchUnsplashImage(simpleQuery);
-    }
-    
-    // Final fallback
-    if (!realUrl) {
-      realUrl = await fetchUnsplashImage('design modern');
-    }
-    
-    if (!realUrl) continue;
+    // Use proxy API URL instead of fetching the actual image URL
+    const proxyUrl = baseUrl 
+      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
+      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
 
-    // Add or update background-image style
+    // Add or update background-image style with proxy URL
     let newElement = element;
     if (element.includes('style="')) {
       // Check if there's already a background-image
       if (element.includes('background-image:')) {
-        // Replace existing background-image
-        newElement = element.replace(/background-image:\s*url\([^)]+\)/i, `background-image: url('${realUrl}')`);
+        // Replace existing background-image (including Unsplash URLs)
+        newElement = element.replace(/background-image:\s*url\(['"]?[^'")]+['"]?\)/i, `background-image: url('${proxyUrl}')`);
       } else {
-        newElement = element.replace(/style="/, `style="background-image: url('${realUrl}'); background-size: cover; background-position: center; `);
+        newElement = element.replace(/style="/, `style="background-image: url('${proxyUrl}'); background-size: cover; background-position: center; `);
       }
     } else if (element.includes("style='")) {
       if (element.includes('background-image:')) {
-        newElement = element.replace(/background-image:\s*url\([^)]+\)/i, `background-image: url('${realUrl}')`);
+        newElement = element.replace(/background-image:\s*url\(['"]?[^'")]+['"]?\)/i, `background-image: url('${proxyUrl}')`);
       } else {
-        newElement = element.replace(/style='/, `style='background-image: url(${realUrl}); background-size: cover; background-position: center; `);
+        newElement = element.replace(/style='/, `style='background-image: url('${proxyUrl}'); background-size: cover; background-position: center; `);
       }
     } else {
       // Add style attribute
-      newElement = element.replace(/>$/, ` style="background-image: url('${realUrl}'); background-size: cover; background-position: center;">`);
+      newElement = element.replace(/>$/, ` style="background-image: url('${proxyUrl}'); background-size: cover; background-position: center;">`);
     }
 
     if (newElement !== element) {
       processedHtml = processedHtml.replace(element, newElement);
     }
   }
-
-  // PASS 4: Validate and fix any broken images.unsplash.com URLs
-  // Some URLs might be malformed or expired, so we validate and replace them
-  const brokenUrlRegex = /https?:\/\/images\.unsplash\.com\/[^"'\s)]+/gi;
-  const brokenUrlMatches = [...processedHtml.matchAll(brokenUrlRegex)];
   
-  for (const match of brokenUrlMatches) {
-    const url = match[0];
-    // Check if URL has proper photo ID format
-    if (!url.match(/photo-\d+/)) {
-      // Invalid URL format - extract query and replace
-      const contextQuery = extractQueryFromContext(processedHtml, match.index ?? 0);
-      const query = contextQuery || 'modern design';
-      const realUrl = await fetchUnsplashImage(query);
-      if (realUrl) {
-        processedHtml = processedHtml.split(url).join(realUrl);
-      }
-    }
+  // PASS 4: Replace ALL remaining Unsplash URLs in background-image styles
+  const bgImageRegex = /background-image:\s*url\(['"]?https?:\/\/[^'")]*(?:source|images)\.unsplash\.com[^'")]*['"]?\)/gi;
+  const bgImageMatches = [...processedHtml.matchAll(bgImageRegex)];
+  
+  for (const match of bgImageMatches) {
+    const bgImageUrl = match[0];
+    // Extract query from the URL if possible
+    let query = extractKeywordsFromSourceUrl(bgImageUrl) || 
+                extractQueryFromContext(processedHtml, match.index ?? 0) || 
+                'abstract modern design';
+    
+    const proxyUrl = baseUrl 
+      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
+      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
+    
+    const newBgImage = bgImageUrl.replace(/url\(['"]?[^'")]+['"]?\)/i, `url('${proxyUrl}')`);
+    processedHtml = processedHtml.replace(bgImageUrl, newBgImage);
   }
 
-  console.log(`[injectUnsplashImages] Processed ${uniqueSourceUrls.length} source.unsplash.com URLs, ${imgMatches.length} img tags, ${dataBgMatches.length} background elements`);
+  // PASS 5: Replace any remaining direct Unsplash URLs in img src attributes that weren't caught
+  const remainingUnsplashRegex = /src=["']https?:\/\/[^"']*(?:source|images)\.unsplash\.com[^"']*["']/gi;
+  const remainingMatches = [...processedHtml.matchAll(remainingUnsplashRegex)];
+  
+  for (const match of remainingMatches) {
+    const srcAttr = match[0];
+    const urlMatch = srcAttr.match(/https?:\/\/[^"']*(?:source|images)\.unsplash\.com[^"']*/);
+    if (!urlMatch) continue;
+    
+    const url = urlMatch[0];
+    // Extract query from URL or context
+    let query = extractKeywordsFromSourceUrl(url) || 
+                extractQueryFromContext(processedHtml, match.index ?? 0) || 
+                'modern design';
+    
+    const proxyUrl = baseUrl 
+      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
+      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
+    
+    const newSrcAttr = srcAttr.replace(/https?:\/\/[^"']*(?:source|images)\.unsplash\.com[^"']*/i, proxyUrl);
+    processedHtml = processedHtml.replace(srcAttr, newSrcAttr);
+  }
+
+  console.log(`[injectUnsplashImages] Processed ${uniqueSourceUrls.length} source.unsplash.com URLs, ${imgMatches.length} img tags, ${dataBgMatches.length} background elements, replaced all with proxy API URLs`);
   
   return processedHtml;
 }
