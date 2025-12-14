@@ -35,9 +35,6 @@ export type ProcessedWebhook = $Result.DefaultSelection<Prisma.$ProcessedWebhook
 export namespace $Enums {
   export const Tier: {
   FREE: 'FREE',
-  REFINED: 'REFINED',
-  ENHANCED: 'ENHANCED',
-  ULTIMATE: 'ULTIMATE',
   PRO: 'PRO'
 };
 

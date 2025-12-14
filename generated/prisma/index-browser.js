@@ -186,9 +186,6 @@ exports.Prisma.JsonNullValueFilter = {
 };
 exports.Tier = exports.$Enums.Tier = {
   FREE: 'FREE',
-  REFINED: 'REFINED',
-  ENHANCED: 'ENHANCED',
-  ULTIMATE: 'ULTIMATE',
   PRO: 'PRO'
 };
 
