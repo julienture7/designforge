@@ -246,7 +246,7 @@ CRITICAL REQUIREMENTS:
             // Call DeepSeek with appropriate settings
             // For new designs, use higher temperature; for edits, use lower temperature
             const result = streamText({
-              model: deepseek("deepseek-chat"),
+              model: deepseek("deepseek-chat") as any, // Type assertion: deepseek returns LanguageModelV2 but streamText accepts it at runtime
               system: systemPrompt,
               messages: [{ role: "user", content: userPrompt }],
               temperature: isNewDesignRequest ? 1.0 : 0.2, // Higher temp for creativity in new designs
