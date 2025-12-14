@@ -542,20 +542,22 @@ button:disabled {
 .hero-gradient-text {
   background: linear-gradient(
     135deg,
-    #667eea 0%,
-    #764ba2 25%,
-    #f093fb 50%,
-    #4facfe 75%,
-    #00f2fe 100%,
-    #667eea 100%
+    #6366f1 0%,
+    #8b5cf6 20%,
+    #a855f7 40%,
+    #ec4899 60%,
+    #f43f5e 80%,
+    #6366f1 100%
   );
-  background-size: 200% auto;
+  background-size: 300% auto;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: gradient-shimmer 5s ease-in-out infinite, text-glow-pulse 3s ease-in-out infinite;
+  animation: gradient-shimmer 8s ease-in-out infinite;
   display: inline-block;
   position: relative;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .typing-dot {

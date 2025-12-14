@@ -119,14 +119,23 @@ export default function Home() {
 
       {/* Hero Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-16">
-        <h1 className="animate-fade-in-up text-5xl md:text-7xl font-serif mb-4 tracking-tight text-center">
-          <span className="hero-gradient-text">Build</span>{' '}
-          <span className="hero-gradient-text italic">anything</span>{' '}
-          <span className="hero-gradient-text">instantly.</span>
-        </h1>
-        <p className="animate-fade-in-up text-gray-500 text-lg mb-10 font-light tracking-wide text-center" style={{ animationDelay: '0.1s' }}>
-          Powered by a proprietary Mixture of Experts (MOE) architecture. Our unique system dynamically routes your request through specialized design models, intelligently selecting the optimal expert ensemble to generate award-winning designs. No other design platform uses this advanced AI routing technology.
-        </p>
+        <div className="text-center max-w-5xl mx-auto">
+          <h1 className="animate-fade-in-up text-6xl md:text-8xl lg:text-9xl font-bold mb-6 tracking-tighter text-center leading-[0.9]">
+            <span className="block text-gray-900">Design</span>
+            <span className="block hero-gradient-text mt-2">Award-Winning</span>
+            <span className="block text-gray-900 mt-2">Websites</span>
+            <span className="block hero-gradient-text mt-2 text-5xl md:text-6xl lg:text-7xl font-normal tracking-normal">
+              in Seconds, Not Weeks
+            </span>
+          </h1>
+          <p className="animate-fade-in-up text-gray-600 text-xl md:text-2xl mb-4 font-medium tracking-tight text-center max-w-3xl mx-auto" style={{ animationDelay: '0.1s' }}>
+            The only AI platform powered by Mixture of Experts architecture. 
+            <span className="text-gray-900 font-semibold"> Generate production-ready designs</span> that win awards.
+          </p>
+          <p className="animate-fade-in-up text-gray-500 text-base md:text-lg mb-10 font-normal tracking-wide text-center max-w-2xl mx-auto" style={{ animationDelay: '0.15s' }}>
+            Our proprietary system intelligently routes your request through specialized design models, selecting the optimal expert ensemble to create stunning, conversion-optimized websites.
+          </p>
+        </div>
 
         {/* Prompt box */}
         <form

@@ -79,6 +79,8 @@ export async function decrementRefinementCredits(
 ): Promise<RefinementCreditDecrementResult> {
   const cost = getRefinementCreditCost(refinementLevel);
   
+  console.log(`[decrementRefinementCredits] User ${userId}, Level: ${refinementLevel}, Cost: ${cost} credits`);
+  
   const result = await db.$transaction(async (tx) => {
     // Check and decrement unified credits
     const whereClause = {
@@ -106,6 +108,8 @@ export async function decrementRefinementCredits(
         version: true,
       },
     });
+
+    console.log(`[decrementRefinementCredits] Successfully decremented ${cost} credits. New balance: ${updatedUser?.credits}`);
 
     return {
       success: true as const,
