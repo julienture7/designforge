@@ -1,15 +1,9 @@
 import { streamText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai-compatible";
+import { openai } from "@ai-sdk/openai";
 import { type NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
-
-// Create DeepSeek client with beta endpoint
-const deepseek = createOpenAI({
-  apiKey: env.DEEPSEEK_API_KEY,
-  baseURL: "https://api.deepseek.com/beta",
-});
 
 import { getOrCreateUser } from "~/server/auth";
 import {
@@ -246,7 +240,10 @@ CRITICAL REQUIREMENTS:
             // Call DeepSeek with appropriate settings
             // For new designs, use higher temperature; for edits, use lower temperature
             const result = streamText({
-              model: deepseek("deepseek-chat"),
+              model: openai("deepseek-chat", {
+                apiKey: env.DEEPSEEK_API_KEY,
+                baseURL: "https://api.deepseek.com/beta",
+              }),
               system: systemPrompt,
               messages: [{ role: "user", content: userPrompt }],
               temperature: isNewDesignRequest ? 1.0 : 0.2, // Higher temp for creativity in new designs

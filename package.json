@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^1.0.0",
+    "@ai-sdk/openai": "^1.0.0",
     "@ai-sdk/react": "^2.0.115",
     "@clerk/nextjs": "^6.36.2",
     "@prisma/client": "^6.6.0",
