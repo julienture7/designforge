@@ -1,14 +1,15 @@
 import { streamText } from "ai";
-import { google, type GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { type NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
 
-// Set Google API key for @ai-sdk/google (reads from GOOGLE_GENERATIVE_AI_API_KEY env var)
-if (typeof process !== "undefined") {
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY = env.GOOGLE_GENERATIVE_AI_API_KEY;
-}
+// Create DeepSeek client with beta endpoint
+const deepseek = createOpenAI({
+  apiKey: env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com/beta",
+});
 
 import { getOrCreateUser } from "~/server/auth";
 import {
@@ -242,20 +243,14 @@ CRITICAL REQUIREMENTS:
               timestamp: new Date().toISOString(),
             });
 
-            // Call Gemini with appropriate settings
+            // Call DeepSeek with appropriate settings
             // For new designs, use higher temperature; for edits, use lower temperature
             const result = streamText({
-              model: google("gemini-3-pro-preview"),
+              model: deepseek("deepseek-chat"),
               system: systemPrompt,
               messages: [{ role: "user", content: userPrompt }],
               temperature: isNewDesignRequest ? 1.0 : 0.2, // Higher temp for creativity in new designs
-              providerOptions: isNewDesignRequest ? {
-                google: {
-                  thinkingConfig: {
-                    thinkingLevel: "high",
-                  },
-                },
-              } : undefined, // Use thinking mode for new designs
+              maxTokens: 8000, // DeepSeek beta supports up to 8K tokens
               abortSignal: AbortSignal.timeout(isNewDesignRequest ? 120000 : 60000), // Longer timeout for new designs
             });
 

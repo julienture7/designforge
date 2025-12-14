@@ -5,16 +5,17 @@
  * Returns the full HTML in one response so the client can swap the preview atomically.
  */
 
-import { google } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
 
-// Set Google API key for @ai-sdk/google (reads from GOOGLE_GENERATIVE_AI_API_KEY env var)
-if (typeof process !== "undefined") {
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY = env.GOOGLE_GENERATIVE_AI_API_KEY;
-}
+// Create DeepSeek client with beta endpoint
+const deepseek = createOpenAI({
+  apiKey: env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com/beta",
+});
 
 import { getOrCreateUser } from "~/server/auth";
 import { acquireGenerationLock, releaseGenerationLock } from "~/server/lib/redis";
@@ -221,20 +222,14 @@ export async function POST(req: NextRequest) {
       refinementPasses = getRefinementPasses(userTier);
     }
 
-    // Initial generation with Gemini 3 Pro and high thinking level
+    // Initial generation with DeepSeek Chat
     let html = "";
     let currentResult = await generateText({
-      model: google("gemini-3-pro-preview"),
+      model: deepseek("deepseek-chat"),
       system: DESIGN_SYSTEM_PROMPT + contextPrompt,
       messages: aiMessages,
-      temperature: 1.0, // Keep at 1.0 for Gemini 3 Pro per docs
-      providerOptions: {
-        google: {
-          thinkingConfig: {
-            thinkingLevel: "high",
-          },
-        },
-      },
+      temperature: 1.0,
+      maxTokens: 8000, // DeepSeek beta supports up to 8K tokens
     });
     html = currentResult.text;
 
@@ -268,20 +263,11 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
         ];
 
         currentResult = await generateText({
-          model: google("gemini-3-pro-preview"),
+          model: deepseek("deepseek-chat"),
           system: REFINEMENT_PROMPT,
           messages: refinementMessages,
-          temperature: 1.0, // Keep at 1.0 for Gemini 3 Pro per docs
-          providerOptions: {
-            google: {
-              // Use low thinking for refinement passes to reduce timeout risk
-              // Initial generation uses high thinking, but refinements are just polishing
-              // so low thinking is sufficient and much faster
-              thinkingConfig: {
-                thinkingLevel: "low", // Low thinking for all refinement passes
-              },
-            },
-          },
+          temperature: 1.0,
+          maxTokens: 8000, // DeepSeek beta supports up to 8K tokens
         });
         html = currentResult.text;
       }

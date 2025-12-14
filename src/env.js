@@ -15,10 +15,8 @@ export const env = createEnv({
       .enum(["development", "test", "production"])
       .default("development"),
     
-    // Gemini AI API
-    GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
-    // Google Generative AI API Key (used by @ai-sdk/google)
-    GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1, "GOOGLE_GENERATIVE_AI_API_KEY is required"),
+    // DeepSeek AI API (OpenAI-compatible)
+    DEEPSEEK_API_KEY: z.string().min(1, "DEEPSEEK_API_KEY is required"),
     
     // Unsplash API
     UNSPLASH_ACCESS_KEY: z.string().min(1, "UNSPLASH_ACCESS_KEY is required"),
@@ -42,8 +40,6 @@ export const env = createEnv({
     // Optional in development for easier local testing
     CRON_SECRET: z.string().min(1).optional(),
     
-    // DeepSeek API - Used for design polishing (optional)
-    DEEPSEEK_API_KEY: z.string().min(1).optional(),
   },
 
   /**
@@ -69,8 +65,7 @@ export const env = createEnv({
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-    GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GEMINI_API_KEY,
+    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
     UNSPLASH_ACCESS_KEY: process.env.UNSPLASH_ACCESS_KEY,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
@@ -82,7 +77,6 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     SENTRY_DSN: process.env.SENTRY_DSN,
     CRON_SECRET: process.env.CRON_SECRET,
-    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
   },
 
   /**
