@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { EditorLayout } from "./EditorLayout";
 import { ChatPanel } from "./ChatPanel";
 import { SandboxedCanvas } from "./SandboxedCanvas";
 import { ViewportToggle, getViewportStyles, type ViewportType } from "./ViewportToggle";
 import { RawHtmlViewer } from "@/components/ui/RawHtmlViewer";
 import { processHtmlForSandbox } from "@/server/lib/html-processor";
+import { api } from "~/trpc/react";
 import type { ConversationMessage } from "@/types/editor";
 
 interface ConnectedEditorProps {
@@ -49,6 +51,15 @@ export function ConnectedEditor({
   onGenerationComplete,
   onError,
 }: ConnectedEditorProps) {
+  const { isSignedIn } = useAuth();
+  
+  // Get user tier to check if Pro features should be available
+  const subscriptionStatus = api.subscription.getStatus.useQuery(undefined, {
+    enabled: isSignedIn,
+  });
+  const userTier = subscriptionStatus.data?.tier ?? "FREE";
+  const isPro = userTier === "PRO";
+  
   // Current HTML content (raw, unprocessed)
   const [rawHtml, setRawHtml] = useState<string>(initialHtml);
 
@@ -231,13 +242,15 @@ export function ConnectedEditor({
                 </svg>
                 See Preview
               </button>
-              <button
-                onClick={() => setShowRawHtml(true)}
-                className="text-xs text-muted hover:text-foreground px-2 py-1 rounded border border-border hover:border-accent hover:shadow-sm transition-all duration-200 hover:scale-105 active:scale-95"
-                title="View Raw HTML"
-              >
-                {"</>"}
-              </button>
+              {isPro && (
+                <button
+                  onClick={() => setShowRawHtml(true)}
+                  className="text-xs text-muted hover:text-foreground px-2 py-1 rounded border border-border hover:border-accent hover:shadow-sm transition-all duration-200 hover:scale-105 active:scale-95"
+                  title="View Raw HTML"
+                >
+                  {"</>"}
+                </button>
+              )}
             </>
           )}
           <ViewportToggle

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
+import { api } from "~/trpc/react";
+import { useToastContext } from "~/contexts/ToastContext";
 
 interface ProjectCardProps {
   id: string;
@@ -22,7 +24,28 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title);
+  const [isSaving, setIsSaving] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const toast = useToastContext();
+  
+  const utils = api.useUtils();
+  const updateMutation = api.project.update.useMutation({
+    onSuccess: () => {
+      setIsEditing(false);
+      setIsSaving(false);
+      toast.success("Project title updated");
+      // Invalidate and refetch project list
+      void utils.project.list.invalidate();
+    },
+    onError: (error) => {
+      setIsSaving(false);
+      toast.error("Failed to update title", error.message);
+      setEditedTitle(title); // Revert to original title
+    },
+  });
 
   // Hide fallback when iframe loads or handle errors
   useEffect(() => {
@@ -59,6 +82,21 @@ export function ProjectCard({
     };
   }, []);
 
+  // Sync editedTitle when title prop changes
+  useEffect(() => {
+    if (!isEditing) {
+      setEditedTitle(title);
+    }
+  }, [title, isEditing]);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
   // Relative time formatter (e.g. "Edited about 1 hour ago")
   const getRelativeTime = (date: Date) => {
     const diff = Date.now() - date.getTime();
@@ -72,9 +110,60 @@ export function ProjectCard({
     return 'Edited just now';
   };
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsEditing(true);
+    setEditedTitle(title);
+  };
+
+  const handleSave = () => {
+    const trimmedTitle = editedTitle.trim();
+    if (!trimmedTitle) {
+      toast.error("Title cannot be empty");
+      setEditedTitle(title);
+      setIsEditing(false);
+      return;
+    }
+    
+    if (trimmedTitle === title) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsSaving(true);
+    updateMutation.mutate({
+      id,
+      title: trimmedTitle,
+    });
+  };
+
+  const handleCancel = () => {
+    setEditedTitle(title);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleCancel();
+    }
+  };
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (isEditing) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   return (
     <Link
       href={`/editor/${id}`}
+      onClick={handleLinkClick}
       className="group block rounded-xl overflow-hidden bg-white border border-gray-100 transition-all duration-300 ease-out hover:shadow-2xl hover:-translate-y-1 hover:border-gray-200 active:scale-[0.98] active:shadow-lg animate-fade-in-up"
       style={{ animationDelay: `${index * 0.05}s`, animationFillMode: 'both' }}
       onMouseEnter={() => setIsHovered(true)}
@@ -127,9 +216,51 @@ export function ProjectCard({
 
       {/* Card Content */}
       <div className="p-4 bg-white transition-colors duration-200 group-hover:bg-gray-50/50">
-        <h3 className="truncate text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
-          {title}
-        </h3>
+        <div className="flex items-center gap-2 group/title">
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+              }}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              disabled={isSaving}
+              className="flex-1 text-base font-semibold text-gray-900 bg-white border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+              maxLength={200}
+            />
+          ) : (
+            <>
+              <h3 className="flex-1 truncate text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                {title}
+              </h3>
+              <button
+                onClick={handleEditClick}
+                className="opacity-0 group-hover/title:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-gray-200 active:scale-95 flex-shrink-0"
+                title="Edit title"
+                aria-label="Edit project title"
+              >
+                <svg
+                  className="w-4 h-4 text-gray-500 hover:text-blue-600 transition-colors"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
         <p className="mt-1 text-xs text-gray-500 font-medium transition-colors duration-200 group-hover:text-gray-600">
           {getRelativeTime(new Date(updatedAt))}
         </p>

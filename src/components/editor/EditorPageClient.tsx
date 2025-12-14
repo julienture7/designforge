@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useAuth } from "@clerk/nextjs";
 import { EditorErrorBoundary } from "./EditorErrorBoundary";
 import { ConnectedEditor } from "./ConnectedEditor";
 import { SaveStatusIndicator } from "./SaveStatusIndicator";
@@ -36,8 +36,16 @@ export function EditorPageClient({
   // #endregion
 
   const toast = useToastContext();
+  const { isSignedIn } = useAuth();
 
   const publishProject = api.project.update.useMutation();
+  
+  // Get user tier to check if Pro features should be available
+  const subscriptionStatus = api.subscription.getStatus.useQuery(undefined, {
+    enabled: isSignedIn,
+  });
+  const userTier = subscriptionStatus.data?.tier ?? "FREE";
+  const isPro = userTier === "PRO";
 
   const {
     saveStatus,
@@ -185,13 +193,15 @@ export function EditorPageClient({
               {publishProject.isPending ? "Publishing…" : "Publish & Share"}
             </button>
 
-            <button
-              onClick={handleExport}
-              className="inline-flex h-8 items-center justify-center rounded-full bg-[#4c6aff] px-4 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#3d5aef] hover:shadow-md hover:scale-105 active:scale-95"
-              title="Download the current HTML"
-            >
-              Export HTML
-            </button>
+            {isPro && (
+              <button
+                onClick={handleExport}
+                className="inline-flex h-8 items-center justify-center rounded-full bg-[#4c6aff] px-4 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#3d5aef] hover:shadow-md hover:scale-105 active:scale-95"
+                title="Download the current HTML"
+              >
+                Export HTML
+              </button>
+            )}
 
             <UserButton
               afterSignOutUrl="/"
