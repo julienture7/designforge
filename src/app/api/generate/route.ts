@@ -5,11 +5,17 @@
  * Returns the full HTML in one response so the client can swap the preview atomically.
  */
 
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai-compatible";
 import { generateText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
+
+// Create DeepSeek client with beta endpoint
+const deepseek = createOpenAI({
+  apiKey: env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com/beta",
+});
 
 import { getOrCreateUser } from "~/server/auth";
 import { acquireGenerationLock, releaseGenerationLock } from "~/server/lib/redis";
@@ -219,10 +225,7 @@ export async function POST(req: NextRequest) {
     // Initial generation with DeepSeek Chat
     let html = "";
     let currentResult = await generateText({
-      model: openai("deepseek-chat", {
-        apiKey: env.DEEPSEEK_API_KEY,
-        baseURL: "https://api.deepseek.com/beta",
-      }),
+      model: deepseek("deepseek-chat"),
       system: DESIGN_SYSTEM_PROMPT + contextPrompt,
       messages: aiMessages,
       temperature: 1.0,
@@ -260,10 +263,7 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
         ];
 
         currentResult = await generateText({
-          model: openai("deepseek-chat", {
-            apiKey: env.DEEPSEEK_API_KEY,
-            baseURL: "https://api.deepseek.com/beta",
-          }),
+          model: deepseek("deepseek-chat"),
           system: REFINEMENT_PROMPT,
           messages: refinementMessages,
           temperature: 1.0,
