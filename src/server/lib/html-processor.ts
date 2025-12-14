@@ -434,9 +434,11 @@ interface UnsplashSearchResult {
 const imageCache = new Map<string, string>();
 
 /**
- * Fetch a real image URL from Unsplash API
+ * Fetch a real image URL using our proxy API endpoint
+ * This uses /api/proxy/image which handles caching, rate limiting, and retries
+ * The proxy returns a 302 redirect to the actual Unsplash image URL
  */
-async function fetchUnsplashImage(query: string): Promise<string | null> {
+async function fetchUnsplashImage(query: string, baseUrl?: string): Promise<string | null> {
   // Check in-memory cache first
   const cacheKey = query.toLowerCase().trim();
   if (imageCache.has(cacheKey)) {
@@ -444,40 +446,36 @@ async function fetchUnsplashImage(query: string): Promise<string | null> {
   }
 
   try {
-    const url = new URL("https://api.unsplash.com/search/photos");
-    url.searchParams.set("query", query);
-    url.searchParams.set("per_page", "1");
-    url.searchParams.set("orientation", "landscape");
+    // Construct the proxy URL - must be absolute for server-side fetch
+    const proxyUrl = baseUrl 
+      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
+      : `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/proxy/image?query=${encodeURIComponent(query)}`;
 
-    const response = await fetch(url.toString(), {
+    // Fetch from proxy - it will redirect (302) to the actual image URL
+    const response = await fetch(proxyUrl, {
+      redirect: 'follow', // Automatically follow redirects
       headers: {
-        Authorization: `Client-ID ${env.UNSPLASH_ACCESS_KEY}`,
-        "Accept-Version": "v1",
-        Accept: "application/json",
+        'Accept': 'image/*', // Accept any image type
       },
     });
 
-    if (!response.ok) {
-      console.warn(`Unsplash API error for query "${query}": ${response.status}`);
-      return null;
-    }
-
-    const data = (await response.json()) as UnsplashSearchResult;
+    // The final URL after following redirects is the actual Unsplash image URL
+    const imageUrl = response.url;
     
-    if (!data.results || data.results.length === 0) {
-      return null;
-    }
-
-    const imageUrl = data.results[0]?.urls.regular ?? null;
-    
-    // Cache the result
-    if (imageUrl) {
+    // Check if we got a valid image URL (not a placeholder)
+    if (imageUrl && 
+        !imageUrl.includes('placeholder.svg') && 
+        (imageUrl.includes('images.unsplash.com') || imageUrl.includes('unsplash.com'))) {
+      // Cache the result
       imageCache.set(cacheKey, imageUrl);
+      return imageUrl;
     }
     
-    return imageUrl;
+    // If we got a placeholder or invalid URL, return null
+    console.warn(`Image proxy returned placeholder or invalid URL for query "${query}"`);
+    return null;
   } catch (error) {
-    console.error(`Failed to fetch Unsplash image for "${query}":`, error);
+    console.error(`Failed to fetch image via proxy for "${query}":`, error);
     return null;
   }
 }
@@ -558,14 +556,64 @@ function extractBgQuery(element: string): string | null {
 }
 
 /**
+ * Extract query from HTML context around an image
+ * Looks at nearby headings, text content, and section context
+ */
+function extractQueryFromContext(html: string, imgIndex: number): string {
+  try {
+    // Get a chunk of HTML around the image (500 chars before and after)
+    const start = Math.max(0, imgIndex - 500);
+    const end = Math.min(html.length, imgIndex + 500);
+    const context = html.slice(start, end);
+    
+    // Look for nearby headings (h1-h6)
+    const headingMatch = context.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i);
+    if (headingMatch?.[1]) {
+      const headingText = headingMatch[1].trim().replace(/\s+/g, ' ').slice(0, 50);
+      if (headingText.length > 3) {
+        return headingText;
+      }
+    }
+    
+    // Look for nearby text content in paragraphs or divs
+    const textMatch = context.match(/<p[^>]*>([^<]{20,100})<\/p>/i) || 
+                      context.match(/<div[^>]*>([^<]{20,100})<\/div>/i);
+    if (textMatch?.[1]) {
+      const text = textMatch[1].trim().replace(/\s+/g, ' ').slice(0, 50);
+      if (text.length > 10) {
+        // Extract key words (remove common words)
+        const words = text.split(' ').filter(w => 
+          w.length > 3 && 
+          !['the', 'and', 'for', 'with', 'this', 'that', 'from'].includes(w.toLowerCase())
+        );
+        if (words.length >= 2) {
+          return words.slice(0, 3).join(' ');
+        }
+      }
+    }
+    
+    // Look for section IDs or classes that might indicate content
+    const sectionMatch = context.match(/(?:id|class)=["']([^"']*(?:hero|about|feature|product|gallery|portfolio|team|testimonial)[^"']*)["']/i);
+    if (sectionMatch?.[1]) {
+      return sectionMatch[1].split(/[-_\s]+/).filter(w => w.length > 2).slice(0, 3).join(' ');
+    }
+  } catch {
+    // Ignore errors
+  }
+  
+  return '';
+}
+
+/**
  * Injects real Unsplash image URLs into HTML, replacing:
  * 1. Unsplash Source URLs (source.unsplash.com) which are unreliable
  * 2. Images with data-image-query attributes
  * 3. Background images with data-bg-query attributes
  * 
  * This runs server-side after AI generation to ensure images work reliably.
+ * Uses the /api/proxy/image endpoint which handles caching, rate limiting, and retries.
  */
-export async function injectUnsplashImages(html: string): Promise<string> {
+export async function injectUnsplashImages(html: string, baseUrl?: string): Promise<string> {
   if (!html || typeof html !== 'string') {
     return html;
   }
@@ -600,7 +648,7 @@ export async function injectUnsplashImages(html: string): Promise<string> {
     processedHtml = processedHtml.split(sourceUrl).join(realUrl);
   }
 
-  // PASS 2: Handle img tags with data-image-query but no source.unsplash.com URL
+  // PASS 2: Handle ALL img tags - be more aggressive about finding and fixing images
   const imgRegex = /<img[^>]+>/gi;
   const imgMatches = [...processedHtml.matchAll(imgRegex)];
 
@@ -609,27 +657,73 @@ export async function injectUnsplashImages(html: string): Promise<string> {
     const srcMatch = imgTag.match(/src=["']([^"']+)["']/i);
     const currentSrc = srcMatch?.[1] ?? '';
 
-    // Skip if already has a valid working URL (images.unsplash.com is the API result)
-    if (currentSrc && 
-        currentSrc.includes('images.unsplash.com')) {
+    // Validate existing images.unsplash.com URLs - they might be invalid/expired
+    // Only skip if URL has proper format with photo ID
+    const isValidUnsplashUrl = currentSrc && 
+      currentSrc.includes('images.unsplash.com') && 
+      currentSrc.match(/photo-\d+/); // Must have photo-123456 format
+    
+    if (isValidUnsplashUrl) {
       continue;
     }
     
-    // Skip if has a valid non-Unsplash URL
+    // Skip if has a valid non-Unsplash URL (but not placeholders)
     if (currentSrc && 
         !currentSrc.includes('placeholder') &&
         !currentSrc.includes('source.unsplash.com') &&
-        currentSrc.startsWith('http')) {
+        currentSrc.startsWith('http') &&
+        !currentSrc.includes('data:image')) {
       continue;
     }
 
-    // Extract query from data attributes or alt text
-    const query = extractImageQuery(imgTag);
-    if (!query) continue;
+    // Extract query from data attributes, alt text, or nearby context
+    let query: string | null = extractImageQuery(imgTag);
+    
+    // If no query found, try to extract from nearby HTML context
+    if (!query) {
+      const contextQuery = extractQueryFromContext(processedHtml, match.index ?? 0);
+      if (contextQuery) {
+        query = contextQuery;
+      }
+    }
+    
+    // Fallback to generic queries if still no query
+    if (!query) {
+      const fallbackQueries = [
+        'abstract modern design',
+        'minimal architecture',
+        'editorial photography',
+        'contemporary style',
+        'professional photography'
+      ];
+      const matchIndex = imgMatches.indexOf(match);
+      const fallbackIndex = matchIndex >= 0 ? matchIndex % fallbackQueries.length : 0;
+      query = fallbackQueries[fallbackIndex] || 'modern design';
+    }
 
-    // Fetch real image URL
-    const realUrl = await fetchUnsplashImage(query);
-    if (!realUrl) continue;
+    // Ensure query is not null at this point
+    if (!query) {
+      query = 'modern design';
+    }
+
+    // Fetch real image URL with retry logic
+    let realUrl = await fetchUnsplashImage(query);
+    
+    // If first query fails, try a simpler version
+    if (!realUrl && query.includes(' ')) {
+      const simpleQuery = query.split(' ').slice(0, 2).join(' ');
+      realUrl = await fetchUnsplashImage(simpleQuery);
+    }
+    
+    // Final fallback to generic query
+    if (!realUrl) {
+      realUrl = await fetchUnsplashImage('design modern');
+    }
+    
+    if (!realUrl) {
+      console.warn(`Failed to fetch image for query: ${query}`);
+      continue;
+    }
 
     // Replace the src attribute
     let newImgTag = imgTag;
@@ -645,6 +739,11 @@ export async function injectUnsplashImages(html: string): Promise<string> {
       newImgTag = newImgTag.replace(/<img/, '<img loading="lazy"');
     }
 
+    // Add error handling attribute for client-side fallback
+    if (!newImgTag.includes('data-image-query')) {
+      newImgTag = newImgTag.replace(/<img/, `<img data-image-query="${query}"`);
+    }
+
     processedHtml = processedHtml.replace(imgTag, newImgTag);
   }
 
@@ -656,12 +755,36 @@ export async function injectUnsplashImages(html: string): Promise<string> {
     const element = match[0];
     
     // Check if already has a background-image with a real URL
-    if (element.includes('images.unsplash.com')) continue;
+    if (element.includes('images.unsplash.com') && element.includes('photo-')) continue;
 
-    const query = extractBgQuery(element);
-    if (!query) continue;
+    let query: string | null = extractBgQuery(element);
+    
+    // If no query found, try context extraction
+    if (!query) {
+      const contextQuery = extractQueryFromContext(processedHtml, match.index ?? 0);
+      if (contextQuery) {
+        query = contextQuery;
+      }
+    }
+    
+    // Fallback query
+    if (!query) {
+      query = 'abstract modern design';
+    }
 
-    const realUrl = await fetchUnsplashImage(query);
+    let realUrl = await fetchUnsplashImage(query);
+    
+    // Retry with simpler query if needed
+    if (!realUrl && query.includes(' ')) {
+      const simpleQuery = query.split(' ').slice(0, 2).join(' ');
+      realUrl = await fetchUnsplashImage(simpleQuery);
+    }
+    
+    // Final fallback
+    if (!realUrl) {
+      realUrl = await fetchUnsplashImage('design modern');
+    }
+    
     if (!realUrl) continue;
 
     // Add or update background-image style
@@ -690,7 +813,26 @@ export async function injectUnsplashImages(html: string): Promise<string> {
     }
   }
 
-  console.log(`[injectUnsplashImages] Processed ${uniqueSourceUrls.length} source.unsplash.com URLs`);
+  // PASS 4: Validate and fix any broken images.unsplash.com URLs
+  // Some URLs might be malformed or expired, so we validate and replace them
+  const brokenUrlRegex = /https?:\/\/images\.unsplash\.com\/[^"'\s)]+/gi;
+  const brokenUrlMatches = [...processedHtml.matchAll(brokenUrlRegex)];
+  
+  for (const match of brokenUrlMatches) {
+    const url = match[0];
+    // Check if URL has proper photo ID format
+    if (!url.match(/photo-\d+/)) {
+      // Invalid URL format - extract query and replace
+      const contextQuery = extractQueryFromContext(processedHtml, match.index ?? 0);
+      const query = contextQuery || 'modern design';
+      const realUrl = await fetchUnsplashImage(query);
+      if (realUrl) {
+        processedHtml = processedHtml.split(url).join(realUrl);
+      }
+    }
+  }
+
+  console.log(`[injectUnsplashImages] Processed ${uniqueSourceUrls.length} source.unsplash.com URLs, ${imgMatches.length} img tags, ${dataBgMatches.length} background elements`);
   
   return processedHtml;
 }

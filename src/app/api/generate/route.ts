@@ -69,29 +69,26 @@ Do not wait for a sitemap. You must infer the Business Model.
 - CSS Framework: Tailwind CSS (via CDN). Use arbitrary values extensively (e.g., top-[15%], tracking-[-0.05em]) to break out of the standard grid.
 - Icons: Lucide icons via CDN: <i data-lucide="icon-name"></i>. Include the Lucide script in head.
 
-- Images (CRITICAL - USE UNSPLASH DIRECTLY):
-  You MUST use direct Unsplash Source URLs for ALL images. This is the ONLY way to include images.
+- Images (CRITICAL - ALWAYS INCLUDE IMAGES):
+  You MUST include images for EVERY visual element. Use BOTH methods below for maximum reliability:
   
-  FORMAT: https://source.unsplash.com/WIDTHxHEIGHT/?KEYWORDS
+  METHOD 1 (PREFERRED): Use data-image-query attributes for automatic image injection
+  <img data-image-query="modern architecture minimalist" alt="Modern building" class="w-full h-full object-cover">
+  <div data-bg-query="dark moody interior lighting" class="bg-cover bg-center">...</div>
   
-  EXAMPLES:
-  - Hero image: https://source.unsplash.com/1920x1080/?modern,architecture,minimal
-  - Card image: https://source.unsplash.com/800x600/?technology,abstract,dark
-  - Avatar: https://source.unsplash.com/200x200/?portrait,professional
-  - Background: https://source.unsplash.com/1600x900/?texture,concrete,brutalist
-  
-  FOR INLINE IMAGES:
-  <img src="https://source.unsplash.com/800x600/?sushi,japanese,food" alt="Descriptive alt" class="w-full h-full object-cover">
-  
-  FOR BACKGROUND IMAGES:
+  METHOD 2 (FALLBACK): Use Unsplash Source URLs
+  <img src="https://source.unsplash.com/1920x1080/?modern,architecture,minimal" alt="Modern building" class="w-full h-full object-cover">
   <div style="background-image: url('https://source.unsplash.com/1920x1080/?dark,moody,interior')" class="bg-cover bg-center">...</div>
   
-  RULES:
-  - Include AT LEAST 8-12 images across the page (hero, sections, cards, testimonials, footer).
+  CRITICAL RULES:
+  - EVERY img tag MUST have either a data-image-query attribute OR a src with source.unsplash.com URL
+  - EVERY background div MUST have either a data-bg-query attribute OR a background-image style
+  - Include AT LEAST 10-15 images across the page (hero, sections, cards, testimonials, footer, backgrounds)
   - Use SPECIFIC, MOOD-BASED keywords: cinematic, editorial, brutalist, neon, minimal, luxury, dark, moody, grain, fog, macro, texture
   - VARY the dimensions based on usage (1920x1080 for heroes, 800x600 for cards, 400x400 for squares)
-  - Add random suffixes to prevent caching: ?sig=1, ?sig=2, etc. Example: https://source.unsplash.com/800x600/?coffee,cafe&sig=1
+  - ALWAYS include descriptive alt text that can be used as a fallback query
   - NEVER use placeholder.com, picsum, or any other image service. ONLY Unsplash.
+  - NEVER leave images without src or data-image-query - this will cause missing images
 
 - JavaScript: You MUST write embedded Vanilla JS (inside <script> tags) to handle:
   - Scroll Animations: Elements must fade up, slide, or reveal using IntersectionObserver.
@@ -286,7 +283,9 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
     }
 
     // Inject real Unsplash images (replace source.unsplash.com URLs with API URLs)
-    const htmlWithImages = await injectUnsplashImages(html);
+    // Use our proxy API endpoint which handles caching, rate limiting, and retries
+    const baseUrl = new URL(req.url).origin;
+    const htmlWithImages = await injectUnsplashImages(html, baseUrl);
 
     const result = {
       text: htmlWithImages,

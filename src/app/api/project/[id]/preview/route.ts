@@ -13,41 +13,19 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
     
-    // If no user, return empty placeholder HTML (don't return 401 as it may cause redirects in iframes)
-    if (!userId) {
-      const placeholderHtml = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body { 
-                margin: 0; 
-                padding: 0; 
-                background: #f3f4f6; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                height: 100vh; 
-                font-family: system-ui, -apple-system, sans-serif;
-              }
-            </style>
-          </head>
-          <body></body>
-        </html>
-      `;
-      return new NextResponse(placeholderHtml, {
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "X-Frame-Options": "SAMEORIGIN",
-        },
-      });
+    // Use auth() with optional flag to avoid throwing errors when no user
+    // This allows the route to handle authentication internally
+    let userId: string | null = null;
+    try {
+      const authResult = await auth();
+      userId = authResult.userId;
+    } catch {
+      // If auth fails, userId remains null - we'll handle it below
+      userId = null;
     }
-
-    // Get project
+    
+    // Get project first to check visibility
     const project = await db.project.findUnique({
       where: { id },
       select: {
@@ -71,7 +49,10 @@ export async function GET(
     }
 
     // Check ownership or public visibility
-    if (project.userId !== userId && project.visibility !== "PUBLIC") {
+    // Allow access if: user owns the project OR project is public
+    const hasAccess = userId === project.userId || project.visibility === "PUBLIC";
+    
+    if (!hasAccess) {
       // Return empty HTML instead of JSON for iframe compatibility
       const emptyHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#f3f4f6;}</style></head><body></body></html>`;
       return new NextResponse(emptyHtml, {

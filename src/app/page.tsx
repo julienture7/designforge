@@ -125,7 +125,7 @@ export default function Home() {
           <span className="hero-gradient-text">instantly.</span>
         </h1>
         <p className="animate-fade-in-up text-gray-500 text-lg mb-10 font-light tracking-wide text-center" style={{ animationDelay: '0.1s' }}>
-          Describe what you want. We generate a launch-ready page you can edit, share, and export.
+          Powered by a proprietary Mixture of Experts (MOE) architecture. Our unique system dynamically routes your request through specialized design models, intelligently selecting the optimal expert ensemble to generate award-winning designs. No other design platform uses this advanced AI routing technology.
         </p>
 
         {/* Prompt box */}

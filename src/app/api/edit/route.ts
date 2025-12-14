@@ -290,9 +290,10 @@ CRITICAL REQUIREMENTS:
 
             // For new design requests, return the full HTML directly
             if (isNewDesignRequest) {
-              // Inject Unsplash images
+              // Inject Unsplash images using our proxy API
               const { injectUnsplashImages } = await import("~/server/lib/html-processor");
-              const htmlWithImages = await injectUnsplashImages(fullResponse);
+              const baseUrl = new URL(req.url).origin;
+              const htmlWithImages = await injectUnsplashImages(fullResponse, baseUrl);
               
               controller.enqueue(textEncoder.encode(encodeSSEEvent({
                 type: "complete",
