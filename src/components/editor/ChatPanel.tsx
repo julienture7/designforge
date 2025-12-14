@@ -54,8 +54,14 @@ export function ChatPanel({
   const [error, setError] = useState<string | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const [refinementLevel, setRefinementLevel] = useState<"REFINED" | "ENHANCED" | "ULTIMATE">("REFINED");
+  const refinementLevelRef = useRef<"REFINED" | "ENHANCED" | "ULTIMATE">("REFINED"); // Persist selection even on re-renders
   const [hasGenerated, setHasGenerated] = useState(false); // Track if first generation happened
   const lockedRefinementLevel = useRef<"REFINED" | "ENHANCED" | "ULTIMATE" | null>(null); // Lock refinement after first gen
+  
+  // Sync ref with state
+  useEffect(() => {
+    refinementLevelRef.current = refinementLevel;
+  }, [refinementLevel]);
   
   const { isSignedIn } = useAuth();
   const subscriptionStatus = api.subscription.getStatus.useQuery(undefined, {
@@ -139,7 +145,7 @@ export function ChatPanel({
             projectId,
             currentHtml: currentHtmlSnapshot,
             prompt: trimmed,
-            refinementLevel: isPro ? refinementLevel : undefined,
+            refinementLevel: isPro ? refinementLevelRef.current : undefined,
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -676,7 +682,9 @@ export function ChatPanel({
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   if (!isPro) {
                     if (onError) {
                       onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access refinement levels.");
@@ -685,11 +693,12 @@ export function ChatPanel({
                   }
                   if (!hasGenerated) {
                     setRefinementLevel("ENHANCED");
+                    refinementLevelRef.current = "ENHANCED";
                   }
                 }}
                 disabled={isLoading || (isPro && hasGenerated)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
-                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevel) === "ENHANCED"
+                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevelRef.current) === "ENHANCED"
                     ? "bg-blue-100 text-blue-700 border border-blue-300 shadow-sm"
                     : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -699,7 +708,9 @@ export function ChatPanel({
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   if (!isPro) {
                     if (onError) {
                       onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access refinement levels.");
@@ -708,11 +719,12 @@ export function ChatPanel({
                   }
                   if (!hasGenerated) {
                     setRefinementLevel("ULTIMATE");
+                    refinementLevelRef.current = "ULTIMATE";
                   }
                 }}
                 disabled={isLoading || (isPro && hasGenerated)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
-                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevel) === "ULTIMATE"
+                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevelRef.current) === "ULTIMATE"
                     ? "bg-purple-100 text-purple-700 border border-purple-300 shadow-sm"
                     : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
