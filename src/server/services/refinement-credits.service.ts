@@ -3,29 +3,40 @@
  * 
  * Handles credit checking and decrementing for PRO tier users
  * based on refinement level selection.
+ * 
+ * Credit costs:
+ * - REFINED: 1 credit
+ * - ENHANCED: 2 credits
+ * - ULTIMATE: 4 credits
  */
 
 import { db } from "~/server/db";
 
 export type RefinementLevel = "REFINED" | "ENHANCED" | "ULTIMATE";
 
+/**
+ * Get credit cost for a refinement level
+ */
+export function getRefinementCreditCost(refinementLevel: RefinementLevel): number {
+  switch (refinementLevel) {
+    case "REFINED":
+      return 1;
+    case "ENHANCED":
+      return 2;
+    case "ULTIMATE":
+      return 4;
+  }
+}
+
 export interface RefinementCreditCheckResult {
   allowed: boolean;
-  remainingCredits: {
-    refined: number;
-    enhanced: number;
-    ultimate: number;
-  };
+  remainingCredits: number; // Unified Pro credits
   version: number;
 }
 
 export interface RefinementCreditDecrementResult {
   success: boolean;
-  newCredits?: {
-    refined: number;
-    enhanced: number;
-    ultimate: number;
-  };
+  newCredits?: number; // Unified Pro credits
   newVersion?: number;
 }
 
@@ -39,9 +50,7 @@ export async function checkRefinementCredits(
   const user = await db.user.findUnique({
     where: { id: dbUserId },
     select: {
-      refinedCredits: true,
-      enhancedCredits: true,
-      ultimateCredits: true,
+      credits: true, // Pro users use unified credits field
       version: true,
     },
   });
@@ -50,26 +59,12 @@ export async function checkRefinementCredits(
     throw new Error(`User not found: ${dbUserId}`);
   }
 
-  let allowed = false;
-  switch (refinementLevel) {
-    case "REFINED":
-      allowed = user.refinedCredits > 0;
-      break;
-    case "ENHANCED":
-      allowed = user.enhancedCredits > 0;
-      break;
-    case "ULTIMATE":
-      allowed = user.ultimateCredits > 0;
-      break;
-  }
+  const cost = getRefinementCreditCost(refinementLevel);
+  const allowed = user.credits >= cost;
 
   return {
     allowed,
-    remainingCredits: {
-      refined: user.refinedCredits,
-      enhanced: user.enhancedCredits,
-      ultimate: user.ultimateCredits,
-    },
+    remainingCredits: user.credits,
     version: user.version,
   };
 }
@@ -82,46 +77,22 @@ export async function decrementRefinementCredits(
   currentVersion: number,
   refinementLevel: RefinementLevel
 ): Promise<RefinementCreditDecrementResult> {
+  const cost = getRefinementCreditCost(refinementLevel);
+  
   const result = await db.$transaction(async (tx) => {
-    // Build where clause based on refinement level
-    const whereClause: {
-      id: string;
-      version: number;
-      refinedCredits?: { gt: number };
-      enhancedCredits?: { gt: number };
-      ultimateCredits?: { gt: number };
-    } = {
+    // Check and decrement unified credits
+    const whereClause = {
       id: userId,
       version: currentVersion,
+      credits: { gte: cost }, // Must have enough credits
     };
-
-    const dataClause: {
-      version: { increment: number };
-      refinedCredits?: { decrement: number };
-      enhancedCredits?: { decrement: number };
-      ultimateCredits?: { decrement: number };
-    } = {
-      version: { increment: 1 },
-    };
-
-    switch (refinementLevel) {
-      case "REFINED":
-        whereClause.refinedCredits = { gt: 0 };
-        dataClause.refinedCredits = { decrement: 1 };
-        break;
-      case "ENHANCED":
-        whereClause.enhancedCredits = { gt: 0 };
-        dataClause.enhancedCredits = { decrement: 1 };
-        break;
-      case "ULTIMATE":
-        whereClause.ultimateCredits = { gt: 0 };
-        dataClause.ultimateCredits = { decrement: 1 };
-        break;
-    }
 
     const updateResult = await tx.user.updateMany({
       where: whereClause,
-      data: dataClause,
+      data: {
+        credits: { decrement: cost },
+        version: { increment: 1 },
+      },
     });
 
     if (updateResult.count === 0) {
@@ -131,22 +102,14 @@ export async function decrementRefinementCredits(
     const updatedUser = await tx.user.findUnique({
       where: { id: userId },
       select: {
-        refinedCredits: true,
-        enhancedCredits: true,
-        ultimateCredits: true,
+        credits: true,
         version: true,
       },
     });
 
     return {
       success: true as const,
-      newCredits: updatedUser
-        ? {
-            refined: updatedUser.refinedCredits,
-            enhanced: updatedUser.enhancedCredits,
-            ultimate: updatedUser.ultimateCredits,
-          }
-        : undefined,
+      newCredits: updatedUser?.credits,
       newVersion: updatedUser?.version,
     };
   });
@@ -156,14 +119,13 @@ export async function decrementRefinementCredits(
 
 /**
  * Initialize PRO tier credits (called when subscription is activated)
+ * Pro users get 100 unified credits that can be used for any refinement level
  */
 export async function initializeProCredits(userId: string): Promise<void> {
   await db.user.update({
     where: { id: userId },
     data: {
-      refinedCredits: 100, // 100 Refined generations
-      enhancedCredits: 50, // 50 Enhanced generations
-      ultimateCredits: 25, // 25 Ultimate generations
+      credits: 100, // 100 unified Pro credits
     },
   });
 }

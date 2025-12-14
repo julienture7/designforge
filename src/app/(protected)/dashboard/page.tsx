@@ -22,6 +22,8 @@ export default async function DashboardPage() {
     redirect("/sign-in?redirect_url=/dashboard");
   }
 
+  // Pro users use unified credits field (same as user.credits)
+
   // Prefetch projects for hydration
   void api.project.list.prefetch({ page: 1, pageSize: 20 });
 

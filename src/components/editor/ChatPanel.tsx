@@ -54,6 +54,8 @@ export function ChatPanel({
   const [error, setError] = useState<string | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const [refinementLevel, setRefinementLevel] = useState<"REFINED" | "ENHANCED" | "ULTIMATE">("REFINED");
+  const [hasGenerated, setHasGenerated] = useState(false); // Track if first generation happened
+  const lockedRefinementLevel = useRef<"REFINED" | "ENHANCED" | "ULTIMATE" | null>(null); // Lock refinement after first gen
   
   const { isSignedIn } = useAuth();
   const subscriptionStatus = api.subscription.getStatus.useQuery(undefined, {
@@ -65,6 +67,19 @@ export function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const currentHtmlRef = useRef<string>(currentHtml);
+
+  // Update currentHtml ref when prop changes
+  useEffect(() => {
+    currentHtmlRef.current = currentHtml;
+    // If we have HTML and haven't marked as generated, mark it
+    if (currentHtml && !hasGenerated) {
+      setHasGenerated(true);
+      if (isPro && !lockedRefinementLevel.current) {
+        lockedRefinementLevel.current = refinementLevel;
+      }
+    }
+  }, [currentHtml, hasGenerated, isPro, refinementLevel]);
 
   /**
    * Submit a prompt (shared by form submit + deep-link auto-submit).
@@ -94,6 +109,7 @@ export function ChatPanel({
 
     // Snapshot current messages for request payload (state updates are async)
     const priorMessages = messages;
+    const currentHtmlSnapshot = currentHtmlRef.current;
 
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
@@ -102,99 +118,233 @@ export function ChatPanel({
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...priorMessages, userMessage].map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-          projectId,
-          currentHtml,
-          prompt: trimmed,
-          refinementLevel: isPro ? refinementLevel : undefined,
-        }),
-        signal: abortControllerRef.current.signal,
-      });
-
-      if (!response.ok) {
-        let data: unknown = null;
-        try {
-          data = await response.json();
-        } catch {
-          // Non-JSON error response
+      // If this is the first generation, use /api/generate
+      // Otherwise, use /api/edit for subsequent edits
+      const isFirstGeneration = !hasGenerated && !currentHtmlSnapshot;
+      
+      if (isFirstGeneration) {
+        // Lock refinement level on first generation
+        if (isPro && !lockedRefinementLevel.current) {
+          lockedRefinementLevel.current = refinementLevel;
         }
+        
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [...priorMessages, userMessage].map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+            projectId,
+            currentHtml: currentHtmlSnapshot,
+            prompt: trimmed,
+            refinementLevel: isPro ? refinementLevel : undefined,
+          }),
+          signal: abortControllerRef.current.signal,
+        });
 
-        const maybeData = data as any;
+        if (!response.ok) {
+          let data: unknown = null;
+          try {
+            data = await response.json();
+          } catch {
+            // Non-JSON error response
+          }
 
-        const codeFromBody =
-          typeof maybeData?.code === "string"
-            ? maybeData.code
-            : typeof maybeData?.error?.code === "string"
-              ? maybeData.error.code
-              : undefined;
+          const maybeData = data as any;
 
-        const messageFromBody =
-          typeof maybeData?.error === "string"
-            ? maybeData.error
-            : typeof maybeData?.message === "string"
-              ? maybeData.message
-              : typeof maybeData?.error?.message === "string"
-                ? maybeData.error.message
+          const codeFromBody =
+            typeof maybeData?.code === "string"
+              ? maybeData.code
+              : typeof maybeData?.error?.code === "string"
+                ? maybeData.error.code
                 : undefined;
 
-        const statusFallbackCode =
-          response.status === 401
-            ? "UNAUTHORIZED"
-            : response.status === 402
-              ? "CREDITS_EXHAUSTED"
-              : response.status === 409
-                ? "GENERATION_IN_PROGRESS"
-                : response.status === 429
-                  ? "RATE_LIMITED"
-                  : "API_ERROR";
+          const messageFromBody =
+            typeof maybeData?.error === "string"
+              ? maybeData.error
+              : typeof maybeData?.message === "string"
+                ? maybeData.message
+                : typeof maybeData?.error?.message === "string"
+                  ? maybeData.error.message
+                  : undefined;
 
-        const err = new Error(messageFromBody ?? "Generation failed") as Error & { code?: string };
-        err.code = codeFromBody ?? statusFallbackCode;
-        throw err;
+          const statusFallbackCode =
+            response.status === 401
+              ? "UNAUTHORIZED"
+              : response.status === 402
+                ? "CREDITS_EXHAUSTED"
+                : response.status === 409
+                  ? "GENERATION_IN_PROGRESS"
+                  : response.status === 429
+                    ? "RATE_LIMITED"
+                    : "API_ERROR";
+
+          const err = new Error(messageFromBody ?? "Generation failed") as Error & { code?: string };
+          err.code = codeFromBody ?? statusFallbackCode;
+          throw err;
+        }
+
+        const data = (await response.json()) as {
+          html?: unknown;
+          finishReason?: unknown;
+          tokenUsage?: unknown;
+        };
+
+        const fullContent = typeof data?.html === "string" ? data.html : "";
+        const finishReason = typeof data?.finishReason === "string" ? data.finishReason : "stop";
+        const tokenUsage = typeof data?.tokenUsage === "number" ? data.tokenUsage : undefined;
+
+        if (!fullContent) {
+          const err = new Error("Empty HTML response") as Error & { code?: string };
+          err.code = "EMPTY_RESPONSE";
+          throw err;
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId ? { ...m, content: fullContent } : m
+          )
+        );
+
+        // Mark as generated and update HTML ref
+        setHasGenerated(true);
+        currentHtmlRef.current = fullContent;
+
+        // Notify completion (no streaming updates; swap preview atomically)
+        onHtmlGenerated?.(fullContent);
+        
+        const finalHistory: ConversationMessage[] = [
+          ...priorMessages.map((m) => ({
+            role: m.role === "assistant" ? "model" as const : "user" as const,
+            content: m.content,
+          })),
+          { role: "user" as const, content: trimmed },
+          { role: "model" as const, content: fullContent },
+        ];
+        
+        onGenerationComplete?.(fullContent, finishReason, finalHistory, tokenUsage);
+      } else {
+        // Subsequent requests: use /api/edit (returns SSE stream)
+        const response = await fetch("/api/edit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentHtml: currentHtmlSnapshot || "",
+            editInstruction: trimmed,
+            projectId,
+          }),
+          signal: abortControllerRef.current.signal,
+        });
+
+        if (!response.ok) {
+          let data: unknown = null;
+          try {
+            data = await response.json();
+          } catch {
+            // Non-JSON error response
+          }
+
+          const maybeData = data as any;
+
+          const codeFromBody =
+            typeof maybeData?.code === "string"
+              ? maybeData.code
+              : typeof maybeData?.error?.code === "string"
+                ? maybeData.error.code
+                : undefined;
+
+          const messageFromBody =
+            typeof maybeData?.error === "string"
+              ? maybeData.error
+              : typeof maybeData?.message === "string"
+                ? maybeData.message
+                : typeof maybeData?.error?.message === "string"
+                  ? maybeData.error.message
+                  : undefined;
+
+          const statusFallbackCode =
+            response.status === 401
+              ? "UNAUTHORIZED"
+              : response.status === 402
+                ? "CREDITS_EXHAUSTED"
+                : response.status === 409
+                  ? "GENERATION_IN_PROGRESS"
+                  : response.status === 429
+                    ? "RATE_LIMITED"
+                    : "API_ERROR";
+
+          const err = new Error(messageFromBody ?? "Edit failed") as Error & { code?: string };
+          err.code = codeFromBody ?? statusFallbackCode;
+          throw err;
+        }
+
+        // Parse SSE stream
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = "";
+        let buffer = "";
+
+        if (!reader) {
+          throw new Error("No response body");
+        }
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.type === "complete" && data.newHtml) {
+                  fullContent = data.newHtml;
+                } else if (data.type === "error") {
+                  const err = new Error(data.message ?? "Edit failed") as Error & { code?: string };
+                  err.code = data.code ?? "API_ERROR";
+                  throw err;
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+
+        if (!fullContent) {
+          const err = new Error("Empty HTML response") as Error & { code?: string };
+          err.code = "EMPTY_RESPONSE";
+          throw err;
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId ? { ...m, content: fullContent } : m
+          )
+        );
+
+        // Update HTML ref
+        currentHtmlRef.current = fullContent;
+
+        // Notify completion
+        onHtmlGenerated?.(fullContent);
+        
+        const finalHistory: ConversationMessage[] = [
+          ...priorMessages.map((m) => ({
+            role: m.role === "assistant" ? "model" as const : "user" as const,
+            content: m.content,
+          })),
+          { role: "user" as const, content: trimmed },
+          { role: "model" as const, content: fullContent },
+        ];
+        
+        onGenerationComplete?.(fullContent, "stop", finalHistory, undefined);
       }
-
-      const data = (await response.json()) as {
-        html?: unknown;
-        finishReason?: unknown;
-        tokenUsage?: unknown;
-      };
-
-      const fullContent = typeof data?.html === "string" ? data.html : "";
-      const finishReason = typeof data?.finishReason === "string" ? data.finishReason : "stop";
-      const tokenUsage = typeof data?.tokenUsage === "number" ? data.tokenUsage : undefined;
-
-      if (!fullContent) {
-        const err = new Error("Empty HTML response") as Error & { code?: string };
-        err.code = "EMPTY_RESPONSE";
-        throw err;
-      }
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessageId ? { ...m, content: fullContent } : m
-        )
-      );
-
-      // Notify completion (no streaming updates; swap preview atomically)
-      onHtmlGenerated?.(fullContent);
-      
-      const finalHistory: ConversationMessage[] = [
-        ...priorMessages.map((m) => ({
-          role: m.role === "assistant" ? "model" as const : "user" as const,
-          content: m.content,
-        })),
-        { role: "user" as const, content: trimmed },
-        { role: "model" as const, content: fullContent },
-      ];
-      
-      onGenerationComplete?.(fullContent, finishReason, finalHistory, tokenUsage);
 
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
@@ -493,51 +643,95 @@ export function ChatPanel({
               cursor: 'text',
             }}
           />
-          {isPro && (
-            <div className="px-3 pb-2">
-              <div className="flex items-center gap-2 text-xs text-slate-600 mb-1">
-                <span>Refinement Level:</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRefinementLevel("REFINED")}
-                  disabled={isLoading}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
-                    refinementLevel === "REFINED"
-                      ? "bg-blue-100 text-blue-700 border border-blue-300 shadow-sm"
-                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
-                  } disabled:opacity-50`}
-                >
-                  Refined (1 pass)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRefinementLevel("ENHANCED")}
-                  disabled={isLoading}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
-                    refinementLevel === "ENHANCED"
-                      ? "bg-blue-100 text-blue-700 border border-blue-300 shadow-sm"
-                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
-                  } disabled:opacity-50`}
-                >
-                  Enhanced (2 passes)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRefinementLevel("ULTIMATE")}
-                  disabled={isLoading}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
-                    refinementLevel === "ULTIMATE"
-                      ? "bg-purple-100 text-purple-700 border border-purple-300 shadow-sm"
-                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
-                  } disabled:opacity-50`}
-                >
-                  Ultimate (3 passes)
-                </button>
-              </div>
+          <div className="px-3 pb-2">
+            <div className="flex items-center gap-2 text-xs text-slate-600 mb-1">
+              <span>Refinement Level:</span>
+              {isPro && hasGenerated && lockedRefinementLevel.current && (
+                <span className="text-slate-400 italic">(locked after first generation)</span>
+              )}
             </div>
-          )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isPro) {
+                    if (onError) {
+                      onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access refinement levels.");
+                    }
+                    return;
+                  }
+                  if (!hasGenerated) {
+                    setRefinementLevel("REFINED");
+                  }
+                }}
+                disabled={isLoading || (isPro && hasGenerated)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
+                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevel) === "REFINED"
+                    ? "bg-blue-100 text-blue-700 border border-blue-300 shadow-sm"
+                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={!isPro ? "Upgrade to Pro to access refinement levels" : (hasGenerated ? "Refinement level locked after first generation" : "Refined (1 credit)")}
+              >
+                Refined {isPro ? "(1 credit)" : ""}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isPro) {
+                    if (onError) {
+                      onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access refinement levels.");
+                    }
+                    return;
+                  }
+                  if (!hasGenerated) {
+                    setRefinementLevel("ENHANCED");
+                  }
+                }}
+                disabled={isLoading || (isPro && hasGenerated)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
+                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevel) === "ENHANCED"
+                    ? "bg-blue-100 text-blue-700 border border-blue-300 shadow-sm"
+                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={!isPro ? "Upgrade to Pro to access refinement levels" : (hasGenerated ? "Refinement level locked after first generation" : "Enhanced (2 credits)")}
+              >
+                Enhanced {isPro ? "(2 credits)" : ""}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isPro) {
+                    if (onError) {
+                      onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access refinement levels.");
+                    }
+                    return;
+                  }
+                  if (!hasGenerated) {
+                    setRefinementLevel("ULTIMATE");
+                  }
+                }}
+                disabled={isLoading || (isPro && hasGenerated)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
+                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevel) === "ULTIMATE"
+                    ? "bg-purple-100 text-purple-700 border border-purple-300 shadow-sm"
+                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={!isPro ? "Upgrade to Pro to access refinement levels" : (hasGenerated ? "Refinement level locked after first generation" : "Ultimate (4 credits)")}
+              >
+                Ultimate {isPro ? "(4 credits)" : ""}
+              </button>
+            </div>
+            {isPro && hasGenerated && (
+              <div className="mt-1 text-xs text-slate-500">
+                Subsequent edits cost 1 credit each
+              </div>
+            )}
+            {!isPro && (
+              <div className="mt-1 text-xs text-slate-500">
+                Upgrade to Pro to access refinement levels
+              </div>
+            )}
+          </div>
           <div className="flex items-end justify-between px-1 pb-1">
             <div className="flex items-center gap-x-2 gap-y-2" />
             <button

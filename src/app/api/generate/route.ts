@@ -24,6 +24,7 @@ import { getRefinementPasses, type Tier } from "~/server/lib/tier-utils";
 import {
   checkRefinementCredits,
   decrementRefinementCredits,
+  getRefinementCreditCost,
   type RefinementLevel,
 } from "~/server/services/refinement-credits.service";
 import { injectUnsplashImages } from "~/server/lib/html-processor";
@@ -155,8 +156,12 @@ export async function POST(req: NextRequest) {
       selectedRefinementLevel = refinementLevel as RefinementLevel;
       const refinementCheck = await checkRefinementCredits(dbUserId, selectedRefinementLevel);
       if (!refinementCheck.allowed) {
+        const cost = getRefinementCreditCost(selectedRefinementLevel);
+        const message = refinementCheck.remainingCredits === 0 
+          ? "No Pro credits remaining" 
+          : `Need ${cost} credits but only have ${refinementCheck.remainingCredits}`;
         return NextResponse.json(
-          { error: `No ${selectedRefinementLevel.toLowerCase()} credits remaining`, code: "CREDITS_EXHAUSTED" },
+          { error: message, code: "CREDITS_EXHAUSTED" },
           { status: 402 }
         );
       }

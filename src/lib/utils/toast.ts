@@ -21,6 +21,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   // Credit errors
   CREDITS_EXHAUSTED: "You've used all your credits. Upgrade to Pro for unlimited generations",
   CREDIT_DECREMENT_FAILED: "Failed to process credits. Please try again",
+  UPGRADE_REQUIRED: "This feature requires a Pro subscription",
   
   // Generation errors
   GENERATION_IN_PROGRESS: "A generation is already in progress. Please wait",
@@ -38,6 +39,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   // Project errors
   PROJECT_NOT_FOUND: "Project not found",
   SAVE_FAILED: "Failed to save project. Your changes are stored locally",
+  NO_CONTENT: "Generate a design first",
   
   // General errors
   UNKNOWN_ERROR: "An unexpected error occurred",
@@ -86,6 +88,7 @@ export function createErrorAction(
 ): ToastAction | undefined {
   switch (code) {
     case "CREDITS_EXHAUSTED":
+    case "UPGRADE_REQUIRED":
       return callbacks?.onUpgrade
         ? { label: "Upgrade to Pro", onClick: callbacks.onUpgrade }
         : undefined;

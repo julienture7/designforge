@@ -75,8 +75,13 @@ export function DashboardContent({
                     </span>
                   </>
                 )}
-                <span className="hidden sm:inline text-xs text-gray-500 transition-colors duration-200">
-                  {userTier === "PRO" ? "Unlimited" : `${userCredits} credits`}
+                <span 
+                  className="hidden sm:inline text-xs text-gray-500 transition-colors duration-200" 
+                  title={userTier === "PRO" ? `Pro credits: Refined costs 1, Enhanced costs 2, Ultimate costs 4` : undefined}
+                >
+                  {userTier === "PRO" 
+                    ? `${userCredits} Pro credits`
+                    : `${userCredits} credits`}
                 </span>
                 <UserButton
                   afterSignOutUrl="/"

@@ -229,9 +229,6 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
     tier: typeof tier;
     credits?: number;
     subscriptionId?: string | null;
-    refinedCredits?: number;
-    enhancedCredits?: number;
-    ultimateCredits?: number;
   } = {
     subscriptionStatus,
     tier,
@@ -240,13 +237,12 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
   // Reset credits based on tier
   if (tier === "FREE") {
     updateData.credits = 5;
-    updateData.refinedCredits = 0;
-    updateData.enhancedCredits = 0;
-    updateData.ultimateCredits = 0;
+  } else if (tier === "PRO") {
+    // Pro users get 100 unified credits (initialized via initializeProCredits on subscription creation)
+    // Monthly credit resets for PRO tier should be handled via:
+    // - invoice.payment_succeeded webhook event, or
+    // - A cron job that checks subscription current_period_end dates
   }
-  // Note: Monthly credit resets for PRO tier should be handled via:
-  // - invoice.payment_succeeded webhook event, or
-  // - A cron job that checks subscription current_period_end dates
 
   await db.user.update({
     where: { id: user.id },
@@ -305,6 +301,23 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
     subscriptionId,
     customerId,
   });
+}
+
+/**
+ * GET /api/webhooks/stripe
+ * 
+ * Helper endpoint to verify webhook is accessible.
+ * Returns 405 for browsers, but confirms endpoint exists.
+ */
+export async function GET(): Promise<NextResponse> {
+  return NextResponse.json(
+    {
+      message: "Stripe webhook endpoint",
+      note: "This endpoint only accepts POST requests from Stripe",
+      status: "active",
+    },
+    { status: 200 }
+  );
 }
 
 /**

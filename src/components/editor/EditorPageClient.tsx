@@ -193,15 +193,20 @@ export function EditorPageClient({
               {publishProject.isPending ? "Publishing…" : "Publish & Share"}
             </button>
 
-            {isPro && (
-              <button
-                onClick={handleExport}
-                className="inline-flex h-8 items-center justify-center rounded-full bg-[#4c6aff] px-4 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#3d5aef] hover:shadow-md hover:scale-105 active:scale-95"
-                title="Download the current HTML"
-              >
-                Export HTML
-              </button>
-            )}
+            <button
+              onClick={() => {
+                if (!isPro) {
+                  // Show upgrade prompt for non-Pro users
+                  handleError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to export HTML.");
+                  return;
+                }
+                handleExport();
+              }}
+              className="inline-flex h-8 items-center justify-center rounded-full bg-[#4c6aff] px-4 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#3d5aef] hover:shadow-md hover:scale-105 active:scale-95"
+              title={isPro ? "Download the current HTML" : "Upgrade to Pro to export HTML"}
+            >
+              Export HTML
+            </button>
 
             <UserButton
               afterSignOutUrl="/"

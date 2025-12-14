@@ -145,17 +145,33 @@ export async function POST(req: NextRequest) {
     }
 
     // Credit check (use database user ID)
+    // For Pro users, edits cost 1 credit (fixed cost)
+    // For Free users, use standard credit check
     const creditCheck = await checkCredits(dbUserId);
-    if (!creditCheck.allowed) {
-      return createErrorResponse(
-        "CREDITS_EXHAUSTED",
-        "You've used all your free generations today. Upgrade to Pro for unlimited access",
-        402,
-        correlationId
-      );
+    const userTier = creditCheck.tier;
+    
+    if (userTier === "PRO") {
+      // Pro users: check if they have at least 1 credit
+      if (creditCheck.remainingCredits < 1) {
+        return createErrorResponse(
+          "CREDITS_EXHAUSTED",
+          "Not enough Pro credits. Edits cost 1 credit each.",
+          402,
+          correlationId
+        );
+      }
+    } else {
+      // Free users: standard check
+      if (!creditCheck.allowed) {
+        return createErrorResponse(
+          "CREDITS_EXHAUSTED",
+          "You've used all your free generations today. Upgrade to Pro for unlimited access",
+          402,
+          correlationId
+        );
+      }
     }
     const creditVersion = creditCheck.version;
-    const userTier = creditCheck.tier;
 
     // Acquire lock
     lockAcquired = await acquireGenerationLock(clerkId);
@@ -168,9 +184,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Detect if user wants a completely new design
+    const isNewDesignRequest = /(?:create|make|build|generate|design|new|completely new|from scratch|start over|fresh|entirely new)/i.test(editInstruction) &&
+      !/(?:edit|modify|change|update|adjust|fix|replace|remove|add|delete)/i.test(editInstruction);
+    
     // Build prompts
-    const systemPrompt = buildEditSystemPrompt();
-    let userPrompt = buildEditUserPrompt(currentHtml, editInstruction);
+    let systemPrompt: string;
+    let userPrompt: string;
+    
+    if (isNewDesignRequest) {
+      // For new design requests, use generation-style prompt
+      systemPrompt = `You are an Elite Web Design AI. Generate a complete, production-ready HTML page based on the user's request.
+      
+CRITICAL REQUIREMENTS:
+- Output ONLY valid HTML (no markdown, no explanations)
+- Start directly with <!DOCTYPE html>
+- Include all necessary CSS inline or in <style> tags
+- Use Tailwind CSS classes for styling
+- Include proper semantic HTML structure
+- Add smooth animations and transitions
+- Ensure mobile responsiveness
+- Use Lucide icons (via CDN: https://unpkg.com/lucide@latest)
+- Include placeholder images with data-image-query attributes for Unsplash integration
+- Make the design modern, polished, and visually appealing`;
+      
+      userPrompt = `Generate a complete HTML page for: ${editInstruction}`;
+    } else {
+      // For targeted edits, use existing edit system
+      systemPrompt = buildEditSystemPrompt();
+      userPrompt = buildEditUserPrompt(currentHtml, editInstruction);
+    }
 
     // Create SSE stream
     const customStream = new ReadableStream<Uint8Array>({
@@ -199,14 +242,21 @@ export async function POST(req: NextRequest) {
               timestamp: new Date().toISOString(),
             });
 
-            // Call Gemini with low temperature for consistency
-            // No thinking mode for edits - speed is priority
+            // Call Gemini with appropriate settings
+            // For new designs, use higher temperature; for edits, use lower temperature
             const result = streamText({
               model: google("gemini-3-pro-preview"),
               system: systemPrompt,
               messages: [{ role: "user", content: userPrompt }],
-              temperature: 0.2, // Low temperature for deterministic edits
-              abortSignal: AbortSignal.timeout(60000), // 60s timeout for edits (should be fast)
+              temperature: isNewDesignRequest ? 1.0 : 0.2, // Higher temp for creativity in new designs
+              providerOptions: isNewDesignRequest ? {
+                google: {
+                  thinkingConfig: {
+                    thinkingLevel: "high",
+                  },
+                },
+              } : undefined, // Use thinking mode for new designs
+              abortSignal: AbortSignal.timeout(isNewDesignRequest ? 120000 : 60000), // Longer timeout for new designs
             });
 
             // Collect full response
@@ -238,7 +288,24 @@ export async function POST(req: NextRequest) {
               timestamp: new Date().toISOString(),
             });
 
-            // Parse search/replace blocks
+            // For new design requests, return the full HTML directly
+            if (isNewDesignRequest) {
+              // Inject Unsplash images
+              const { injectUnsplashImages } = await import("~/server/lib/html-processor");
+              const htmlWithImages = await injectUnsplashImages(fullResponse);
+              
+              controller.enqueue(textEncoder.encode(encodeSSEEvent({
+                type: "complete",
+                message: "New design generated",
+                newHtml: htmlWithImages,
+                appliedBlocks: 0,
+                failedBlocks: 0,
+              })));
+              finalHtml = htmlWithImages;
+              break;
+            }
+
+            // Parse search/replace blocks for targeted edits
             const parseResult = parseSearchReplaceBlocks(fullResponse);
 
             if (parseResult.noChanges) {
@@ -371,10 +438,29 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Decrement credits for FREE tier
-        if (dbUserId && userTier === "FREE") {
+        // Decrement credits
+        // Pro users: 1 credit per edit (fixed cost)
+        // Free users: 1 credit per edit
+        if (dbUserId) {
           try {
-            await decrementCredits(dbUserId, creditVersion);
+            if (userTier === "PRO") {
+              // Pro users: decrement 1 credit using OCC
+              const { db } = await import("~/server/db");
+              await db.user.updateMany({
+                where: {
+                  id: dbUserId,
+                  version: creditVersion,
+                  credits: { gte: 1 },
+                },
+                data: {
+                  credits: { decrement: 1 },
+                  version: { increment: 1 },
+                },
+              });
+            } else {
+              // Free users: use standard decrement
+              await decrementCredits(dbUserId, creditVersion);
+            }
           } catch (e) {
             console.error({ event: "credit_decrement_failed", dbUserId, error: e });
           }

@@ -81,6 +81,8 @@ export function ConnectedEditor({
 
   // Show raw HTML modal
   const [showRawHtml, setShowRawHtml] = useState(false);
+  // Show full-page preview modal
+  const [showFullPreview, setShowFullPreview] = useState(false);
 
   /**
    * Handle HTML generated (single-shot; no streaming)
@@ -222,37 +224,61 @@ export function ConnectedEditor({
       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background">
         <span className="text-sm text-muted">Preview</span>
         <div className="flex items-center gap-2">
-          {rawHtml && (
-            <>
-              <button
-                onClick={() => {
-                  // Open full HTML in new tab
-                  // Use processed HTML so resources like /api/proxy/image resolve correctly in blob previews
-                  const blob = new Blob([processedHtml || rawHtml], { type: 'text/html' });
-                  const url = URL.createObjectURL(blob);
-                  window.open(url, '_blank');
-                  // Clean up the URL after a delay
-                  setTimeout(() => URL.revokeObjectURL(url), 1000);
-                }}
-                className="text-xs text-muted hover:text-foreground px-3 py-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 transition-all duration-200 flex items-center gap-1 hover:scale-105 active:scale-95"
-                title="Open full preview in new tab"
-              >
-                <svg className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-                See Preview
-              </button>
-              {isPro && (
-                <button
-                  onClick={() => setShowRawHtml(true)}
-                  className="text-xs text-muted hover:text-foreground px-2 py-1 rounded border border-border hover:border-accent hover:shadow-sm transition-all duration-200 hover:scale-105 active:scale-95"
-                  title="View Raw HTML"
-                >
-                  {"</>"}
-                </button>
-              )}
-            </>
-          )}
+          <button
+            onClick={() => {
+              if (!rawHtml) {
+                if (onError) {
+                  onError("NO_CONTENT", "Generate a design first to view the preview.");
+                }
+                return;
+              }
+              if (!isPro) {
+                // Show upgrade prompt for non-Pro users
+                if (onError) {
+                  onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access full preview and HTML export.");
+                } else {
+                  window.location.href = "/pricing";
+                }
+                return;
+              }
+              // Open full-page preview modal (Pro users only)
+              setShowFullPreview(true);
+            }}
+            disabled={!rawHtml}
+            className="text-xs text-muted hover:text-foreground px-3 py-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 transition-all duration-200 flex items-center gap-1 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!rawHtml ? "Generate a design first" : (isPro ? "View full-page preview" : "Upgrade to Pro to access full preview")}
+          >
+            <svg className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            See Preview
+          </button>
+          <button
+            onClick={() => {
+              if (!rawHtml) {
+                if (onError) {
+                  onError("NO_CONTENT", "Generate a design first to view raw HTML.");
+                }
+                return;
+              }
+              if (!isPro) {
+                // Show upgrade prompt for non-Pro users
+                if (onError) {
+                  onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to view raw HTML.");
+                } else {
+                  window.location.href = "/pricing";
+                }
+                return;
+              }
+              setShowRawHtml(true);
+            }}
+            disabled={!rawHtml}
+            className="text-xs text-muted hover:text-foreground px-2 py-1 rounded border border-border hover:border-accent hover:shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!rawHtml ? "Generate a design first" : (isPro ? "View Raw HTML" : "Upgrade to Pro to view raw HTML")}
+          >
+            {"</>"}
+          </button>
           <ViewportToggle
             selectedViewport={viewportType}
             onViewportChange={setViewportType}
@@ -351,6 +377,46 @@ export function ConnectedEditor({
           html={rawHtml}
           onClose={() => setShowRawHtml(false)}
         />
+      )}
+
+      {/* Full-page preview modal */}
+      {showFullPreview && processedHtml && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 flex flex-col"
+          onClick={(e) => {
+            // Close on backdrop click
+            if (e.target === e.currentTarget) {
+              setShowFullPreview(false);
+            }
+          }}
+        >
+          {/* Header with close button */}
+          <div className="flex items-center justify-between px-4 py-3 bg-black/50 border-b border-white/10">
+            <span className="text-sm text-white/80 font-medium">Full Page Preview</span>
+            <button
+              onClick={() => setShowFullPreview(false)}
+              className="text-white/60 hover:text-white transition-colors duration-200 p-2 rounded-lg hover:bg-white/10 active:scale-95"
+              title="Close preview"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Full-page iframe preview */}
+          <div 
+            className="flex-1 overflow-hidden"
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <iframe
+              srcDoc={processedHtml}
+              className="w-full h-full border-0"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+              title="Full page preview"
+            />
+          </div>
+        </div>
       )}
     </>
   );
