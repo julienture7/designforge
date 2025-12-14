@@ -29,6 +29,8 @@ import {
 } from "~/server/services/refinement-credits.service";
 import { injectUnsplashImages } from "~/server/lib/html-processor";
 
+// Vercel timeout: 300s (Hobby), 900s (Pro/Enterprise)
+// For Ultimate refinement, we optimize to stay under 300s
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
@@ -212,7 +214,7 @@ export async function POST(req: NextRequest) {
           refinementPasses = 2;
           break;
         case "ULTIMATE":
-          refinementPasses = 3;
+          refinementPasses = 3; // Keep 3 passes for Ultimate (4 credits)
           break;
       }
     } else {
@@ -272,8 +274,11 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
           temperature: 1.0, // Keep at 1.0 for Gemini 3 Pro per docs
           providerOptions: {
             google: {
+              // Use medium thinking for refinement passes to reduce timeout risk
+              // Initial generation uses high thinking, but refinements are just polishing
+              // so medium thinking is sufficient and much faster
               thinkingConfig: {
-                thinkingLevel: "high",
+                thinkingLevel: "medium", // Medium thinking for all refinement passes
               },
             },
           },
