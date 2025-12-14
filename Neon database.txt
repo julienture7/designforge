@@ -1,0 +1,484 @@
+# Neon - Serverless Postgres Database Platform
+
+## Introduction
+
+Neon is an open-source serverless Postgres database platform that separates storage and compute to enable elastic scaling and efficient resource utilization. The platform replaces PostgreSQL's traditional storage layer with a distributed architecture that redistributes data across a cluster of nodes. This separation allows independent scaling of compute and storage resources, enabling features like instant database branching, point-in-time restore, and pay-per-use pricing models.
+
+The architecture consists of stateless compute nodes running modified PostgreSQL instances and a custom storage engine comprising pageservers (scalable storage backend) and safekeepers (redundant WAL service). The storage controller orchestrates tenant placement and high availability across pageservers. This design enables serverless capabilities including automatic scaling, cold start optimization, and resource sharing while maintaining full PostgreSQL compatibility at the compute layer. The platform is built in Rust with gRPC and HTTP APIs for inter-component communication.
+
+## API Endpoints and Functions
+
+### Storage Controller - Tenant Management
+
+Create and manage database tenants across the distributed storage cluster.
+
+```bash
+# Create a new tenant with configuration
+curl -X POST http://localhost:1234/v1/tenant \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "9ef87a5bf0d92544f6fafeeb3239695c",
+    "generation": 1,
+    "config": {
+      "checkpoint_distance": 268435456,
+      "compaction_threshold": 10,
+      "gc_horizon": 67108864,
+      "pitr_interval": "7 days"
+    },
+    "placement_policy": {
+      "attached_shards": 2,
+      "secondary_shards": 1
+    }
+  }'
+
+# Expected response:
+# HTTP/1.1 201 Created
+# {"tenant_id": "9ef87a5bf0d92544f6fafeeb3239695c", "shards": [...]}
+
+# List all tenants
+curl -X GET http://localhost:1234/control/v1/tenant \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+
+# Get specific tenant details
+curl -X GET http://localhost:1234/control/v1/tenant/9ef87a5bf0d92544f6fafeeb3239695c \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+
+# Delete tenant
+curl -X DELETE http://localhost:1234/v1/tenant/9ef87a5bf0d92544f6fafeeb3239695c \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+```
+
+### Storage Controller - Timeline/Branch Management
+
+Create and manage database branches (timelines) for point-in-time recovery and development workflows.
+
+```bash
+# Create a new timeline (branch) from a specific LSN
+curl -X POST http://localhost:1234/v1/tenant/9ef87a5bf0d92544f6fafeeb3239695c/timeline \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "new_timeline_id": "b3b863fa45fa9e57e615f9f2d944e601",
+    "ancestor_timeline_id": "de200bd42b49cc1814412c7e592dd6e9",
+    "ancestor_start_lsn": "0/16F9A00"
+  }'
+
+# Response includes timeline info:
+# {
+#   "timeline_id": "b3b863fa45fa9e57e615f9f2d944e601",
+#   "state": "Active",
+#   "current_logical_size": 0,
+#   "last_record_lsn": "0/16F9A00"
+# }
+
+# List timelines for a tenant
+curl -X GET http://localhost:1234/v1/tenant/9ef87a5bf0d92544f6fafeeb3239695c/timeline \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+
+# Delete timeline
+curl -X DELETE http://localhost:1234/v1/tenant/9ef87a5bf0d92544f6fafeeb3239695c/timeline/b3b863fa45fa9e57e615f9f2d944e601 \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+```
+
+### Storage Controller - Node Management
+
+Register and manage pageserver nodes in the cluster.
+
+```bash
+# Register a new pageserver node
+curl -X POST http://localhost:1234/control/v1/node \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "node_id": 1,
+    "listen_pg_addr": "127.0.0.1:64000",
+    "listen_http_addr": "127.0.0.1:9898",
+    "scheduling": "Active",
+    "availability_zone": "us-east-1a"
+  }'
+
+# List all nodes
+curl -X GET http://localhost:1234/control/v1/node \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+
+# Update node configuration (e.g., drain for maintenance)
+curl -X PUT http://localhost:1234/control/v1/node/1/config \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scheduling": "Draining",
+    "availability": "Offline"
+  }'
+```
+
+### Storage Controller - Tenant Location Configuration
+
+Configure tenant shard placement and location policy on pageservers.
+
+```bash
+# Configure tenant location (attach to pageserver)
+curl -X PUT http://localhost:1234/v1/tenant/9ef87a5bf0d92544f6fafeeb3239695c/location_config \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "AttachedSingle",
+    "generation": 2,
+    "tenant_conf": {
+      "checkpoint_distance": 268435456,
+      "compaction_threshold": 10,
+      "gc_horizon": 67108864
+    },
+    "secondary_conf": null
+  }'
+
+# Get current location configuration
+curl -X GET http://localhost:1234/v1/location_config/9ef87a5bf0d92544f6fafeeb3239695c \
+  -H "Authorization: Bearer ${JWT_TOKEN}"
+```
+
+### Pageserver Client - Rust API
+
+Programmatic interface for managing pageserver resources from Rust applications.
+
+```rust
+use pageserver_client::mgmt_api::Client;
+use pageserver_api::models::{TenantShardId, TimelineId, TimelineCreateRequest};
+use reqwest::Method;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize client
+    let http_client = reqwest::Client::new();
+    let jwt_token = std::env::var("PAGESERVER_JWT_TOKEN").ok();
+    let client = Client::new(
+        http_client,
+        "http://localhost:9898".to_string(),
+        jwt_token.as_deref()
+    );
+
+    // List all tenants
+    let tenants = client.list_tenants().await?;
+    println!("Found {} tenants", tenants.len());
+
+    // Get tenant details
+    let tenant_shard_id = TenantShardId::parse("9ef87a5bf0d92544f6fafeeb3239695c")?;
+    let details = client.tenant_details(tenant_shard_id).await?;
+    println!("Tenant state: {:?}", details.state);
+
+    // Create a new timeline
+    let timeline_req = TimelineCreateRequest {
+        new_timeline_id: TimelineId::generate(),
+        ancestor_timeline_id: Some(details.timelines[0]),
+        ancestor_start_lsn: None,
+        existing_initdb_timeline_id: None,
+        pg_version: Some(17),
+    };
+    let timeline_info = client.timeline_create(tenant_shard_id, &timeline_req).await?;
+    println!("Created timeline: {}", timeline_info.timeline_id);
+
+    // Get timeline information
+    let timeline_details = client.timeline_info(
+        tenant_shard_id,
+        timeline_info.timeline_id,
+        pageserver_client::mgmt_api::ForceAwaitLogicalSize::No
+    ).await?;
+    println!("Timeline LSN: {}", timeline_details.last_record_lsn);
+
+    // Delete timeline (returns 201 if deletion in progress, 404 when complete)
+    let status = client.timeline_delete(tenant_shard_id, timeline_info.timeline_id).await?;
+    println!("Delete status: {}", status);
+
+    Ok(())
+}
+```
+
+### Safekeeper Client - Rust API
+
+Manage WAL replication and timeline operations on safekeeper nodes.
+
+```rust
+use safekeeper_client::mgmt_api::Client;
+use safekeeper_api::models::{TimelineCreateRequest, TenantId, TimelineId};
+use utils::id::{TenantId, TimelineId};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize safekeeper client
+    let http_client = reqwest::Client::new();
+    let jwt_token = secrecy::SecretString::from(std::env::var("SAFEKEEPER_JWT_TOKEN")?);
+    let client = Client::new(
+        http_client,
+        "http://localhost:7676".to_string(),
+        Some(jwt_token)
+    );
+
+    let tenant_id = TenantId::parse("9ef87a5bf0d92544f6fafeeb3239695c")?;
+    let timeline_id = TimelineId::generate();
+
+    // Create timeline on safekeeper
+    let create_req = TimelineCreateRequest {
+        tenant_id,
+        timeline_id,
+        peer_ids: vec![1, 2, 3], // Safekeeper IDs in quorum
+        pg_version: 17,
+        commit_lsn: 0,
+    };
+    let response = client.create_timeline(&create_req).await?;
+    println!("Timeline created: {:?}", response.status());
+
+    // Bump timeline term (for leadership changes)
+    let term_response = client.bump_timeline_term(tenant_id, timeline_id).await?;
+    println!("New term: {}", term_response.term);
+
+    // Delete timeline
+    let delete_result = client.delete_timeline(tenant_id, timeline_id).await?;
+    println!("Timeline deleted: {:?}", delete_result);
+
+    // Delete entire tenant from safekeeper
+    let tenant_delete = client.delete_tenant(tenant_id).await?;
+    println!("Tenant deletion result: {:?}", tenant_delete);
+
+    Ok(())
+}
+```
+
+### Pageserver gRPC - Page Service API
+
+Low-level page access for compute nodes via gRPC streaming interface.
+
+```bash
+# Fetch database size via grpcurl
+grpcurl \
+  -plaintext \
+  -H "neon-tenant-id: 9ef87a5bf0d92544f6fafeeb3239695c" \
+  -H "neon-shard-id: 0000" \
+  -H "neon-timeline-id: de200bd42b49cc1814412c7e592dd6e9" \
+  -H "authorization: Bearer ${JWT_TOKEN}" \
+  -d '{"read_lsn": {"request_lsn": 100000000, "not_modified_since_lsn": 1}, "db_oid": 1}' \
+  localhost:51051 page_api.PageService/GetDbSize
+
+# Response:
+# {
+#   "num_bytes": "1048576"
+# }
+
+# Get relation size (number of blocks)
+grpcurl \
+  -plaintext \
+  -H "neon-tenant-id: 9ef87a5bf0d92544f6fafeeb3239695c" \
+  -H "neon-timeline-id: de200bd42b49cc1814412c7e592dd6e9" \
+  -H "authorization: Bearer ${JWT_TOKEN}" \
+  -d '{
+    "read_lsn": {"request_lsn": 100000000},
+    "rel": {"spc_oid": 1663, "db_oid": 1, "rel_number": 1259, "fork_number": 0},
+    "allow_missing": false
+  }' \
+  localhost:51051 page_api.PageService/GetRelSize
+
+# Lease LSN (prevent garbage collection)
+grpcurl \
+  -plaintext \
+  -H "neon-tenant-id: 9ef87a5bf0d92544f6fafeeb3239695c" \
+  -H "neon-timeline-id: de200bd42b49cc1814412c7e592dd6e9" \
+  -H "authorization: Bearer ${JWT_TOKEN}" \
+  -d '{"lsn": 100000000}' \
+  localhost:51051 page_api.PageService/LeaseLsn
+```
+
+### Storage Broker - gRPC Pub/Sub API
+
+Subscribe to safekeeper status updates and coordinate WAL replication.
+
+```rust
+use storage_broker::proto::broker_service_client::BrokerServiceClient;
+use storage_broker::proto::{SubscribeSafekeeperInfoRequest, TenantTimelineId};
+use tonic::Request;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Connect to broker
+    let mut client = BrokerServiceClient::connect("http://localhost:50051").await?;
+
+    // Subscribe to all safekeeper updates
+    let request = Request::new(SubscribeSafekeeperInfoRequest {
+        subscription_key: Some(
+            storage_broker::proto::subscribe_safekeeper_info_request::SubscriptionKey::All(
+                Default::default()
+            )
+        ),
+    });
+
+    let mut stream = client.subscribe_safekeeper_info(request).await?.into_inner();
+
+    // Process incoming safekeeper updates
+    while let Some(info) = stream.message().await? {
+        println!("Safekeeper {} update:", info.safekeeper_id);
+        println!("  Tenant: {:?}", info.tenant_timeline_id);
+        println!("  Term: {}", info.term);
+        println!("  Flush LSN: {}", info.flush_lsn);
+        println!("  Commit LSN: {}", info.commit_lsn);
+        println!("  Backup LSN: {}", info.backup_lsn);
+        println!("  Remote consistent LSN: {}", info.remote_consistent_lsn);
+    }
+
+    Ok(())
+}
+```
+
+### Control Plane - Local Development
+
+Bootstrap and manage local Neon development environment using cargo neon CLI.
+
+```bash
+# Initialize local Neon environment
+cargo neon init
+
+# Output:
+# Initializing pageserver node 1 at '127.0.0.1:64000' in ".neon"
+# Creating storage controller database at postgresql://localhost:1235/storage_controller
+
+# Start all services (storage_broker, pageserver, safekeeper, storage_controller)
+cargo neon start
+
+# Output:
+# Starting neon broker at 127.0.0.1:50051.
+# storage_broker started, pid: 12345
+# Starting pageserver node 1 at '127.0.0.1:64000' in ".neon".
+# pageserver started, pid: 12346
+# Starting safekeeper at '127.0.0.1:5454' in '.neon/safekeepers/sk1'.
+# safekeeper 1 started, pid: 12347
+
+# Create tenant and set as default
+cargo neon tenant create --set-default
+
+# Output:
+# tenant 9ef87a5bf0d92544f6fafeeb3239695c successfully created on the pageserver
+# Created an initial timeline 'de200bd42b49cc1814412c7e592dd6e9' at Lsn 0/16B5A50
+# Setting tenant 9ef87a5bf0d92544f6fafeeb3239695c as a default one
+
+# Create compute endpoint (postgres instance)
+cargo neon endpoint create main
+
+# Start compute endpoint
+cargo neon endpoint start main
+
+# Output:
+# Starting new endpoint main (PostgreSQL v17) on timeline de200bd42b49cc1814412c7e592dd6e9
+# Starting postgres at 'postgresql://cloud_admin@127.0.0.1:55432/postgres'
+
+# List running endpoints
+cargo neon endpoint list
+
+# Create a branch for development
+cargo neon timeline branch --branch-name migration_check
+
+# Output:
+# Created timeline 'b3b863fa45fa9e57e615f9f2d944e601' at Lsn 0/16F9A00
+# Ancestor timeline: 'main'
+
+# Create and start endpoint on branch
+cargo neon endpoint create migration_check --branch-name migration_check
+cargo neon endpoint start migration_check
+
+# Connect to database
+psql -p 55432 -h 127.0.0.1 -U cloud_admin postgres
+
+# Stop all services
+cargo neon stop
+```
+
+### Storage Controller - Health and Metrics
+
+Monitor storage controller health and operational metrics.
+
+```bash
+# Check if service is live (basic liveness probe)
+curl http://localhost:1234/live
+
+# Response: HTTP 200 OK
+
+# Check if service is ready to accept traffic
+curl http://localhost:1234/ready
+
+# Response: HTTP 200 OK (or 503 if not ready)
+
+# Get service status
+curl http://localhost:1234/status
+
+# Response:
+# {
+#   "version": "v1.2.3",
+#   "uptime_seconds": 86400,
+#   "reconciler_tasks_active": 12,
+#   "reconciler_tasks_queued": 3
+# }
+
+# Get Prometheus metrics
+curl http://localhost:1234/metrics
+
+# Response (Prometheus format):
+# storage_controller_reconcile_complete_total{result="ok"} 1543
+# storage_controller_reconcile_complete_total{result="error"} 3
+# storage_controller_tenant_slots{scheduling="active"} 245
+# storage_controller_pageserver_nodes_total 8
+```
+
+### Storage Controller - Shard Splitting
+
+Split tenant shards for improved performance and load distribution.
+
+```bash
+# Split tenant into more shards (e.g., from 2 to 4 shards)
+curl -X PUT http://localhost:1234/control/v1/tenant/9ef87a5bf0d92544f6fafeeb3239695c/shard_split \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "new_shard_count": 4,
+    "new_stripe_size": 32768
+  }'
+
+# Response:
+# {
+#   "new_shards": [
+#     {"shard_id": "9ef87a5bf0d92544f6fafeeb3239695c-0004", "node_id": 1},
+#     {"shard_id": "9ef87a5bf0d92544f6fafeeb3239695c-0104", "node_id": 2},
+#     {"shard_id": "9ef87a5bf0d92544f6fafeeb3239695c-0204", "node_id": 3},
+#     {"shard_id": "9ef87a5bf0d92544f6fafeeb3239695c-0304", "node_id": 1}
+#   ]
+# }
+```
+
+### Storage Controller Configuration
+
+Start storage controller with required configuration parameters.
+
+```bash
+# Start storage controller with full configuration
+storage_controller \
+  --listen 0.0.0.0:1234 \
+  --database-url postgresql://postgres@localhost:5432/storage_controller \
+  --public-key /path/to/jwt-public-key.pem \
+  --jwt-token ${PAGESERVER_JWT_TOKEN} \
+  --safekeeper-jwt-token ${SAFEKEEPER_JWT_TOKEN} \
+  --control-plane-jwt-token ${CONTROL_PLANE_JWT_TOKEN} \
+  --control-plane-url http://control-plane:3000 \
+  --reconciler-concurrency 128 \
+  --tenant-rate-limit 10 \
+  --max-offline-interval 30s \
+  --split-threshold 10737418240
+
+# Configuration via environment variables
+export DATABASE_URL="postgresql://postgres@localhost:5432/storage_controller"
+export PUBLIC_KEY="$(cat /path/to/jwt-public-key.pem)"
+export PAGESERVER_JWT_TOKEN="your-pageserver-token"
+export SAFEKEEPER_JWT_TOKEN="your-safekeeper-token"
+
+storage_controller --listen 0.0.0.0:1234 --dev
+```
+
+## Summary and Integration Patterns
+
+Neon's primary use cases include development and testing workflows requiring instant database branching, production databases needing elastic scaling and high availability, and data-intensive applications requiring cost-effective storage with point-in-time recovery. The platform excels at scenarios where database instances need frequent provisioning (dev/staging environments), workloads with variable resource demands (automated scaling), and multi-tenant applications requiring isolated database branches per customer. Integration typically involves deploying the storage controller as the central orchestrator, registering pageserver nodes for storage capacity, configuring safekeeper nodes for WAL durability, and connecting compute nodes (PostgreSQL) via the standard wire protocol.
+
+Integration patterns follow a hub-and-spoke model where the storage controller acts as the control plane, managing tenant placement and coordinating between components. Applications interact with Neon through standard PostgreSQL connections for data operations, while administrative tasks use the storage controller's REST API or the pageserver/safekeeper client libraries. The gRPC page service provides high-performance data access for compute nodes, and the storage broker enables pub/sub communication for distributed coordination. For local development, the cargo neon CLI provides an integrated environment simulating the full architecture. Production deployments require a durable PostgreSQL database for the storage controller's metadata, JWT authentication across all components, and compute notification hooks for dynamic reconfiguration. The architecture supports both cloud-native deployments with auto-scaling and self-hosted installations with manual capacity management.

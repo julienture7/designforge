@@ -1,0 +1,1575 @@
+### Setup Async Search Index with redis-py
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.8.1/user_guide/getting_started
+
+Illustrates setting up an `AsyncSearchIndex` for asynchronous operations. This requires an async Redis client and defining the index schema. The example shows connecting to Redis asynchronously and creating an index from a dictionary schema.
+
+```python
+from redisvl.index import AsyncSearchIndex
+from redis.asyncio import Redis
+
+client = Redis.from_url("redis://localhost:6379")
+index = AsyncSearchIndex.from_dict(schema, redis_client=client)
+
+```
+
+--------------------------------
+
+### Answer File Configuration for Redis Installation
+
+Source: https://redis.io/docs/latest/operate/rs/7.4/installing-upgrading/install/manage-installation-questions
+
+This example shows the content of an answer file used for silent Redis Enterprise Software installations. Each line specifies an answer ('yes' or 'no') for a particular installation question, allowing for customized automated setups.
+
+```text
+ignore_swap=no
+systune=yes
+ntp=no
+firewall=no
+rlcheck=yes
+ignore_existing_osuser_osgroup=no
+```
+
+--------------------------------
+
+### Initial Search Query Example
+
+Source: https://redis.io/docs/latest/develop/get-started/vector-database
+
+This snippet shows a basic example of how to formulate a search query using the Redis client. It specifies the index to search ('idx:bikes_vss'), the fields to return ('id', 'brand', 'model', 'price'), and applies a filter based on brand and price range.
+
+```python
+query = Query("@brand:Peaknetic @price:[0 1000]").return_fields(
+    "id", "brand", "model", "price"
+)
+res = client.ft("idx:bikes_vss").search(query).docs
+# print(res)
+```
+
+--------------------------------
+
+### Start redis-cli and Run Commands (Bash)
+
+Source: https://redis.io/docs/latest/operate/rs/7.4/references/cli-utilities/redis-cli
+
+Demonstrates how to start the redis-cli in interactive mode and execute basic Redis commands like PING, SET, and GET. Assumes redis-cli is installed and a Redis server is running on the specified port.
+
+```bash
+$ redis-cli -p 12000
+127.0.0.1:12000> PING
+PONG
+127.0.0.1:12000> SET mykey "Hello world"
+OK
+127.0.0.1:12000> GET mykey
+"Hello world"
+
+
+```
+
+--------------------------------
+
+### cURL - GET Request Example
+
+Source: https://redis.io/docs/latest/operate/rs/references/rest-api/quick-start
+
+Example of how to use cURL to send a GET request to retrieve a list of databases from the Redis Enterprise Software REST API.
+
+```APIDOC
+## GET /v1/bdbs/
+
+### Description
+
+Use this endpoint to retrieve a list of databases configured in your Redis Enterprise Software cluster.
+
+### Method
+
+`GET`
+
+### Endpoint
+
+`/v1/bdbs/`
+
+### Parameters
+
+#### Query Parameters
+
+None
+
+#### Request Body
+
+None
+
+### Request Example
+
+```bash
+curl -X GET -H "accept: application/json" \
+              -u "[username]:[password]" \
+              https://[host][:port]/v1/bdbs/ -k -i
+```
+
+### Response
+
+#### Success Response (200)
+
+Returns a JSON array of database objects. Each object contains details about a database, including its `uid`, `name`, and `version`.
+
+```json
+[
+    {
+        "name": "tr01",
+        "uid": 1,
+        "version": "6.0.16",
+        "wait_command": true
+    }
+]
+```
+
+**Note**: The `uid` is the database ID and can be used for subsequent operations on a specific database.
+```
+
+--------------------------------
+
+### Redis CLI HELP Command for Categories
+
+Source: https://redis.io/docs/latest/develop/tools/cli
+
+Illustrates using the HELP command in redis-cli to display all commands within a specific category. This example shows how to get help for all generic commands.
+
+```redis-cli
+HELP @generic
+```
+
+--------------------------------
+
+### Start Redis Instance using Init Script
+
+Source: https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis
+
+This command starts a Redis instance using the provided init script. It's the standard way to manage the Redis service after installation and configuration.
+
+```bash
+sudo /etc/init.d/redis_6379 start
+
+```
+
+--------------------------------
+
+### Redis GET Command Examples
+
+Source: https://redis.io/docs/latest/commands/get
+
+Illustrates the usage of the GET command, including scenarios where the key does not exist, and after setting a key-value pair.
+
+```redis
+redis> GET nonexisting
+(nil)
+redis> SET mykey "Hello"
+"OK"
+redis> GET mykey
+"Hello"
+
+redis>
+```
+
+--------------------------------
+
+### Enable and Start Redis Server Service
+
+Source: https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/apt
+
+These commands are used to ensure the Redis server starts automatically on boot and to manually start the Redis server service if it is not already running. This is useful for verifying the installation and ensuring Redis is operational.
+
+```bash
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+```
+
+--------------------------------
+
+### Install Redis Enterprise Software (Linux)
+
+Source: https://redis.io/docs/latest/operate/rs/7.22/installing-upgrading/quickstarts/redis-enterprise-software-quickstart
+
+This commands installs Redis Enterprise Software on a Linux system. It requires downloading the installation package first and then extracting and running the install script. The '-y' flag is used for non-interactive installation.
+
+```shell
+tar vxf <downloaded tar file name>
+
+```
+
+```shell
+sudo ./install.sh -y
+
+```
+
+--------------------------------
+
+### Install Redis on Ubuntu using Snap
+
+Source: https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/install-redis-on-linux
+
+Installs Redis on Ubuntu systems using the Snap package manager. This method also installs redis-tools for the CLI. It covers enabling Redis to start on boot and provides commands to manage the Redis service.
+
+```bash
+sudo apt update
+sudo apt install redis-tools # for redis-cli
+sudo snap install redis
+
+sudo snap set redis service.start=true
+
+# Additional snap commands:
+sudo snap start redis
+sudo snap stop redis
+sudo snap restart redis
+sudo snap services redis
+```
+
+--------------------------------
+
+### Install Python Packages for Redis Vector Search
+
+Source: https://redis.io/docs/latest/develop/get-started/vector-database
+
+Installs the required Python libraries for interacting with Redis as a vector database. This includes the redis client, pandas for data manipulation, sentence-transformers for generating embeddings, and tabulate for rendering data.
+
+```bash
+pip install redis pandas sentence-transformers tabulate
+```
+
+--------------------------------
+
+### Expected output when running the C hiredis example
+
+Source: https://redis.io/docs/latest/develop/clients/hiredis
+
+This shows the expected standard output when the compiled C program that connects to Redis using hiredis is executed. It reflects the replies from the SET and GET commands.
+
+```bash
+% ./a.out                             
+Reply: OK
+Reply: bar
+
+
+```
+
+--------------------------------
+
+### Install Redis MCP Server from Source
+
+Source: https://redis.io/docs/latest/integrate/redis-mcp/install
+
+Instructions for installing the Redis MCP server by cloning the GitHub repository and building from source using `uv`. This method is useful for development and contributions. It includes cloning, environment setup, and running the server.
+
+```bash
+git clone https://github.com/redis/mcp-redis.git
+
+cd mcp-redis
+
+uv venv
+source .venv/bin/activate
+uv sync
+
+# Run with CLI interface
+uv run redis-mcp-server --help
+
+# Or run the main file directly (uses environment variables)
+uv run src/main.py
+```
+
+--------------------------------
+
+### Start and Connect to Redis Server
+
+Source: https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/homebrew
+
+Starts the Redis server using its configuration file and then connects to it using the Redis command-line interface. This allows for basic interaction and testing of the Redis instance.
+
+```shell
+redis-server $(brew --prefix)/etc/redis.conf
+redis-cli
+PING
+```
+
+--------------------------------
+
+### Create RedisVL SearchIndex using Redis URL (Python)
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.8.1/user_guide/getting_started
+
+Constructs a RedisVL SearchIndex by providing the Redis connection URL. This approach is convenient for simpler setups where the index can manage its own connection to Redis at the specified address.
+
+```python
+from redisvl.index import SearchIndex
+
+index = SearchIndex.from_dict(schema, redis_url="redis://localhost:6379", validate_on_load=True)
+
+# If you don't specify a client or Redis URL, the index will attempt to
+# connect to Redis at the default address "redis://localhost:6379".
+
+```
+
+--------------------------------
+
+### Redis CONFIG GET Example Usage
+
+Source: https://redis.io/docs/latest/commands/config-get
+
+An example demonstrating how to use the CONFIG GET command to retrieve specific configuration parameters like 'maxmemory' and parameters matching a glob pattern.
+
+```redis
+redis> config get *max-*-entries* maxmemory
+ 1) "maxmemory"
+ 2) "0"
+ 3) "hash-max-listpack-entries"
+ 4) "512"
+ 5) "hash-max-ziplist-entries"
+ 6) "512"
+ 7) "set-max-intset-entries"
+ 8) "512"
+ 9) "zset-max-listpack-entries"
+10) "128"
+11) "zset-max-ziplist-entries"
+12) "128"
+```
+
+--------------------------------
+
+### Initialize Async Redis Client and Index
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.6.0/user_guide/getting_started
+
+Sets up an asynchronous Redis client and an `AsyncSearchIndex`. This involves connecting to Redis using its URL and then creating the index instance from a schema dictionary. Recommended for production environments.
+
+```python
+from redisvl.index import AsyncSearchIndex
+from redis.asyncio import Redis
+
+client = Redis.from_url("redis://localhost:6379")
+index = AsyncSearchIndex.from_dict(schema, redis_client=client)
+```
+
+--------------------------------
+
+### Python: Get Specific JSON Field from Redis
+
+Source: https://redis.io/docs/latest/develop/get-started/vector-database
+
+Retrieves a specific field from a JSON document stored in Redis using JSON Path. This example fetches the 'model' field from the 'bikes:010' key.
+
+```Python
+import redis
+
+client = redis.Redis(host="localhost", port=6379, decode_responses=True)
+
+res = client.json().get("bikes:010", "$.model")
+# >>> ['Summit']
+```
+
+--------------------------------
+
+### Enable and Start Redis Service
+
+Source: https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/rpm
+
+These commands configure and start the Redis service on a Linux system. 'systemctl enable redis' ensures Redis starts automatically on boot, and 'systemctl start redis' starts the service immediately.
+
+```bash
+sudo systemctl enable redis
+sudo systemctl start redis
+
+```
+
+--------------------------------
+
+### Redis Enterprise REST API: Get Databases (Python)
+
+Source: https://redis.io/docs/latest/operate/rs/7.22/references/rest-api/quick-start
+
+This Python script demonstrates how to retrieve a list of databases from Redis Enterprise Software using the REST API. It utilizes the 'requests' library and requires connection details such as host, port, username, and password. This example focuses on the GET request.
+
+```python
+import json
+import requests
+
+# Required connection information - replace with your host, port, username, and password
+host = "[host]"
+port = "[port]"
+username = "[username]"
+password = "[password]"
+
+
+```
+
+--------------------------------
+
+### Prepare Sample Dataset for RedisVL in Python
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.7.0/user_guide/getting_started
+
+Prepares a sample dataset as a list of dictionaries, including user information and a 3D user embedding vector. The embeddings are converted to bytes using NumPy, suitable for loading into RedisVL.
+
+```python
+import numpy as np
+
+
+data = [
+    {
+        'user': 'john',
+        'age': 1,
+        'job': 'engineer',
+        'credit_score': 'high',
+        'user_embedding': np.array([0.1, 0.1, 0.5], dtype=np.float32).tobytes()
+    },
+    {
+        'user': 'mary',
+        'age': 2,
+        'job': 'doctor',
+        'credit_score': 'low',
+        'user_embedding': np.array([0.1, 0.1, 0.5], dtype=np.float32).tobytes()
+    },
+    {
+        'user': 'joe',
+        'age': 3,
+        'job': 'dentist',
+        'credit_score': 'medium',
+        'user_embedding': np.array([0.9, 0.9, 0.1], dtype=np.float32).tobytes()
+    }
+]
+
+```
+
+--------------------------------
+
+### Connect to Redis Instance
+
+Source: https://redis.io/docs/latest/operate/oss_and_stack/stack-with-enterprise/gears-v1/jvm/quickstart
+
+This command shows how to connect to a Redis instance using the `redis-cli` command-line interface. It requires specifying the host and port of the Redis server.
+
+```shell
+$ redis-cli -h <host> -p <port>
+
+
+```
+
+--------------------------------
+
+### Install Redis MCP Server from GitHub
+
+Source: https://redis.io/docs/latest/integrate/redis-mcp/install
+
+This section details how to run the Redis MCP server directly from a GitHub repository branch or tagged release using `uvx`. Examples are provided for running with a Redis URI, SSL-enabled URI, and individual parameters.
+
+```bash
+# Run with Redis URI
+uvx --from git+https://github.com/redis/mcp-redis.git redis-mcp-server --url redis://localhost:6379/0
+
+# Run with Redis URI and SSL 
+uvx --from git+https://github.com/redis/mcp-redis.git redis-mcp-server --url "rediss://<USERNAME>:<PASSWORD>@<HOST>:<PORT>?ssl_cert_reqs=required&ssl_ca_certs=<PATH_TO_CERT>"
+
+# Run with individual parameters
+uvx --from git+https://github.com/redis/mcp-redis.git redis-mcp-server --host localhost --port 6379 --password mypassword
+
+# See all options
+uvx --from git+https://github.com/redis/mcp-redis.git redis-mcp-server --help
+```
+
+--------------------------------
+
+### Get all keys with a specific prefix
+
+Source: https://redis.io/docs/latest/develop/get-started/vector-database
+
+This code snippet shows how to retrieve all keys in Redis that match a given pattern, in this case, keys starting with 'bikes:'. The results are then sorted.
+
+```python
+client = redis.Redis(host="localhost", port=6379, decode_responses=True)
+
+keys = sorted(client.keys("bikes:*"))
+```
+
+--------------------------------
+
+### Prepare Sample Dataset with NumPy
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.6.0/user_guide/getting_started
+
+Prepares a sample dataset as a list of dictionaries, including a NumPy array for user embeddings converted to bytes. This data is used for populating the Redis index.
+
+```python
+import numpy as np
+
+
+data = [
+    {
+        'user': 'john',
+        'age': 1,
+        'job': 'engineer',
+        'credit_score': 'high',
+        'user_embedding': np.array([0.1, 0.1, 0.5], dtype=np.float32).tobytes()
+    },
+    {
+        'user': 'mary',
+        'age': 2,
+        'job': 'doctor',
+        'credit_score': 'low',
+        'user_embedding': np.array([0.1, 0.1, 0.5], dtype=np.float32).tobytes()
+    },
+    {
+        'user': 'joe',
+        'age': 3,
+        'job': 'dentist',
+        'credit_score': 'medium',
+        'user_embedding': np.array([0.9, 0.9, 0.1], dtype=np.float32).tobytes()
+    }
+]
+
+
+```
+
+--------------------------------
+
+### Redis TOUCH Command Syntax and Example
+
+Source: https://redis.io/docs/latest/commands/touch
+
+Demonstrates the basic syntax of the Redis TOUCH command and provides an example of its usage with SET and TOUCH operations. It shows how to set keys and then touch them, returning the count of touched keys.
+
+```redis
+TOUCH key [key ...]
+
+Example:
+redis> SET key1 "Hello"
+"OK"
+redis> SET key2 "World"
+"OK"
+redis> TOUCH key1 key2
+(integer) 2
+```
+
+--------------------------------
+
+### Amazon Bedrock Text Vectorizer Installation and Setup
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.8.0/user_guide/vectorizers
+
+Guides on installing the RedisVL Bedrock integration and configuring AWS credentials for accessing Amazon Bedrock services. Assumes AWS credentials can be set via environment variables or interactive input.
+
+```bash
+pip install 'redisvl[bedrock]'  # Installs boto3
+```
+
+```python
+import os
+import getpass
+
+if "AWS_ACCESS_KEY_ID" not in os.environ:
+    os.environ["AWS_ACCESS_KEY_ID"] = getpass.getpass("Enter AWS Access Key ID: ")
+if "AWS_SECRET_ACCESS_KEY" not in os.environ:
+    os.environ["AWS_SECRET_ACCESS_KEY"] = getpass.getpass("Enter AWS Secret Key: ")
+
+os.environ["AWS_REGION"] = "us-east-1"  # Change as needed
+```
+
+--------------------------------
+
+### Start and Stop Redis Service (systemctl)
+
+Source: https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/install-redis-on-linux
+
+Demonstrates how to start and stop the Redis server process using the systemctl command. This method is applicable to Redis installations on Ubuntu/Debian via APT and Red Hat/Rocky via YUM.
+
+```bash
+# Start the Redis server
+sudo systemctl start <redis-service-name> # redis or redis-server depending on platform
+
+# Stop the Redis server
+sudo systemctl stop <redis-service-name> # redis or redis-server depending on platform
+```
+
+--------------------------------
+
+### Load Example Data and Utilities
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.6.0/user_guide/hybrid_queries
+
+This code snippet loads example data from a pickle file and imports utility functions for printing tables and results. It's a preparatory step for demonstrating RedisVL functionalities.
+
+```python
+import pickle
+from jupyterutils import table_print, result_print
+
+# load in the example data and printing utils
+data = pickle.load(open("hybrid_example_data.pkl", "rb"))
+table_print(data)
+```
+
+--------------------------------
+
+### Get Redis Enterprise Endpoint Stats (HTTP)
+
+Source: https://redis.io/docs/latest/operate/rs/references/rest-api/requests/endpoints-stats
+
+This snippet demonstrates how to make an HTTP GET request to the Redis Enterprise API to retrieve statistics for all endpoints. It includes an example with query parameters for time interval and start time.
+
+```HTTP
+GET /v1/endpoints/stats?interval=1hour&stime=2014-08-28T10:00:00Z 
+Host: cnm.cluster.fqdn
+Accept: application/json
+```
+
+--------------------------------
+
+### Redis GETSET Command Example
+
+Source: https://redis.io/docs/latest/commands/getset
+
+Demonstrates the basic usage of the GETSET command in Redis. It shows how to set a key's value and retrieve its previous value, followed by retrieving the new value.
+
+```redis
+redis> SET mykey "Hello"
+"OK"
+redis> GETSET mykey "World"
+"Hello"
+redis> GET mykey
+"World"
+
+redis>
+```
+
+--------------------------------
+
+### Python: Get All Redis Keys Matching a Pattern
+
+Source: https://redis.io/docs/latest/develop/get-started/vector-database
+
+Retrieves all keys from Redis that match a given pattern. The keys are then sorted for consistency.
+
+```Python
+import redis
+
+client = redis.Redis(host="localhost", port=6379, decode_responses=True)
+
+keys = sorted(client.keys("bikes:*"))
+# >>> ['bikes:001', 'bikes:002', ..., 'bikes:011']
+```
+
+--------------------------------
+
+### Async Vector Query Execution with RedisVL
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.8.0/user_guide/getting_started
+
+This example shows how to perform vector queries asynchronously using `AsyncSearchIndex` and an async Redis client. It initializes an `AsyncSearchIndex` from a schema and then executes a previously defined `VectorQuery` asynchronously, printing the results. This is recommended for production environments to avoid blocking.
+
+```python
+from redisvl.index import AsyncSearchIndex
+from redis.asyncio import Redis
+
+# Assuming 'schema' and 'query' are defined elsewhere
+client = Redis.from_url("redis://localhost:6379")
+index = AsyncSearchIndex.from_dict(schema, redis_client=client)
+
+# execute the vector query async
+results = await index.query(query)
+result_print(results)
+```
+
+--------------------------------
+
+### List All Redis Search Indexes with `rvl` CLI
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.8.0/user_guide/getting_started
+
+This command-line interface command `rvl index listall` is used to list all existing search indexes within Redis. The output displays a list of index names. This utility is part of the RedisVL toolset and requires the `rvl` CLI to be installed and configured to connect to Redis.
+
+```shell
+!rvl index listall
+```
+
+--------------------------------
+
+### Get Latest Cluster Stats (HTTP)
+
+Source: https://redis.io/docs/latest/operate/rs/7.4/references/rest-api/requests/cluster/stats/last
+
+This snippet shows how to retrieve the most recent cluster statistics using an HTTP GET request. It demonstrates the basic endpoint and provides an example with optional query parameters for time interval and start time.
+
+```HTTP
+GET /v1/cluster/stats/last
+
+```
+
+```HTTP
+GET /v1/cluster/stats/last?interval=1sec&stime=2015-10-14T06:44:00Z
+
+```
+
+--------------------------------
+
+### Basic Redis Connection in Go
+
+Source: https://redis.io/docs/latest/develop/clients/go/connect
+
+Establishes a basic connection to a Redis server using default settings. It utilizes the `redis.NewClient` function with `redis.Options` to specify the address, password, and database. This is suitable for development or simple use cases. It handles connection setup and demonstrates basic Set/Get operations.
+
+```Go
+import (
+	"context"
+	"fmt"
+	"github.com/redis/go-redis/v9"
+)
+
+func main() {
+    client := redis.NewClient(&redis.Options{
+        Addr:     "localhost:6379",
+        Password: "", // No password set
+        DB:       0,  // Use default DB
+        Protocol: 2,  // Connection protocol
+    })
+
+    ctx := context.Background()
+
+    err := client.Set(ctx, "foo", "bar", 0).Err()
+    if err != nil {
+        panic(err)
+    }
+
+    val, err := client.Get(ctx, "foo").Result()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("foo", val)
+}
+```
+
+```Go
+import (
+	"github.com/redis/go-redis/v9"
+)
+
+func main() {
+    opt, err := redis.ParseURL("redis://<user>:<pass>@localhost:6379/<db>")
+    if err != nil {
+        panic(err)
+    }
+
+    client := redis.NewClient(opt)
+}
+```
+
+--------------------------------
+
+### Install Redis on Ubuntu/Debian
+
+Source: https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/install-redis-on-linux
+
+Installs Redis on Ubuntu/Debian systems by adding the official Redis repository, updating the package index, and installing the Redis server package. It also shows how to enable and start the Redis service to ensure it runs automatically on boot.
+
+```bash
+sudo apt-get install lsb-release curl gpg
+curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
+sudo apt-get update
+sudo apt-get install redis
+
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+```
+
+--------------------------------
+
+### Get Cluster Statistics (HTTP)
+
+Source: https://redis.io/docs/latest/operate/rs/7.8/references/rest-api/requests/cluster/stats
+
+This snippet shows the basic HTTP GET request to retrieve cluster statistics. It includes the endpoint and an example with query parameters for specifying the time interval and start time. The response is a JSON object containing detailed statistics.
+
+```HTTP
+GET /v1/cluster/stats
+GET /v1/cluster/stats/1?interval=1hour&stime=2014-08-28T10:00:00Z
+```
+
+--------------------------------
+
+### Redis KEYS Command Examples
+
+Source: https://redis.io/docs/latest/commands/keys
+
+Demonstrates how to use the Redis KEYS command with different patterns to retrieve keys. It shows examples using MSET to create keys and then using KEYS with wildcards like '*' and '?'.
+
+```redis
+redis> MSET firstname Jack lastname Stuntman age 35
+"OK"
+redis> KEYS *name*
+1) "firstname"
+2) "lastname"
+redis> KEYS a??
+1) "age"
+redis> KEYS *
+1) "age"
+2) "firstname"
+3) "lastname"
+
+
+```
+
+--------------------------------
+
+### Get Latest Cluster Stats via HTTP Request
+
+Source: https://redis.io/docs/latest/operate/rs/7.22/references/rest-api/requests/cluster/stats/last
+
+This snippet shows how to retrieve the most recent cluster statistics using an HTTP GET request. It includes example query parameters for specifying time intervals and start times, and highlights required request headers.
+
+```http
+GET /v1/cluster/stats/last?interval=1sec&stime=2015-10-14T06:44:00Z 
+Host: cnm.cluster.fqdn
+Accept: application/json
+```
+
+--------------------------------
+
+### Redis HELLO Command RESP3 Protocol Example
+
+Source: https://redis.io/docs/latest/commands/hello
+
+Shows how to initiate a connection handshake using the RESP3 protocol by calling the HELLO command with the '3' protover argument. This enables enhanced reply types.
+
+```redis
+> HELLO 3
+1# "server" => "redis"
+2# "version" => "6.0.0"
+3# "proto" => (integer) 3
+4# "id" => (integer) 10
+5# "mode" => "standalone"
+6# "role" => "master"
+7# "modules" => (empty array)
+```
+
+--------------------------------
+
+### Get All Keys and Descriptions (Python)
+
+Source: https://redis.io/docs/latest/develop/get-started/vector-database
+
+Retrieves all keys matching the pattern 'bikes:*' and then uses JSON.MGET to fetch the '$.description' field for all these keys. The descriptions are then flattened into a single list.
+
+```python
+keys = sorted(client.keys("bikes:*"))
+# >>> ['bikes:001', 'bikes:002', ..., 'bikes:011']
+
+descriptions = client.json().mget(keys, "$.description")
+descriptions = [item for sublist in descriptions for item in sublist]
+```
+
+--------------------------------
+
+### Redis BF.RESERVE Command Examples
+
+Source: https://redis.io/docs/latest/commands/bf
+
+Demonstrates practical usage of the BF.RESERVE command with different configurations. Includes examples for creating a basic filter, handling existing keys, and using the EXPANSION and NONSCALING options.
+
+```redis
+redis> BF.RESERVE bf 0.01 1000
+OK
+```
+
+```redis
+redis> BF.RESERVE bf 0.01 1000
+(error) ERR item exists
+```
+
+```redis
+redis> BF.RESERVE bf_exp 0.01 1000 EXPANSION 2
+OK
+```
+
+```redis
+redis> BF.RESERVE bf_non 0.01 1000 NONSCALING
+OK
+```
+
+--------------------------------
+
+### Get Redisearch Index Information
+
+Source: https://redis.io/docs/latest/develop/get-started/vector-database
+
+Retrieves information about the 'idx:bikes_vss' Redisearch index, specifically focusing on the number of documents indexed and any failures encountered during the indexing process.
+
+```python
+info = client.ft("idx:bikes_vss").info()
+num_docs = info["num_docs"]
+indexing_failures = info["hash_indexing_failures"]
+# print(f"{num_docs} documents indexed with {indexing_failures} failures")
+# >>> 11 documents indexed with 0 failures
+```
+
+--------------------------------
+
+### Redis CLIENT INFO Command Syntax and Example
+
+Source: https://redis.io/docs/latest/commands/client-info
+
+Demonstrates the basic syntax of the CLIENT INFO command and provides an example of its output. This command returns connection details in a human-readable format, similar to CLIENT LIST but specific to the current client.
+
+```redis
+CLIENT INFO
+```
+
+```redis
+redis> CLIENT INFO
+"id=40324 addr=127.0.0.1:50378 laddr=127.0.0.1:6379 fd=25 name= age=836479 idle=0 flags=N db=0 sub=0 psub=0 ssub=0 multi=-1 watch=0 qbuf=26 qbuf-free=20448 argv-mem=10 multi-mem=0 rbs=1024 rbp=8 obl=0 oll=0 omem=0 tot-mem=22426 events=r cmd=client|info user=interwebz redir=-1 resp=2 lib-name= lib-ver= io-thread=0 tot-net-in=13277607 tot-net-out=6889276 tot-cmds=163291
+"
+```
+
+--------------------------------
+
+### Cohere Text Vectorizer Installation and Setup
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.9.1/user_guide/vectorizers
+
+Instructions for installing the Cohere library and setting up the Cohere API key for use with RedisVL. This is a prerequisite for using the `CohereTextVectorizer`.
+
+```bash
+pip install cohere
+```
+
+```python
+import getpass
+import os
+# setup the API Key
+api_key = os.environ.get("COHERE_API_KEY") or getpass.getpass("Enter your Cohere API key: ")
+```
+
+--------------------------------
+
+### Redis MSET Command Example
+
+Source: https://redis.io/docs/latest/commands/mset
+
+This example demonstrates the usage of the MSET command to set two keys, 'key1' and 'key2', with their respective values 'Hello' and 'World'. It then shows how to retrieve these values using the GET command. The MSET command returns 'OK' upon successful execution.
+
+```redis
+redis> MSET key1 "Hello" key2 "World"
+"OK"
+redis> GET key1
+"Hello"
+redis> GET key2
+"World"
+
+redis>
+```
+
+--------------------------------
+
+### Get Latest Cluster Stats (HTTP)
+
+Source: https://redis.io/docs/latest/operate/rs/7.8/references/rest-api/requests/cluster/stats/last
+
+This snippet shows how to make an HTTP GET request to retrieve the most recent cluster statistics. It includes example parameters like interval and start time, and specifies the required Host and Accept headers. The response is a JSON object containing various performance metrics.
+
+```HTTP
+GET /v1/cluster/stats/last?interval=1sec&stime=2015-10-14T06:44:00Z HTTP/1.1
+Host: cnm.cluster.fqdn
+Accept: application/json
+```
+
+--------------------------------
+
+### VoyageAI Text Vectorizer Installation and Setup
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.9.1/user_guide/vectorizers
+
+Instructions for installing the VoyageAI library and setting up the VoyageAI API key for use with RedisVL. This is a prerequisite for using the `VoyageAITextVectorizer`.
+
+```bash
+pip install voyageai
+```
+
+```python
+import getpass
+import os
+# setup the API Key
+api_key = os.environ.get("VOYAGE_API_KEY") or getpass.getpass("Enter your VoyageAI API key: ")
+```
+
+--------------------------------
+
+### Redis COPY Command Syntax and Example
+
+Source: https://redis.io/docs/latest/commands/copy
+
+Demonstrates the syntax of the Redis COPY command, including optional parameters like DB and REPLACE. It shows a practical example of setting a key and then copying it, followed by retrieving the copied value.
+
+```redis
+COPY source destination [DB destination-db] [REPLACE]
+
+SET dolly "sheep"
+COPY dolly clone
+GET clone
+```
+
+--------------------------------
+
+### Redis BZPOPMIN Command Syntax and Example
+
+Source: https://redis.io/docs/latest/commands/bzpopmin
+
+This snippet shows the syntax for the BZPOPMIN command and provides a practical example of its usage, including setting up sorted sets and demonstrating a pop operation with a timeout.
+
+```redis
+BZPOPMIN key [key ...] timeout
+```
+
+```redis
+redis> DEL zset1 zset2
+(integer) 0
+redis> ZADD zset1 0 a 1 b 2 c
+(integer) 3
+redis> BZPOPMIN zset1 zset2 0
+1) "zset1"
+2) "a"
+3) "0"
+
+```
+
+--------------------------------
+
+### Authentication and Requesting Data via Swagger UI
+
+Source: https://redis.io/docs/latest/operate/rc/api/get-started/use-rest-api
+
+Instructions on how to authenticate to the Swagger UI using API keys and how to make API requests, including examples for GET operations.
+
+```APIDOC
+## Swagger UI Operations
+
+### Description
+Guidance on using the Swagger UI for API exploration, authentication, and making requests.
+
+### Authentication to Swagger UI
+1.  Open the Swagger UI page in a browser.
+2.  Select `Authorize`.
+3.  Enter your Account Key in the `x-api-key` field.
+4.  Enter your Secret Key in the `x-api-secret-key` field.
+5.  Select **Authorize** and then **Close**.
+
+### Making API Requests in Swagger UI
+1.  Navigate to an operation category (e.g., `Account`).
+2.  Select an API operation (e.g., `GET /payment-methods`).
+3.  Click **Try it out**.
+4.  (Optional) Modify any required parameters or JSON request body.
+5.  Click **Execute**.
+6.  View the API response in the **Responses** section.
+
+### Request Body Input
+For operations requiring input, use the **model display** or **Try it now** sample JSON as a template. Modify these examples as needed. Note that default examples for POST/PUT may require adjustment.
+
+### Response Example (from Swagger UI)
+Swagger UI provides example request commands (e.g., cURL) in the **Responses** section after execution.
+```
+
+--------------------------------
+
+### Create Redis Search Index with Connection Options
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.7.0/user_guide/getting_started
+
+Demonstrates creating a Redis Search index. It shows two approaches: using an existing Redis connection instance or allowing the index to manage its own connection. Requires a Redis client and a defined schema.
+
+```python
+from redis.commands.search.indexDefinition import IndexDefinition
+
+# Assuming 'schema' and 'definition' are defined as above
+
+# Bring your own Redis connection instance
+r = redis.Redis(host='localhost', port=6379, db=0)
+rs = r.ft("my_index")
+rs.create_index(fields=schema.fields, definition=definition)
+
+# Let the index manage the connection instance (example with connection_class)
+# from redis.commands.search.search import Search
+# search_client = Search(redis_url="redis://localhost:6379", index_name="my_index")
+# search_client.create_index(fields=schema.fields, definition=definition)
+
+```
+
+--------------------------------
+
+### Retrieve Full JSON Document
+
+Source: https://redis.io/docs/latest/develop/get-started/vector-database
+
+This example demonstrates fetching an entire JSON document from Redis using its key. It retrieves all fields and nested structures associated with the 'bikes:010' key.
+
+```python
+res = client.json().get("bikes:010")
+```
+
+--------------------------------
+
+### Cohere Text Vectorizer Installation and Setup
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.8.0/user_guide/vectorizers
+
+Provides instructions for installing the Cohere client and setting up the API key for use with CohereTextVectorizer. The API key can be provided via environment variables or user input.
+
+```bash
+pip install cohere
+```
+
+```python
+import os
+import getpass
+
+# setup the API Key
+api_key = os.environ.get("COHERE_API_KEY") or getpass.getpass("Enter your Cohere API key: ")
+```
+
+--------------------------------
+
+### Display uvx help for redis-mcp-server
+
+Source: https://redis.io/docs/latest/integrate/redis-mcp/install
+
+Shows all available command-line options for the redis-mcp-server using the uvx tool. This is helpful for understanding the full range of configurations and arguments supported by the server.
+
+```bash
+uvx --from redis-mcp-server@latest redis-mcp-server --help
+```
+
+--------------------------------
+
+### Lettuce (Async): Get All Hash Fields Example
+
+Source: https://redis.io/docs/latest/commands/hdel
+
+Prepares a hash with multiple fields and values, intended for use with an asynchronous `hgetall` command in Lettuce. This setup is a precursor to retrieving all data from the hash.
+
+```java
+Map<String, String> hGetAllExampleParams = new HashMap<>();
+hGetAllExampleParams.put("field1", "Hello");
+hGetAllExampleParams.put("field2", "World");
+
+```
+
+--------------------------------
+
+### Install Redis MCP Server using PyPI
+
+Source: https://redis.io/docs/latest/integrate/redis-mcp/install
+
+Instructions to install and run the Redis MCP server from its PyPI package using the `uvx` tool. It covers running with a Redis URI, SSL-enabled URI, and individual parameters, along with how to view all available options.
+
+```bash
+# Run with Redis URI
+uvx --from redis-mcp-server@latest redis-mcp-server --url redis://localhost:6379/0
+
+# Run with Redis URI and SSL 
+uvx --from redis-mcp-server@latest redis-mcp-server --url "rediss://<USERNAME>:<PASSWORD>@<HOST>:<PORT>?ssl_cert_reqs=required&ssl_ca_certs=<PATH_TO_CERT>"
+
+# Run with individual parameters
+uvx --from redis-mcp-server@latest redis-mcp-server --host localhost --port 6379 --password mypassword
+
+# See all options
+uvx --from redis-mcp-server@latest redis-mcp-server --help
+```
+
+--------------------------------
+
+### Java Reactive: HSET, HGET, HGETALL, HVALS, HEXPIRE Examples
+
+Source: https://redis.io/docs/latest/commands/hvals
+
+Demonstrates Redis Hash commands using Java Reactive Streams. Includes setting fields (HSET), getting individual fields (HGET), getting all fields and values (HGETALL), getting all values (HVALS), and setting expirations on fields (HEXPIRE, HTTL). Assumes a Redis client setup and reactive commands interface.
+
+```java
+import io.lettuce.core.api.reactive.RedisReactiveCommands;
+import io.lettuce.core.output.KeyValue;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.RedisClient;
+import reactor.core.publisher.Mono;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class RedisHashExamples {
+
+    public static void main(String[] args) {
+        RedisClient redisClient = RedisClient.create("redis://localhost:6379");
+        StatefulRedisConnection<String, String> connection = redisClient.connect();
+        RedisReactiveCommands<String, String> reactiveCommands = connection.reactive();
+
+        try {
+            // HSET example
+            Map<String, String> hSetExampleParams = new HashMap<>();
+            hSetExampleParams.put("field1", "Hello");
+            hSetExampleParams.put("field2", "Hi");
+            hSetExampleParams.put("field3", "World");
+
+            Mono<Long> hSetExample1 = reactiveCommands.hset("myhash", hSetExampleParams).doOnNext(result -> {
+                System.out.println(result);
+                // >>> 3
+            });
+
+            hSetExample1.block();
+
+            // HGETALL example
+            Mono<Map<String, String>> hGetAllExample2 = reactiveCommands.hgetall("myhash").collectMap(
+                    KeyValue::getKey,
+                    KeyValue::getValue
+            ).doOnNext(result -> {
+                System.out.println(result);
+                // >>> {field1=Hello, field2=Hi, field3=World}
+            });
+
+            hGetAllExample2.block();
+
+            // HVALS example
+            Mono<List<String>> hValsExample2 = reactiveCommands.hvals("myhash").collectList().doOnNext(result -> {
+                List<String> sortedValues = new ArrayList<>(result);
+                Collections.sort(sortedValues);
+                System.out.println(sortedValues);
+                // >>> [Hello, Hi, World]
+            });
+
+            hValsExample2.block();
+
+            // HEXPIRE and HTTL examples
+            Map<String, String> hExpireExampleParams = new HashMap<>();
+            hExpireExampleParams.put("field1", "Hello");
+            hExpireExampleParams.put("field2", "World");
+
+            Mono<Long> hExpireExample1 = reactiveCommands.hset("myhash", hExpireExampleParams).doOnNext(result -> {
+            });
+
+            hExpireExample1.block();
+
+            // Set expiration on hash fields
+            Mono<List<Long>> hExpireExample2 = reactiveCommands.hexpire("myhash", 10, "field1", "field2").collectList().doOnNext(result -> {
+                System.out.println(result);
+                // >>> [1, 1]
+            });
+
+            hExpireExample2.block();
+
+            // Check TTL of the fields
+            Mono<List<Long>> hExpireExample3 = reactiveCommands.httl("myhash", "field1", "field2").collectList().doOnNext(result -> {
+                System.out.println(result.size());
+                // >>> 2
+            });
+
+            hExpireExample3.block();
+
+            // Try to set expiration on non-existent field
+            Mono<List<Long>> hExpireExample4 = reactiveCommands.hexpire("myhash", 10, "nonexistent").collectList().doOnNext(result -> {
+                System.out.println(result);
+                // >>> [-2]
+            });
+
+            hExpireExample4.block();
+
+        } finally {
+            connection.close();
+            redisClient.shutdown();
+        }
+    }
+
+}
+```
+
+--------------------------------
+
+### Inspect Redis Index using rvl CLI
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.7.0/user_guide/getting_started
+
+These commands use the `rvl` CLI to inspect the created Redis index. `rvl index listall` lists all available indices, and `rvl index info -i user_simple` provides detailed information about the 'user_simple' index, including its fields and options.
+
+```bash
+!rvl index listall
+
+```
+
+```bash
+!rvl index info -i user_simple
+```
+
+--------------------------------
+
+### Install Docker on EC2 (Amazon Linux)
+
+Source: https://redis.io/docs/latest/operate/redisinsight/install/install-on-aws
+
+Commands to install and start the Docker service on an EC2 instance running Amazon Linux. This includes updating packages, installing Docker, starting the service, and adding the ec2-user to the docker group for elevated permissions.
+
+```bash
+sudo yum update -y
+sudo yum install -y docker
+sudo service docker start
+sudo usermod -a -G docker ec2-user
+```
+
+--------------------------------
+
+### Redis LPOS Command Examples
+
+Source: https://redis.io/docs/latest/commands/lpos
+
+Provides practical examples of using the LPOS command with various options, including pushing elements and then querying for their indices with different parameters.
+
+```redis
+redis> RPUSH mylist a b c d 1 2 3 4 3 3 3
+(integer) 11
+redis> LPOS mylist 3
+(integer) 6
+redis> LPOS mylist 3 COUNT 0 RANK 2
+1) (integer) 8
+2) (integer) 9
+3) (integer) 10
+```
+
+--------------------------------
+
+### Redis CLI HELP Command for Specific Command
+
+Source: https://redis.io/docs/latest/develop/tools/cli
+
+Demonstrates how to use the HELP command in redis-cli to retrieve detailed information about a specific Redis command. This example fetches help for the PFADD command.
+
+```redis-cli
+127.0.0.1:6379> HELP PFADD
+
+PFADD key element [element ...]
+summary: Adds the specified elements to the specified HyperLogLog.
+since: 2.8.9
+```
+
+--------------------------------
+
+### Install RedisVL from Source
+
+Source: https://redis.io/docs/latest/develop/ai/redisvl/0.7.0/overview/installation
+
+Installs RedisVL by cloning the repository and using pip. Supports standard and editable installations, the latter being useful for developers contributing to RedisVL.
+
+```bash
+$ git clone https://github.com/redis/redis-vl-python.git && cd redisvl
+$ pip install .
+```
+
+```bash
+# or for an editable installation (for developers of RedisVL)
+$ pip install -e .
+```
+
+--------------------------------
+
+### Install redis-rs Synchronous API (Rust)
+
+Source: https://redis.io/docs/latest/develop/clients/rust
+
+This code snippet shows how to add the redis-rs crate as a dependency to your Cargo.toml file to utilize its synchronous API. This is the basic setup for connecting to Redis from a Rust application.
+
+```toml
+[dependencies]
+redis = "0.32.5"
+
+```
+
+--------------------------------
+
+### Connect to Redis and Set/Get String (Go)
+
+Source: https://redis.io/docs/latest/develop/clients/go
+
+Demonstrates the basic connection to a Redis server using go-redis, setting a key-value pair, and retrieving it. It also includes examples of using hash commands like HSet, HGet, and HGetAll, and scanning hash data into a struct. Requires the go-redis/v9 package.
+
+```Go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/redis/go-redis/v9"
+)
+
+
+func main() {
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password
+		DB:       0,  // use default DB
+		Protocol: 2,
+	})
+
+	ctx := context.Background()
+
+	err := rdb.Set(ctx, "foo", "bar", 0).Err()
+	if err != nil {
+		panic(err)
+	}
+
+	val, err := rdb.Get(ctx, "foo").Result()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("foo", val) // >>> foo bar
+
+	hashFields := []string{
+		"model", "Deimos",
+		"brand", "Ergonom",
+		"type", "Enduro bikes",
+		"price", "4972",
+	}
+
+	res1, err := rdb.HSet(ctx, "bike:1", hashFields).Result()
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(res1) // >>> 4
+
+	res2, err := rdb.HGet(ctx, "bike:1", "model").Result()
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(res2) // >>> Deimos
+
+	res3, err := rdb.HGet(ctx, "bike:1", "price").Result()
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(res3) // >>> 4972
+
+	res4, err := rdb.HGetAll(ctx, "bike:1").Result()
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(res4)
+	// >>> map[brand:Ergonom model:Deimos price:4972 type:Enduro bikes]
+
+	type BikeInfo struct {
+		Model string `redis:"model"`
+		Brand string `redis:"brand"`
+		Type  string `redis:"type"`
+		Price int    `redis:"price"`
+	}
+
+	var res4a BikeInfo
+	err = rdb.HGetAll(ctx, "bike:1").Scan(&res4a)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Model: %v, Brand: %v, Type: %v, Price: $%v\n",
+		res4a.Model, res4a.Brand, res4a.Type, res4a.Price)
+	// >>> Model: Deimos, Brand: Ergonom, Type: Enduro bikes, Price: $4972
+
+	rdb.Close()
+}
+
+```
+
+--------------------------------
+
+### Get and Rename Databases using Python requests
+
+Source: https://redis.io/docs/latest/operate/rs/7.4/references/rest-api/quick-start
+
+This Python script uses the requests library to interact with the Redis Enterprise Software REST API. It first retrieves a list of all databases via a GET request and then iterates through them to rename each database using a PUT request. Ensure you have the 'requests' library installed.
+
+```python
+import requests
+import json
+import warnings
+
+# Suppress only the InsecureRequestWarning from urllib3
+warnings.filterwarnings('ignore', category=UserWarning, module='urllib3')
+
+host = '[host]'
+port = '[port]'
+username = '[username]'
+password = '[password]'
+
+# Get the list of databases using GET /v1/bdbs
+bdbs_uri = "https://{}:{}/v1/bdbs".format(host, port)
+
+print("GET {}".format(bdbs_uri))
+get_resp = requests.get(bdbs_uri,
+        auth = (username, password),
+        headers = { "accept" : "application/json" },
+        verify = False)
+
+print("{} {}".format(get_resp.status_code, get_resp.reason))
+for header in get_resp.headers.keys():
+    print("{}: {}".format(header, get_resp.headers[header]))
+
+print("\n" + json.dumps(get_resp.json(), indent=4))
+
+# Rename all databases using PUT /v1/bdbs
+for bdb in get_resp.json():
+    uid = bdb["uid"] # Get the database ID from the JSON response
+
+    put_uri = "{}/{}".format(bdbs_uri, uid)
+    new_name = "database{}".format(uid)
+    put_data = { "name" : new_name }
+
+    print("PUT {} {}".format(put_uri, json.dumps(put_data)))
+
+    put_resp = requests.put(put_uri,
+        data = json.dumps(put_data),
+        auth = (username, password),
+        headers = { "content-type" : "application/json" },
+        verify = False)
+
+    print("{} {}".format(put_resp.status_code, put_resp.reason))
+    for header in put_resp.headers.keys():
+        print("{}: {}".format(header, put_resp.headers[header]))
+
+    print("\n" + json.dumps(put_resp.json(), indent=4))
+```
+
+--------------------------------
+
+### Redis HSET Command Examples
+
+Source: https://redis.io/docs/latest/commands/hset
+
+Demonstrates the usage of the HSET command for setting single and multiple field-value pairs in a Redis hash. Includes examples for getting individual fields and all fields within the hash.
+
+```redis-cli
+> HSET myhash field1 "Hello"
+(integer) 1
+> HGET myhash field1
+"Hello"
+> HSET myhash field2 "Hi" field3 "World"
+(integer) 2
+> HGET myhash field2
+"Hi"
+> HGET myhash field3
+"World"
+> HGETALL myhash
+1)"field1"
+2)"Hello"
+3)"field2"
+4)"Hi"
+5)"field3"
+6)"World"
+```

@@ -1,0 +1,1614 @@
+### Start Stripe Terminal Quickstart with CLI
+
+Source: https://docs.stripe.com/cli/license
+
+The `terminal quickstart` command provides a rapid setup for Stripe Terminal, specifically for use with the Verifone P400 reader. It can optionally use a specific API key via the `--api-key` flag.
+
+```bash
+stripe terminal quickstart
+```
+
+--------------------------------
+
+### Build and run server-side applications for Stripe examples
+
+Source: https://docs.stripe.com/connect/onboarding/quickstart
+
+These commands provide instructions to build and run various Stripe sample server applications across multiple programming languages. Dependencies for each language are installed first, followed by commands to start the server, typically listening on port 4242 or 0.0.0.0.
+
+```bash
+pip3 install -r requirements.txt
+FLASK_APP=server.py python3 -m flask run --port=4242
+```
+
+```bash
+bundle install
+ruby server.rb -o 0.0.0.0
+```
+
+```bash
+composer install
+php -S 127.0.0.1:4242 --docroot=dist
+```
+
+```bash
+dotnet restore
+dotnet run
+```
+
+```bash
+mvn package
+java -cp target/sample-jar-with-dependencies.jar com.stripe.sample.Server
+```
+
+```bash
+go mod download github.com/stripe/stripe-go/v78
+go mod download github.com/gorilla/mux
+go run server.go
+```
+
+--------------------------------
+
+### Install Stripe Server-Side Libraries
+
+Source: https://docs.stripe.com/connect/end-to-end-marketplace
+
+These code examples demonstrate how to install the official Stripe client libraries for server-side integration in Ruby and Python. This setup is essential for your backend to communicate securely with the Stripe API.
+
+```ruby
+# Available as a gem
+sudo gem install stripe
+
+# If you use bundler, you can add this line to your Gemfile
+gem 'stripe'
+```
+
+```python
+# Install through pip
+pip3 install --upgrade stripe
+
+# Or find the Stripe package on http://pypi.python.org/pypi/stripe/
+
+# Find the version you want to pin:
+# https://github.com/stripe/stripe-python/blob/master/CHANGELOG.md
+# Specify that version in your requirements.txt file
+stripe>=5.0.0
+```
+
+--------------------------------
+
+### Build and run client-side applications using npm
+
+Source: https://docs.stripe.com/connect/onboarding/quickstart
+
+These commands demonstrate how to install dependencies and start client-side applications using npm. The standard commands `npm install` and `npm start` are used for some applications, while others might use `npm run dev` to launch the development server.
+
+```bash
+npm install
+npm start
+```
+
+```bash
+npm install
+npm run dev
+```
+
+--------------------------------
+
+### Install Stripe Go Library
+
+Source: https://docs.stripe.com/billing/subscriptions/paypal
+
+Instructions for installing the Stripe Go library. Ensure your project uses Go Modules and then use 'go get' to retrieve the package.
+
+```bash
+# Make sure your project is using Go Modules
+go mod init
+# Install stripe-go
+go get -u github.com/stripe/stripe-go/v83
+```
+
+```go
+// Then import the package
+import (
+  "github.com/stripe/stripe-go/v83"
+)
+```
+
+--------------------------------
+
+### Install Stripe Client for Go
+
+Source: https://docs.stripe.com/payments/advanced/build-subscriptions
+
+This snippet outlines the steps to install the 'stripe-go' package by initializing Go Modules and using 'go get', followed by how to import the package into your Go code.
+
+```bash
+go mod init
+# Install stripe-go
+go get -u github.com/stripe/stripe-go/v83
+```
+
+```go
+import (
+  "github.com/stripe/stripe-go/v83"
+)
+```
+
+--------------------------------
+
+### Set Up and Run Backend Servers for Stripe Integration
+
+Source: https://docs.stripe.com/terminal/quickstart
+
+Provides command-line instructions for setting up and running backend servers across various programming languages. Each example includes steps for installing dependencies and then starting the server, facilitating local development and testing of Stripe integrations.
+
+```bash
+npm install
+```
+
+```bash
+npm start
+```
+
+```bash
+go run server.go
+```
+
+```bash
+pip3 install -r requirements.txt
+```
+
+```bash
+export FLASK_APP="server.py" && python3 -m flask run --port=4242
+```
+
+```bash
+bundle install
+```
+
+```bash
+ruby server.rb
+```
+
+```bash
+composer install
+```
+
+```bash
+php -S 127.0.0.1:4242 --docroot=public
+```
+
+```bash
+dotnet restore
+```
+
+```bash
+dotnet run
+```
+
+```bash
+mvn package
+```
+
+```bash
+java -cp target/sample-jar-with-dependencies.jar com.stripe.sample.Server
+```
+
+--------------------------------
+
+### POST /v1/setup_intents
+
+Source: https://docs.stripe.com/payments/3d-secure/authentication-flow
+
+Creates a new Setup Intent, which guides you through the process of setting up a customer's payment method for future payments. This object tracks the setup process.
+
+```APIDOC
+## POST /v1/setup_intents
+
+### Description
+Creates a new Setup Intent, which guides you through the process of setting up a customer's payment method for future payments. This object tracks the setup process.
+
+### Method
+POST
+
+### Endpoint
+/v1/setup_intents
+
+### Parameters
+#### Request Body
+- **customer** (string) - Required - The ID of the Customer this Setup Intent belongs to.
+- **payment_method_options[card][request_three_d_secure]** (string) - Optional - Controls when to request 3D Secure verification. Valid values are "automatic" (default), "any", or "challenge_on_mandate".
+
+### Request Example
+```json
+{
+  "customer": "cus_xxxxxxxxxxxxxx",
+  "payment_method_options": {
+    "card": {
+      "request_three_d_secure": "any"
+    }
+  }
+}
+```
+
+### Response
+#### Success Response (200)
+- **id** (string) - Unique identifier for the Setup Intent.
+- **customer** (string) - The ID of the customer associated with this Setup Intent.
+- **status** (string) - The status of the Setup Intent.
+- **client_secret** (string) - A client secret string for the Setup Intent.
+
+#### Response Example
+```json
+{
+  "id": "seti_1Ixxxxxxxxxxxxxx",
+  "object": "setup_intent",
+  "customer": "cus_xxxxxxxxxxxxxx",
+  "usage": "off_session",
+  "livemode": false,
+  "status": "requires_payment_method",
+  "client_secret": "seti_1Ixxxxxxxxxxxxxx_secret_xxxxxxxxxxxxx",
+  "payment_method_options": {
+    "card": {
+      "request_three_d_secure": "any"
+    }
+  }
+}
+```
+```
+
+--------------------------------
+
+### Example Output for Stripe Product/Price Creation
+
+Source: https://docs.stripe.com/development/quickstart
+
+This snippet shows the expected console output after successfully running the Ruby script, providing the unique IDs for the newly created Stripe product and price.
+
+```Command Line
+Success! Here is your starter subscription product id: prod_0KxBDl589O8KAxCG1alJgiA6
+Success! Here is your starter subscription price id: price_0KxBDm589O8KAxCGMgG7scjb
+```
+
+--------------------------------
+
+### Create an AccountSession on Server (Ruby)
+
+Source: https://docs.stripe.com/connect/get-started-connect-embedded-components
+
+Illustrates the initial setup for creating an AccountSession on a server using Ruby and Sinatra. This session is used to delegate API access to a connected account for Stripe Connect embedded components. The example shows how to require necessary libraries and a placeholder for the Stripe secret API key.
+
+```ruby
+require 'sinatra'
+require 'stripe'
+# This is a placeholder - it should be replaced with your secret API key.
+# Sign in to see your own test API key embedded in code samples.
+```
+
+--------------------------------
+
+### Install Client Application Dependencies with npm
+
+Source: https://docs.stripe.com/checkout/quickstart
+
+This command installs all required client-side dependencies for the application using npm. It should be run in the client project's root directory before starting the application.
+
+```shell
+npm install
+```
+
+--------------------------------
+
+### Deprecated Two-Step Setup Intent Processing (Swift and Objective-C)
+
+Source: https://docs.stripe.com/terminal/references/sdk-migration-guide
+
+This example shows the older, two-step method for handling setup intents, which requires calling `collectSetupIntentPaymentMethod` followed by `confirmSetupIntent`. This pattern has been superseded by the `processSetupIntent` method.
+
+```swift
+// Step 1: Collect setup intent payment method
+Terminal.shared.collectSetupIntentPaymentMethod(setupIntent, customerConsentCollected: true) { collectedSetupIntent, collectError in
+    guard let collectedSetupIntent = collectedSetupIntent else {
+        // Setup intent collection failed
+        return
+    }
+    // Step 2: Confirm the setup intent
+    Terminal.shared.confirmSetupIntent(collectedSetupIntent) { confirmedSetupIntent, confirmError in
+        if let confirmedSetupIntent = confirmedSetupIntent {
+            // Setup intent successful
+        } else {
+            // Setup intent confirmation failed
+        }
+    }
+}
+```
+
+```objc
+// Step 1: Collect setup intent payment method
+[[SCPTerminal shared] collectSetupIntentPaymentMethod:setupIntent
+                                customerConsentCollected:YES
+                                              completion:^(SCPSetupIntent * _Nullable collectedSetupIntent, NSError * _Nullable collectError) {
+    if (collectError) {
+        // Setup intent collection failed
+        return;
+    }
+    // Step 2: Confirm the setup intent
+    [[SCPTerminal shared] confirmSetupIntent:collectedSetupIntent
+                                  completion:^(SCPSetupIntent * _Nullable confirmedSetupIntent, NSError * _Nullable confirmError) {
+        if (confirmedSetupIntent) {
+            // Setup intent successful
+        } else {
+            // Setup intent confirmation failed
+        }
+    }];
+}];
+```
+
+--------------------------------
+
+### Initialize Stripe Go SDK
+
+Source: https://docs.stripe.com/sdks/server-side
+
+Example of initializing the Stripe Go SDK by importing the package and setting the global API key for authentication.
+
+```go
+import ("github.com/stripe/stripe-go/v83")
+stripe.Key = "<<YOUR_SECRET_KEY>>"
+```
+
+--------------------------------
+
+### GET /v1/setup_intents
+
+Source: https://docs.stripe.com/api/payment-link/create_api-version=2024-10-28
+
+Lists all SetupIntents, allowing you to review past setup processes.
+
+```APIDOC
+## GET /v1/setup_intents
+
+### Description
+Lists all SetupIntents, allowing you to review past setup processes.
+
+### Method
+GET
+
+### Endpoint
+/v1/setup_intents
+
+### Parameters
+#### Path Parameters
+
+#### Query Parameters
+
+#### Request Body
+
+### Request Example
+{}
+
+### Response
+#### Success Response (200)
+
+#### Response Example
+{}
+```
+
+--------------------------------
+
+### Create Stripe Setup Intent with US Bank Account details (Go, C#)
+
+Source: https://docs.stripe.com/payments/ach-direct-debit/migrating-from-another-processor
+
+This code demonstrates how to create a Stripe Setup Intent configured with US bank account details, billing information, and mandate data. It initializes the Setup Intent with the necessary payment method options and data, including account and routing numbers, and specifies customer acceptance terms for future payments. The Go example uses `params.AddExtra` for some fields, while the C# example uses strongly-typed options.
+
+```go
+USBankAccount: &stripe.SetupIntentCreatePaymentMethodOptionsUSBankAccountParams{},
+  },
+  PaymentMethodData: &stripe.SetupIntentCreatePaymentMethodDataParams{
+    BillingDetails: &stripe.SetupIntentCreatePaymentMethodDataBillingDetailsParams{},
+    USBankAccount: &stripe.SetupIntentCreatePaymentMethodDataUSBankAccountParams{
+      RoutingNumber: stripe.String("{{ROUTING_NUMBER}}"),
+      AccountNumber: stripe.String("{{ACCOUNT_NUMBER}}"),
+      AccountHolderType: stripe.String("individual"),
+    },
+  },
+  MandateData: &stripe.SetupIntentCreateMandateDataParams{
+    CustomerAcceptance: &stripe.SetupIntentCreateMandateDataCustomerAcceptanceParams{
+      Type: stripe.String("offline"),
+      AcceptedAt: stripe.Int64(1692821946),
+    },
+  },
+}
+params.AddExtra("payment_method_options[us_bank_account][verification_method]", "skip")
+params.AddExtra("payment_method_data[type]", "us_bank_account")
+params.AddExtra("payment_method_data[billing_details][name]", "{{ACCOUNT_HOLDER_NAME}}")
+result, err := sc.V1SetupIntents.Create(context.TODO(), params)
+```
+
+```dotnet
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+var options = new SetupIntentCreateOptions
+{
+    PaymentMethodTypes = new List<string> { "us_bank_account" },
+    Customer = "{{CUSTOMER_ID}}",
+    Confirm = true,
+    PaymentMethodOptions = new SetupIntentPaymentMethodOptionsOptions
+    {
+        UsBankAccount = new SetupIntentPaymentMethodOptionsUsBankAccountOptions
+        {
+            VerificationMethod = "skip",
+        },
+    },
+    PaymentMethodData = new SetupIntentPaymentMethodDataOptions
+    {
+        Type = "us_bank_account",
+        BillingDetails = new SetupIntentPaymentMethodDataBillingDetailsOptions
+        {
+            Name = "{{ACCOUNT_HOLDER_NAME}}",
+        },
+        UsBankAccount = new SetupIntentPaymentMethodDataUsBankAccountOptions
+        {
+            RoutingNumber = "{{ROUTING_NUMBER}}",
+            AccountNumber = "{{ACCOUNT_NUMBER}}",
+            AccountHolderType = "individual",
+        },
+    },
+    MandateData = new SetupIntentMandateDataOptions
+    {
+        CustomerAcceptance = new SetupIntentMandateDataCustomerAcceptanceOptions
+        {
+            Type = "offline",
+            AcceptedAt = DateTimeOffset.FromUnixTimeSeconds(1692821946).UtcDateTime,
+        },
+    },
+};
+var client = new StripeClient("<<YOUR_SECRET_KEY>>");
+var service = client.V1.SetupIntents;
+SetupIntent setupIntent = service.Create(options);
+```
+
+--------------------------------
+
+### Install Stripe Connect Android SDK
+
+Source: https://docs.stripe.com/connect/get-started-connect-embedded-components
+
+These code examples demonstrate how to integrate the Stripe Connect Android SDK into your mobile application. By adding the `implementation("com.stripe:connect:22.0.0")` dependency, you can access Stripe's embedded components for Android. Both Kotlin DSL and Groovy DSL snippets are provided for adding this dependency to your `app/build.gradle` file.
+
+```kotlin
+plugins {
+    id("com.android.application")
+}
+
+android { ... }
+
+dependencies {
+  // ...
+
+  // Connect Android SDK
+  implementation("com.stripe:connect:22.0.0")
+}
+```
+
+```groovy
+apply plugin: 'com.android.application'
+
+android { ... }
+
+dependencies {
+  // ...
+
+  // Connect Android SDK
+  implementation 'com.stripe:connect:22.0.0'
+}
+```
+
+--------------------------------
+
+### Initialize Go Modules and install Stripe Go SDK
+
+Source: https://docs.stripe.com/connect/end-to-end-saas-platform
+
+These commands set up Go Modules for your project and then fetch the Stripe Go SDK. `go mod init` creates a `go.mod` file, and `go get -u` downloads and updates the specified Stripe package to its latest compatible version.
+
+```bash
+go mod init
+go get -u github.com/stripe/stripe-go/v83
+```
+
+--------------------------------
+
+### Create a Stripe SetupIntent (C#)
+
+Source: https://docs.stripe.com/billing/subscriptions/stablecoins
+
+This C# snippet demonstrates how to instantiate a Stripe client and create a SetupIntent resource. It shows the configuration of device-related options within the SetupIntent parameters, such as IP address and user agent, to prepare for setting up a payment method. The `SetupIntent` object returned includes details like a payment method ID and a redirect URL for customer interaction.
+
+```csharp
+                IpAddress = "127.0.0.0",
+                UserAgent = "device",
+            },
+        },
+    },
+};
+var client = new StripeClient("<<YOUR_SECRET_KEY>>");
+var service = client.V1.SetupIntents;
+SetupIntent setupIntent = service.Create(options);
+```
+
+--------------------------------
+
+### Deprecated: Collect and Confirm Setup Intent in Kotlin with Stripe Terminal
+
+Source: https://docs.stripe.com/terminal/references/sdk-migration-guide
+
+This Kotlin example illustrates the deprecated two-step process for handling setup intents with Stripe Terminal. It involves collecting the setup intent payment method and then explicitly confirming it. This functionality is now streamlined into a single `processSetupIntent` method.
+
+```kotlin
+// Step 1: Collect setup intent payment method
+Terminal.getInstance().collectSetupIntentPaymentMethod(
+    intent = setupIntent,
+    allowRedisplay = AllowRedisplay.ALWAYS,
+    callback = object : SetupIntentCallback {
+        override fun onSuccess(setupIntent: SetupIntent) {
+            // Step 2: Confirm the setup intent
+            Terminal.getInstance().confirmSetupIntent(setupIntent, object : SetupIntentCallback {
+                override fun onSuccess(confirmedSetupIntent: SetupIntent) {
+                    // Setup intent successful
+                }
+                override fun onFailure(e: TerminalException) {
+                    // Setup intent confirmation failed
+                }
+            })
+        }
+        override fun onFailure(e: TerminalException) {
+            // Setup intent collection failed
+        }
+    }
+);
+```
+
+--------------------------------
+
+### Install Connect.js and React Connect.js NPM Packages
+
+Source: https://docs.stripe.com/connect/get-started-connect-embedded-components
+
+This bash command installs both the `@stripe/connect-js` and `@stripe/react-connect-js` npm packages. These libraries are essential for developers building React applications that utilize Stripe's embedded Connect components.
+
+```bash
+npm install --save @stripe/connect-js @stripe/react-connect-js
+```
+
+--------------------------------
+
+### Install Stripe Go library
+
+Source: https://docs.stripe.com/billing/subscriptions/klarna
+
+Set up the Stripe client library for Go projects. Ensure your project uses Go Modules, then use 'go get' to install the library and import it into your Go source files.
+
+```bash
+go mod init
+go get -u github.com/stripe/stripe-go/v83
+```
+
+```go
+import (
+  "github.com/stripe/stripe-go/v83"
+)
+```
+
+--------------------------------
+
+### Install Stripe Go SDK and Import Package
+
+Source: https://docs.stripe.com/payments/bancontact/accept-a-payment
+
+This snippet demonstrates how to install the Stripe Go SDK using 'go get' and subsequently import the package into a Go application. It covers both the dependency management and the Go import statement for initial setup.
+
+```bash
+go get -u github.com/stripe/stripe-go/v83
+```
+
+```go
+import (
+  "github.com/stripe/stripe-go/v83"
+)
+```
+
+--------------------------------
+
+### Customize Embedded Component Appearance and Fonts at Initialization (Kotlin)
+
+Source: https://docs.stripe.com/connect/get-started-connect-embedded-components_platform=android
+
+This Kotlin example demonstrates how to initialize the `EmbeddedComponentManager` with custom fonts and appearance settings. It defines a `CustomFontSource` for a `.ttf` font file located in the `assets/` folder and configures typography (font family, size) and primary colors using `Appearance.Builder` and `Colors.Builder`. This setup applies the specified styles upon component creation.
+
+```Kotlin
+// Specify custom fonts
+val customFonts = listOf(
+    CustomFontSource(
+        // Font file located in `assets/` folder
+        assetsFilePath = "fonts/myCustomFont.ttf",
+        name = "myCustomFont",
+        weight = 1000,
+    )
+)
+
+// Customize appearance
+val appearance = Appearance.Builder()
+    .typography(
+        Typography.Builder()
+            .fontFamily("myCustomFont") // Same name as the custom font above
+            .fontSizeBase(16f) // Unscaled font size
+            .build()
+    )
+    .colors(
+        Colors.Builder()
+            .primary(Color.RED)
+            .build()
+    )
+    .build()
+
+val embeddedComponentManager = EmbeddedComponentManager(
+    publishableKey = 
+"pk_test_TYooMQauvdEDq54NiTphI7jx"
+,
+    fetchClientSecret = ::fetchClientSecret,
+    appearance = appearance,
+    customFonts = customFonts,
+)
+```
+
+--------------------------------
+
+### Install Stripe API Libraries (Ruby & Python)
+
+Source: https://docs.stripe.com/payments/accept-a-payment
+
+These snippets provide commands for installing the official Stripe API client libraries for Ruby and Python. The Ruby examples show installation via `gem` and `bundler`, while the Python example uses `pip`.
+
+```ruby
+# Available as a gem
+sudo gem install stripe
+
+# If you use bundler, you can add this line to your Gemfile
+gem 'stripe'
+```
+
+```python
+# Install through pip
+pip3 install --upgrade stripe
+```
+
+--------------------------------
+
+### Confirm Stripe SetupIntent with Revolut Pay (Client-side Kotlin/Java)
+
+Source: https://docs.stripe.com/payments/revolut-pay/set-up-future-payments
+
+This code demonstrates how to initialize the Stripe PaymentLauncher and confirm a SetupIntent using Revolut Pay payment parameters on the client-side. It shows the setup process in both Kotlin and Java, including how to retrieve the client secret and handle the payment result callback.
+
+```kotlin
+class RevolutPaySetupActivity : AppCompatActivity() {
+
+    // ...
+
+    private val paymentLauncher: PaymentLauncher by lazy {
+        val paymentConfiguration = PaymentConfiguration.getInstance(applicationContext)
+        PaymentLauncher.create(
+            activity = this,
+            publishableKey = paymentConfiguration.publishableKey,
+            stripeAccountId = paymentConfiguration.stripeAccountId,
+            callback = ::onPaymentResult,
+        )
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // …
+        startCheckout()
+    }
+
+    private fun startCheckout() {
+        // Create a SetupIntent on your backend and return the client_secret here
+        val setupIntentClientSecret = // …
+
+        val revolutPayParams = PaymentMethodCreateParams.createRevolutPay()
+
+        val confirmParams = ConfirmSetupIntentParams.create(
+            paymentMethodCreateParams = revolutPayParams,
+            clientSecret = setupIntentClientSecret,
+            // Add a mandate ID or MandateDataParams…
+        )
+
+        paymentLauncher.confirm(confirmParams)
+    }
+
+    private fun onPaymentResult(paymentResult: PaymentResult) {
+        // Handle the setup result…
+    }
+}
+```
+
+```java
+public class CheckoutActivity extends AppCompatActivity {
+
+    // ...
+    private PaymentLauncher paymentLauncher;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        // ...
+        final PaymentConfiguration paymentConfiguration = PaymentConfiguration.getInstance(context);
+
+        paymentLauncher = PaymentLauncher.create(
+            this,
+            paymentConfiguration.getPublishableKey(),
+            paymentConfiguration.getStripeAccountId(),
+            this::onPaymentResult
+        );
+
+        createSetupIntent();
+    }
+
+    private void createSetupIntent() {
+        // Create a SetupIntent on your backend and return the client_secret here.
+        String setupIntentClientSecret = // …
+
+        PaymentMethodCreateParams revolutPayParams = PaymentMethodCreateParams.creatRevolutPay();
+
+        ConfirmSetupIntentParams createParams = ConfirmSetupIntentParams.create(
+            revolutPayParams,
+            setupIntentClientSecret
+            // Add a mandate ID or MandateDataParams…
+        );
+
+        paymentLauncher.confirm(confirmParams);
+    }
+
+    // ...
+
+    private void onPaymentResult(PaymentResult paymentResult) {
+        // Handle the payment result…
+    }
+}
+```
+
+--------------------------------
+
+### Retrieve Stripe Setup Intent to Get Payment Method ID (Server-side)
+
+Source: https://docs.stripe.com/payments/ideal/set-up-payment
+
+These server-side examples show how to retrieve a Stripe Setup Intent to find the ID of a SEPA Direct Debit payment method. It demonstrates using 'curl' and 'stripe cli' commands to fetch the Setup Intent and expand the 'latest_attempt' field to access 'generated_sepa_debit' details. This is useful for charging customers again with the stored payment method.
+
+```curl
+curl -G https://api.stripe.com/v1/setup_intents/{{SETUP_INTENT_ID}} \
+  -u "<<YOUR_SECRET_KEY>>:" \
+  -d "expand[]"=latest_attempt
+```
+
+```cli
+stripe setup_intents retrieve {{SETUP_INTENT_ID}} \
+  -d "expand[0]"=latest_attempt
+```
+
+--------------------------------
+
+### Create Stripe SetupIntent with Automatic Payment Methods (Go, .NET)
+
+Source: https://docs.stripe.com/payments/finalize-payments-on-the-server-legacy
+
+These code examples demonstrate how to create a Stripe SetupIntent on the server-side, enabling the collection and setup of payment methods for future use. The examples show how to configure automatic payment methods, handle customer acceptance for mandates, and confirm the intent. Dependencies include the Stripe Go library and Stripe .NET library. It takes a payment method ID and returns the client secret for the SetupIntent.
+
+```go
+package main
+
+import (
+  "encoding/json"
+  "net/http"
+
+  "github.com/stripe/stripe-go/v76.0.0"
+  "github.com/stripe/stripe-go/v76.0.0/setupintent"
+)
+
+type CheckoutData struct {
+  ClientSecret string `json:"client_secret"`
+}
+
+func main() {
+  stripe.Key = "<<YOUR_SECRET_KEY>>"
+
+  http.HandleFunc("/create-intent", func(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+      PaymentMethodID string `json:"payment_method_id"`
+      ShouldSavePaymentMethod bool `json:"should_save_payment_method"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      // log.Printf("json.NewDecoder.Decode: %v", err) // log not defined
+      return
+    }
+    params := &stripe.SetupIntentParams{
+      Customer: stripe.String("c.ID"), // Placeholder for Customer ID
+      // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+      AutomaticPaymentMethods: &stripe.SetupIntentAutomaticPaymentMethodsParams{
+        Enabled: stripe.Bool(true),
+      },
+      Confirm: stripe.Bool(true),
+      PaymentMethod: stripe.String(req.PaymentMethodID), // the PaymentMethod ID sent by your client
+      ReturnURL: stripe.String(string("your-app://stripe-redirect")),
+      MandateData: &stripe.SetupIntentMandateDataParams{
+        CustomerAcceptance: &stripe.SetupIntentMandateDataCustomerAcceptanceParams{
+          Type: stripe.String("online"),
+          Online: &stripe.SetupIntentMandateDataCustomerAcceptanceOnlineParams{
+            IPAddress: stripe.String("/* your client's IP address */"),
+            UserAgent: stripe.String(r.UserAgent()),
+          },
+        },
+      },
+    }
+    intent, err := setupintent.New(params);
+    if err == nil {
+      w.Header().Set("Content-Type", "application/json")
+      w.WriteHeader(http.StatusOK)
+      data := CheckoutData{
+        ClientSecret: intent.ClientSecret,
+      }
+      json.NewEncoder(w).Encode(data)
+    } else {
+      if stripeErr, ok := err.(*stripe.Error); ok {
+        switch stripeErr.Type {
+          case stripe.ErrorTypeCard:
+            http.Error(w, stripeErr.Msg, http.StatusInternalServerError)
+          default:
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+        }
+      } else {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+      }
+    }
+  })
+
+  http.ListenAndServe(":4242", nil)
+}
+```
+
+```csharp
+using System;
+using Microsoft.AspNetCore.Mvc;
+using Stripe;
+using Newtonsoft.Json; // Assuming Newtonsoft.Json for JsonProperty
+
+namespace StripeExampleApi.Controllers
+{
+  [Route("create-intent")]
+  [ApiController]
+  public class CheckoutApiController : Controller
+  {
+    public CheckoutApiController()
+    {
+      StripeConfiguration.ApiKey = "<<YOUR_SECRET_KEY>>";
+    }
+
+    [HttpPost]
+    public ActionResult Post([FromBody]IntentCreateRequest request)
+    {
+      var options = new SetupIntentCreateOptions()
+      {
+        Customer = "customer.Id", // Placeholder for Customer ID
+        // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+        AutomaticPaymentMethods = new SetupIntentAutomaticPaymentMethodsOptions
+        {
+          Enabled = true,
+        },
+        Confirm = true,
+        PaymentMethod = request.PaymentMethodId,
+        ReturnUrl = "your-app://stripe-redirect",
+        MandateData = new SetupIntentMandateDataOptions // Corrected from PaymentIntentMandateDataOptions
+        {
+          CustomerAcceptance = new SetupIntentMandateDataCustomerAcceptanceOptions // Corrected from PaymentIntentMandateDataCustomerAcceptanceOptions
+          {
+            Type = "online",
+            Online = new SetupIntentMandateDataCustomerAcceptanceOnlineOptions // Corrected from PaymentIntentMandateDataCustomerAcceptanceOnlineOptions
+            {
+              IpAddress = "/* The client's IP address*/",
+              UserAgent = Request.Headers["User-Agent"].ToString()
+            }
+          },
+        },
+      };
+      var service = new SetupIntentService();
+      try
+      {
+        SetupIntent intent = service.Create(options);
+        return Json(new { client_secret = intent.ClientSecret });
+      }
+      catch (StripeException e)
+      {
+        this.HttpContext.Response.StatusCode = 400;
+        switch (e.StripeError.Type)
+        {
+          case "card_error":
+            return Json(new { error = e.Message });
+          default:
+            return Json(new { error = e.Message });
+        }
+      }
+    }
+
+    public class IntentCreateRequest
+    {
+      [JsonProperty("payment_method_id")]
+      public string PaymentMethodId { get; set; }
+      [JsonProperty("should_save_payment_method")]
+      public bool ShouldSavePaymentMethod { get; set; }
+    }
+  }
+}
+```
+
+--------------------------------
+
+### Initialize Go Modules and install Stripe Go library
+
+Source: https://docs.stripe.com/payments/accept-a-payment
+
+These commands initialize Go Modules for your project and then install the Stripe Go library. 'go mod init' sets up module management, and 'go get' fetches the specified version of the 'stripe-go' package, adding it to your 'go.mod' file.
+
+```bash
+go mod init
+# Install stripe-go
+go get -u github.com/stripe/stripe-go/v83
+```
+
+--------------------------------
+
+### Configure Stripe SDK Publishable Key on App Start
+
+Source: https://docs.stripe.com/payments/eps/accept-a-payment
+
+These examples demonstrate how to configure the Stripe SDK with your publishable key when the application launches. This setup is crucial for enabling your app to make secure requests to the Stripe API and should be performed once during app initialization.
+
+```swift
+import UIKit
+import StripePaymentsUI
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate {
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {StripeAPI.defaultPublishableKey = "<<YOUR_PUBLISHABLE_KEY>>"
+        // do any other necessary launch configuration
+        return true
+    }
+}
+```
+
+```objc
+#import "AppDelegate.h"
+@import StripeCore;
+
+@implementation AppDelegate
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {[StripeAPI setDefaultPublishableKey:@"<<YOUR_PUBLISHABLE_KEY>>"];
+    // do any other necessary launch configuration
+    return YES;
+}
+@end
+```
+
+--------------------------------
+
+### Create Stripe Checkout Session in Setup Mode for Payment Method Collection
+
+Source: https://docs.stripe.com/payments/checkout/migration
+
+These examples demonstrate how to programmatically create a Stripe Checkout Session configured for 'setup' mode across various programming languages. This session type is specifically designed to collect and save a customer's payment method details for future use, rather than processing an immediate payment. The customer will be redirected to a Stripe-hosted page to complete the setup process, and upon success, will be redirected back to the `success_url`.
+
+```python
+session = client.v1.checkout.sessions.create({
+  "mode": "setup",
+  "currency": "usd",
+  "success_url": "https://example.com/success?session_id={CHECKOUT_SESSION_ID}",
+})
+```
+
+```php
+$stripe = new \Stripe\StripeClient('<<YOUR_SECRET_KEY>>');
+
+$session = $stripe->checkout->sessions->create([
+  'mode' => 'setup',
+  'currency' => 'usd',
+  'success_url' => 'https://example.com/success?session_id={CHECKOUT_SESSION_ID}',
+]);
+```
+
+```java
+StripeClient client = new StripeClient("<<YOUR_SECRET_KEY>>");
+
+SessionCreateParams params =
+  SessionCreateParams.builder()
+    .setMode(SessionCreateParams.Mode.SETUP)
+    .setCurrency("usd")
+    .setSuccessUrl("https://example.com/success?session_id={CHECKOUT_SESSION_ID}")
+    .build();
+
+// For SDK versions 29.4.0 or lower, remove '.v1()' from the following line.
+Session session = client.v1().checkout().sessions().create(params);
+```
+
+```node
+const stripe = require('stripe')('<<YOUR_SECRET_KEY>>');
+
+const session = await stripe.checkout.sessions.create({
+  mode: 'setup',
+  currency: 'usd',
+  success_url: 'https://example.com/success?session_id={CHECKOUT_SESSION_ID}',
+});
+```
+
+```go
+sc := stripe.NewClient("<<YOUR_SECRET_KEY>>")
+params := &stripe.CheckoutSessionCreateParams{
+  Mode: stripe.String(stripe.CheckoutSessionModeSetup),
+  Currency: stripe.String(stripe.CurrencyUSD),
+  SuccessURL: stripe.String("https://example.com/success?session_id={CHECKOUT_SESSION_ID}"),
+}
+result, err := sc.V1CheckoutSessions.Create(context.TODO(), params)
+```
+
+```dotnet
+var options = new Stripe.Checkout.SessionCreateOptions
+{
+    Mode = "setup",
+    Currency = "usd",
+    SuccessUrl = "https://example.com/success?session_id={CHECKOUT_SESSION_ID}",
+};
+var client = new StripeClient("<<YOUR_SECRET_KEY>>");
+var service = client.V1.Checkout.Sessions;
+Stripe.Checkout.Session session = service.Create(options);
+```
+
+--------------------------------
+
+### Create a Product using Stripe CLI
+
+Source: https://docs.stripe.com/development/quickstart
+
+Uses the Stripe CLI to create a new product with a specified name and description. The 'id' from the response is crucial for subsequent API calls, such as creating prices.
+
+```Command Line
+stripe products create \
+--name="My First Product" \
+--description="Created with the Stripe CLI"
+```
+
+--------------------------------
+
+### Create Stripe SetupIntent and Get Client Secret (Multi-language)
+
+Source: https://docs.stripe.com/billing/subscriptions/au-becs-debit
+
+This code demonstrates how to create a Stripe SetupIntent on the server-side to initiate the setup of payment methods. It provides examples in PHP, Java, Node.js, Go, and .NET, all of which retrieve a `client_secret` that is subsequently passed to the client-side application for payment method collection. The examples are configured to use the `au_becs_debit` payment method type.
+
+```php
+require_once('vendor/autoload.php');
+
+$setup_intent = \Stripe\SetupIntent::create([
+  'payment_method_types' => ['au_becs_debit'],
+]);
+$client_secret = $setup_intent->client_secret
+// Pass the client secret to the client
+```
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+import com.stripe.Stripe;
+import com.stripe.model.SetupIntent;
+
+public class StripeJavaQuickStart {
+  public static void main(String[] args) {
+    // Set your secret key. Remember to switch to your live secret key in production.
+    // See your keys here: https://dashboard.stripe.com/apikeys
+    Stripe.apiKey = "<<YOUR_SECRET_KEY>>";
+
+    Map<String, Object> setupIntentParams = new HashMap<String, Object>();
+    ArrayList paymentMethodTypes = new ArrayList();
+    setupIntentParams.put("payment_method_types", Arrays.asList("au_becs_debit"));
+    SetupIntent setupIntent = SetupIntent.create(setupIntentParams);
+    String clientSecret = setupIntent.getClientSecret();
+    // Pass the client secret to the client
+  }
+}
+```
+
+```javascript
+// Using Express
+const express = require('express');
+const app = express();
+app.use(express.json());
+const { resolve } = require("path");
+
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+const stripe = require('stripe')('<<YOUR_SECRET_KEY>>');
+
+const setupIntent = await stripe.setupIntents.create({
+  payment_method_types: ['au_becs_debit'],
+});
+const clientSecret = setupIntent.client_secret;
+// Pass the client secret to the client
+```
+
+```go
+package main
+
+import (
+  "encoding/json"
+  "log"
+  "net/http"
+
+  "github.com/stripe/stripe-go/v76.0.0"
+  "github.com/stripe/stripe-go/v76.0.0/setupintent"
+)
+
+func main() {
+  // Set your secret key. Remember to switch to your live secret key in production!
+  // See your keys here: https://dashboard.stripe.com/apikeys
+  stripe.Key = "<<YOUR_SECRET_KEY>>"
+
+  setupIntentParams := &stripe.SetupIntentParams{
+    PaymentMethodTypes: stripe.StringSlice([]string{
+      "au_becs_debit",
+    }),
+  }
+  setupIntent, err := setupintent.New(setupIntentParams)
+  clientSecret := setupIntent.ClientSecret
+  // Pass the client secret to the client
+}
+```
+
+```csharp
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+StripeConfiguration.ApiKey = "<<YOUR_SECRET_KEY>>";
+
+using System;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Mvc;
+using Stripe;
+
+namespace StripeExampleApi.Controllers
+{
+    [Route("/wallet")]
+    public class WalletController : Controller
+    {
+        public IActionResult Index()
+        {
+            var service = new SetupIntentService();
+            var options = new SetupIntentCreateOptions
+            {
+              PaymentMethodTypes = new List<string>
+              {
+                "au_becs_debit",
+              },
+            };
+            SetupIntent intent = service.Create(options);
+
+            var clientSecret = setupIntent.ClientSecret;
+            // Pass the client secret to the client
+        }
+    }
+}
+```
+
+--------------------------------
+
+### GET /v1/setup_intents
+
+Source: https://docs.stripe.com/api/customers/create_api-version=2025-04-30
+
+Lists all SetupIntents.
+
+```APIDOC
+## GET /v1/setup_intents
+
+### Description
+Returns a list of all SetupIntents. The objects are returned in reverse chronological order by creation date.
+
+### Method
+GET
+
+### Endpoint
+/v1/setup_intents
+
+### Parameters
+#### Path Parameters
+- None provided in the input text.
+
+#### Query Parameters
+- None provided in the input text.
+
+#### Request Body
+- None provided in the input text.
+
+### Request Example
+{}
+
+### Response
+#### Success Response (200)
+- None provided in the input text.
+
+#### Response Example
+{}
+```
+
+--------------------------------
+
+### Install Stripe Go Library via go get
+
+Source: https://docs.stripe.com/connect/connect-embedded-components/quickstart
+
+This snippet demonstrates how to install the Stripe Go library using the 'go get' command. This command fetches and installs the specified module, integrating it into your Go project. Ensure Go Modules are initialized in your project before running this command.
+
+```bash
+go get -u github.com/stripe/stripe-go/v82@v82.4.0
+```
+
+--------------------------------
+
+### Initialize Stripe Ruby SDK
+
+Source: https://docs.stripe.com/sdks/server-side
+
+Example of initializing the Stripe Ruby SDK by requiring the library and setting the API key for authentication.
+
+```ruby
+require 'stripe'
+Stripe.api_key = '<<YOUR_SECRET_KEY>>'
+```
+
+--------------------------------
+
+### GET /v1/setup_intents
+
+Source: https://docs.stripe.com/api/treasury/received_debits/object_api-version=2024-09-30
+
+A SetupIntent guides you through the process of setting up and saving a customer’s payment credentials for future payments. For example, you can use a SetupIntent to set up and save your customer’s card without immediately collecting a payment. Later, you can use PaymentIntents to drive the payment flow.
+
+```APIDOC
+## GET /v1/setup_intents
+
+### Description
+A SetupIntent guides you through the process of setting up and saving a customer’s payment credentials for future payments. For example, you can use a SetupIntent to set up and save your customer’s card without immediately collecting a payment. Later, you can use PaymentIntents to drive the payment flow.
+
+### Method
+GET
+
+### Endpoint
+/v1/setup_intents
+
+### Parameters
+#### Path Parameters
+- No specific path parameters detailed in the provided text.
+
+#### Query Parameters
+- No specific query parameters detailed in the provided text.
+
+#### Request Body
+- No specific request body fields detailed in the provided text.
+
+### Request Example
+{}
+
+### Response
+#### Success Response (200)
+- Response details not provided in the input text.
+
+#### Response Example
+{
+  "example": "response body details not provided"
+}
+```
+
+--------------------------------
+
+### Create Stripe SetupIntent (Go, .NET)
+
+Source: https://docs.stripe.com/payments/mobile/finalize-payments-on-the-server
+
+These examples show server-side implementation for creating a Stripe SetupIntent. They handle incoming payment method IDs, configure automatic payment methods, mandate data for customer acceptance, and return the client secret upon success. Error handling for Stripe-specific exceptions is also included.
+
+```go
+package main
+
+import (
+  "encoding/json"
+  "net/http"
+
+  "github.com/stripe/stripe-go/v76.0.0"
+  "github.com/stripe/stripe-go/v76.0.0/setupintent"
+)
+
+type CheckoutData struct {
+  ClientSecret string `json:"client_secret"`
+}
+
+func main() {
+  stripe.Key = "<<YOUR_SECRET_KEY>>"
+
+  http.HandleFunc("/create-intent", func(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+      PaymentMethodID string `json:"payment_method_id"`
+      ShouldSavePaymentMethod bool `json:"should_save_payment_method"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      log.Printf("json.NewDecoder.Decode: %v", err)
+      return
+    }
+    params := &stripe.SetupIntentParams{
+      Customer: stripe.String(c.ID), // The Customer ID you previously created
+      // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+      AutomaticPaymentMethods: &stripe.SetupIntentAutomaticPaymentMethodsParams{
+        Enabled: stripe.Bool(true),
+      },
+      Confirm: stripe.Bool(true),
+      PaymentMethod: stripe.String(req.PaymentMethodID), // the PaymentMethod ID sent by your client
+      ReturnURL: stripe.String(string("your-app://stripe-redirect")), // Use the return url you set up in the previous step
+      MandateData: &stripe.SetupIntentMandateDataParams{
+        CustomerAcceptance: &stripe.SetupIntentMandateDataCustomerAcceptanceParams{
+          Type: stripe.String("online"),
+          Online: &stripe.SetupIntentMandateDataCustomerAcceptanceOnlineParams{
+            IPAddress: stripe.String(/* your client's IP address */),
+            UserAgent: stripe.String(r.UserAgent()),
+          },
+        },
+      },
+    }
+    intent, err := setupintent.New(params);
+    if err == nil {
+      w.Header().Set("Content-Type", "application/json")
+      w.WriteHeader(http.StatusOK)
+      data := CheckoutData{
+        ClientSecret: intent.ClientSecret,
+      }
+      json.NewEncoder(w).Encode(data)
+    } else {
+      if stripeErr, ok := err.(*stripe.Error); ok {
+        switch stripeErr.Type {
+          case stripe.ErrorTypeCard:
+            http.Error(w, stripeErr.Msg, http.StatusInternalServerError)
+          default:
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+        }
+      } else {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+      }
+    }
+  })
+
+  http.ListenAndServe(":4242", nil)
+}
+```
+
+```csharp
+using System;
+using Microsoft.AspNetCore.Mvc;
+using Stripe;
+
+namespace StripeExampleApi.Controllers
+{
+  [Route("create-intent")]
+  [ApiController]
+  public class CheckoutApiController : Controller
+  {
+    public CheckoutApiController()
+    {
+      StripeConfiguration.ApiKey = "<<YOUR_SECRET_KEY>>";
+    }
+
+    [HttpPost]
+    public ActionResult Post(IntentCreateRequest request)
+    {
+      var options = new SetupIntentCreateOptions()
+      {
+        Customer = customer.Id, // The Customer ID you previously created
+        // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+        AutomaticPaymentMethods = new SetupIntentAutomaticPaymentMethodsOptions
+        {
+          Enabled = true,
+        },
+        Confirm = true,
+        PaymentMethod = request.PaymentMethodId, // the PaymentMethod ID sent by your client
+        ReturnUrl = "your-app://stripe-redirect", // Use the return url you set up in the previous step
+        MandateData = new PaymentIntentMandateDataOptions
+        {
+          CustomerAcceptance = new PaymentIntentMandateDataCustomerAcceptanceOptions
+          {
+            Type = "online",
+            Online = new PaymentIntentMandateDataCustomerAcceptanceOnlineOptions
+            {
+              IpAddress = ... /* The client's IP address*/,
+              UserAgent = Request.Headers["User-Agent"].ToString()
+            }
+          },
+        },
+      };
+      var service = new SetupIntentService();
+      try
+      {
+        SetupIntent intent = service.Create(options);
+        return Json(new { client_secret = intent.ClientSecret });
+      }
+      catch (StripeException e)
+      {
+        this.HttpContext.Response.StatusCode = 400;
+        switch (e.StripeError.Type)
+        {
+          case "card_error":
+            return Json(new { error = e.Message }); // For card errors, the message can be shown to your users
+          default:
+            return Json(new { error = e.Message }); // Other errors may not be localized
+        }
+      }
+    }
+
+    public class IntentCreateRequest
+    {
+      [JsonProperty("payment_method_id")]
+      public string PaymentMethodId { get; set; }
+      [JsonProperty("should_save_payment_method")]
+      public bool ShouldSavePaymentMethod { get; set; }
+    }
+  }
+}
+```
+
+--------------------------------
+
+### GET /callback/stripe (Failed Installation)
+
+Source: https://docs.stripe.com/stripe-apps/install-links
+
+Details the parameters received by your application's callback URL when a user cancels or declines the Stripe app installation.
+
+```APIDOC
+## GET /callback/stripe (Failed Installation)
+
+### Description
+This endpoint describes the parameters your application's backend receives via a GET request when a user cancels the Stripe app installation or access is denied.
+
+### Method
+GET
+
+### Endpoint
+/callback/stripe
+
+### Parameters
+#### Query Parameters
+- **error** (string) - Required - An error code indicating the reason for failure (e.g., `access_denied`).
+- **error_description** (string) - Required - A human-readable description of the error (e.g., "The user denied your request").
+
+### Request Example
+```url
+https://example.com/callback/stripe?error=access_denied&error_description=The%20user%20denied%20your%20request
+```
+
+### Response
+#### Error Response (200 - redirect contains error)
+Your application should process these parameters to inform the user about the cancellation or denied access, typically by displaying an error message or redirecting to a relevant page.
+
+#### Response Example
+```json
+{
+  "success": false,
+  "error": "access_denied",
+  "message": "The user denied your request."
+}
+```
+```
+
+--------------------------------
+
+### Check RubyGems Installation and Version
+
+Source: https://docs.stripe.com/development/quickstart
+
+Executes a command to verify if RubyGems is installed and to display its current version. If RubyGems is not found, it advises downloading it from the official downloads page.
+
+```Command Line
+gem --version
+```
+
+--------------------------------
+
+### Create Stripe Product and Price with Go SDK
+
+Source: https://docs.stripe.com/get-started/development-environment
+
+This Go program initializes the Stripe SDK with a test key and demonstrates how to create a new subscription product and an associated recurring price. It captures the product ID from the creation response to link it to the price. The output includes the IDs of the newly created product and price resources.
+
+```go
+package main
+
+import (
+  "fmt"
+  "github.com/stripe/stripe-go/v83"
+  "github.com/stripe/stripe-go/v83/product"
+  "github.com/stripe/stripe-go/v83/price"
+)
+
+func main() {
+  stripe.Key = "<<YOUR_SECRET_KEY>>"
+
+	product_params := &stripe.ProductParams{
+		Name:        stripe.String("Starter Subscription"),
+		Description: stripe.String("$12/Month subscription"),
+	}
+	starter_product, _ := product.New(product_params)
+
+	price_params := &stripe.PriceParams{
+		Currency: stripe.String(string(stripe.CurrencyUSD)),
+		Product:  stripe.String(starter_product.ID),
+		Recurring: &stripe.PriceRecurringParams{
+			Interval: stripe.String(string(stripe.PriceRecurringIntervalMonth)),
+		},
+		UnitAmount: stripe.Int64(1200),
+	}
+	starter_price, _ := price.New(price_params)
+
+	fmt.Println("Success! Here is your starter subscription product id: " + starter_product.ID)
+	fmt.Println("Success! Here is your starter subscription price id: " + starter_price.ID)
+}
+```
+
+--------------------------------
+
+### Next.js Development Setup with Stripe Webhooks
+
+Source: https://docs.stripe.com/checkout/embedded/quickstart
+
+Comprehensive commands for setting up a Next.js development environment with Stripe webhook integration. It involves installing dependencies, forwarding Stripe webhooks locally via the Stripe CLI, and starting the development server with the webhook secret injected.
+
+```bash
+npm install
+```
+
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks
+```
+
+```bash
+STRIPE_WEBHOOK_SECRET=$(stripe listen --print-secret) npm run dev
+```
+
+--------------------------------
+
+### Install Stripe Connect SDK for Android
+
+Source: https://docs.stripe.com/connect/get-started-connect-embedded-components_platform=android
+
+To integrate Stripe Connect embedded components into an Android application, add the `com.stripe:connect` dependency to the `dependencies` block of your `app/build.gradle.kts` file. This dependency provides access to the necessary SDK classes and functionalities for embedded components.
+
+```Kotlin
+plugins {
+    id("com.android.application")
+}
+
+android { ... }
+
+dependencies {
+  // ...
+
+  // Connect Android SDK
+  implementation("com.stripe:connect:22.0.0")
+}
+```
