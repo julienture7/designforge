@@ -274,11 +274,11 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
           temperature: 1.0, // Keep at 1.0 for Gemini 3 Pro per docs
           providerOptions: {
             google: {
-              // Use medium thinking for refinement passes to reduce timeout risk
+              // Use low thinking for refinement passes to reduce timeout risk
               // Initial generation uses high thinking, but refinements are just polishing
-              // so medium thinking is sufficient and much faster
+              // so low thinking is sufficient and much faster
               thinkingConfig: {
-                thinkingLevel: "medium", // Medium thinking for all refinement passes
+                thinkingLevel: "low", // Low thinking for all refinement passes
               },
             },
           },
