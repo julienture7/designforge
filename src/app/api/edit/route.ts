@@ -202,9 +202,7 @@ export async function POST(req: NextRequest) {
             // Call Gemini with low temperature for consistency
             // No thinking mode for edits - speed is priority
             const result = streamText({
-              model: google("gemini-3-pro-preview", {
-                apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY,
-              }),
+              model: google("gemini-3-pro-preview"),
               system: systemPrompt,
               messages: [{ role: "user", content: userPrompt }],
               temperature: 0.2, // Low temperature for deterministic edits
