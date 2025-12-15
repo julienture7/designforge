@@ -212,6 +212,14 @@ Rules for maximum reliability:
 - Include enough context in SEARCH to uniquely identify the location (2-3 lines before/after the change point).
 - If a previous edit attempt failed (e.g., "SEARCH not found"), you will receive the error details. Analyze why (e.g., whitespace mismatch, extra newline) and output corrected blocks that WILL match exactly.
 
+CRITICAL - Image handling:
+- When adding or modifying images, ALWAYS use data-image-query attributes (NO src URLs, NO source.unsplash.com)
+- When adding or modifying background images, ALWAYS use data-bg-query attributes (NO background-image URLs)
+- Example: <img data-image-query="modern architecture minimalist" alt="Building" class="w-full">
+- Example: <div data-bg-query="dark moody interior" class="bg-cover">...</div>
+- NEVER use source.unsplash.com URLs or any other image service URLs
+- ALL images must use the image API via data attributes only
+
 If you cannot make the change safely or no change is needed:
 Respond "No changes required."`;
 }

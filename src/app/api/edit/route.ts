@@ -206,7 +206,17 @@ CRITICAL REQUIREMENTS:
 - Add smooth animations and transitions
 - Ensure mobile responsiveness
 - Use Lucide icons (via CDN: https://unpkg.com/lucide@latest)
-- Include placeholder images with data-image-query attributes for Unsplash integration
+
+- Images (MANDATORY - ALL images must use image API):
+  - EVERY img tag MUST have a data-image-query attribute (NO src URLs, NO source.unsplash.com)
+  - EVERY background div MUST have a data-bg-query attribute (NO background-image URLs)
+  - Include AT LEAST 10-15 images across the page
+  - Use SPECIFIC, MOOD-BASED keywords: cinematic, editorial, brutalist, neon, minimal, luxury, dark, moody
+  - Example: <img data-image-query="modern architecture minimalist" alt="Building" class="w-full">
+  - Example: <div data-bg-query="dark moody interior lighting" class="bg-cover">...</div>
+  - NEVER use source.unsplash.com URLs or any other image service URLs
+  - ALL images are processed via the image API using data attributes only
+
 - Make the design modern, polished, and visually appealing`;
       
       userPrompt = `Generate a complete HTML page for: ${editInstruction}`;

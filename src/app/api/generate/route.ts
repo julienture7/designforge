@@ -73,25 +73,21 @@ Do not wait for a sitemap. You must infer the Business Model.
 - Icons: Lucide icons via CDN: <i data-lucide="icon-name"></i>. Include the Lucide script in head.
 
 - Images (CRITICAL - ALWAYS INCLUDE IMAGES):
-  You MUST include images for EVERY visual element. Use BOTH methods below for maximum reliability:
+  You MUST include images for EVERY visual element. ALL images MUST use the image API via data attributes:
   
-  METHOD 1 (PREFERRED): Use data-image-query attributes for automatic image injection
+  REQUIRED METHOD - Use data-image-query and data-bg-query attributes for ALL images:
   <img data-image-query="modern architecture minimalist" alt="Modern building" class="w-full h-full object-cover">
   <div data-bg-query="dark moody interior lighting" class="bg-cover bg-center">...</div>
   
-  METHOD 2 (FALLBACK): Use Unsplash Source URLs
-  <img src="https://source.unsplash.com/1920x1080/?modern,architecture,minimal" alt="Modern building" class="w-full h-full object-cover">
-  <div style="background-image: url('https://source.unsplash.com/1920x1080/?dark,moody,interior')" class="bg-cover bg-center">...</div>
-  
-  CRITICAL RULES:
-  - EVERY img tag MUST have either a data-image-query attribute OR a src with source.unsplash.com URL
-  - EVERY background div MUST have either a data-bg-query attribute OR a background-image style
+  CRITICAL RULES (STRICTLY ENFORCED):
+  - EVERY img tag MUST have a data-image-query attribute (NO src attribute with URLs, NO source.unsplash.com URLs)
+  - EVERY background div MUST have a data-bg-query attribute (NO background-image style with URLs)
   - Include AT LEAST 10-15 images across the page (hero, sections, cards, testimonials, footer, backgrounds)
   - Use SPECIFIC, MOOD-BASED keywords: cinematic, editorial, brutalist, neon, minimal, luxury, dark, moody, grain, fog, macro, texture
-  - VARY the dimensions based on usage (1920x1080 for heroes, 800x600 for cards, 400x400 for squares)
-  - ALWAYS include descriptive alt text that can be used as a fallback query
-  - NEVER use placeholder.com, picsum, or any other image service. ONLY Unsplash.
-  - NEVER leave images without src or data-image-query - this will cause missing images
+  - ALWAYS include descriptive alt text that matches the query
+  - NEVER use source.unsplash.com URLs, placeholder.com, picsum, or any other image service
+  - NEVER use src attributes with URLs or background-image styles with URLs
+  - ALL images are processed server-side via the image API - just use data-image-query or data-bg-query attributes
 
 - JavaScript: You MUST write embedded Vanilla JS (inside <script> tags) to handle:
   - Scroll Animations: Elements must fade up, slide, or reveal using IntersectionObserver.
@@ -248,6 +244,9 @@ REFINEMENT PROCESS:
 - Analyze the current HTML for areas of improvement
 - Make targeted enhancements without changing the core design concept
 - Preserve all data-image-query and data-bg-query attributes
+- If you find any images with src URLs (especially source.unsplash.com), replace them with data-image-query attributes
+- If you find any background-image styles with URLs, replace them with data-bg-query attributes
+- ALL images MUST use data-image-query or data-bg-query attributes (NO URLs in src or background-image)
 - Ensure all Lucide icons are properly referenced
 - Verify scroll animations are smooth and performant
 - Check that the design maintains its aesthetic DNA while improving execution
