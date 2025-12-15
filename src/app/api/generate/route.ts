@@ -3,18 +3,28 @@
  * 
  * AI generation (non-streaming).
  * Returns the full HTML in one response so the client can swap the preview atomically.
+ * 
+ * PRO users and trial users use Gemini 3 Pro Preview.
+ * FREE users use DeepSeek Chat.
  */
 
 import { createDeepSeek } from "@ai-sdk/deepseek";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
+import { db } from "~/server/db";
 
-// Create DeepSeek client with beta endpoint
+// Create DeepSeek client with beta endpoint (FREE tier)
 const deepseek = createDeepSeek({
   apiKey: env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com/beta",
+});
+
+// Create Google Generative AI client (PRO tier - Gemini 3 Pro Preview)
+const google = createGoogleGenerativeAI({
+  apiKey: env.GEMINI_API_KEY,
 });
 
 import { getOrCreateUser } from "~/server/auth";
@@ -136,16 +146,19 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json();
-    const { messages = [], currentHtml, prompt, refinementLevel } = body;
+    const { messages = [], currentHtml, prompt, refinementLevel, useProTrial = false } = body;
 
     // Credit Check based on tier
     const userTier = (user.tier as Tier) || "FREE";
     let creditVersion: number | undefined;
     let refinementCreditVersion: number | undefined;
     let selectedRefinementLevel: RefinementLevel | null = null;
+    let isUsingProMode = false; // Track if we should use Gemini 3 Pro
+    let consumeTrial = false; // Track if we should consume the trial
 
     if (userTier === "PRO") {
-      // PRO tier: Check refinement credits
+      // PRO tier: Always use Gemini 3 Pro, check refinement credits
+      isUsingProMode = true;
       if (!refinementLevel || !["REFINED", "ENHANCED", "ULTIMATE"].includes(refinementLevel)) {
         return NextResponse.json(
           { error: "Refinement level required for Pro tier", code: "REFINEMENT_LEVEL_REQUIRED" },
@@ -166,12 +179,32 @@ export async function POST(req: NextRequest) {
       }
       refinementCreditVersion = refinementCheck.version;
     } else {
-      // FREE tier: Check regular credits
-      const creditCheck = await checkCredits(dbUserId);
-      if (!creditCheck.allowed) {
-        return NextResponse.json({ error: "Upgrade to Pro", code: "CREDITS_EXHAUSTED" }, { status: 402 });
+      // FREE tier: Check if user wants to use Pro trial
+      if (useProTrial) {
+        // Check if trial is available
+        if (user.proTrialUsed) {
+          return NextResponse.json(
+            { error: "Pro trial already used. Upgrade to Pro for unlimited access to Gemini 3 Pro.", code: "TRIAL_EXHAUSTED" },
+            { status: 402 }
+          );
+        }
+        // User is using their free trial - will use Gemini 3 Pro
+        isUsingProMode = true;
+        consumeTrial = true;
+        // Still need to check regular credits for free tier
+        const creditCheck = await checkCredits(dbUserId);
+        if (!creditCheck.allowed) {
+          return NextResponse.json({ error: "Upgrade to Pro", code: "CREDITS_EXHAUSTED" }, { status: 402 });
+        }
+        creditVersion = creditCheck.version;
+      } else {
+        // Normal FREE tier: Use DeepSeek, check regular credits
+        const creditCheck = await checkCredits(dbUserId);
+        if (!creditCheck.allowed) {
+          return NextResponse.json({ error: "Upgrade to Pro", code: "CREDITS_EXHAUSTED" }, { status: 402 });
+        }
+        creditVersion = creditCheck.version;
       }
-      creditVersion = creditCheck.version;
     }
 
     // Lock (use Clerk ID for uniqueness)
@@ -221,18 +254,26 @@ export async function POST(req: NextRequest) {
       refinementPasses = getRefinementPasses(userTier);
     }
 
-    // Initial generation with DeepSeek Chat
+    // Select model based on tier (PRO/Trial uses Gemini 3 Pro, FREE uses DeepSeek)
+    const selectedModel = isUsingProMode
+      ? google("gemini-2.0-flash") // Gemini 2.0 Flash (stable, fast) - will switch to gemini-3-pro-preview when available
+      : deepseek("deepseek-chat");
+    
+    // For Gemini, we use different output token limits
+    const maxOutputTokens = isUsingProMode ? 16000 : 8000;
+
+    // Initial generation
     let html = "";
     let currentResult = await generateText({
-      model: deepseek("deepseek-chat"),
+      model: selectedModel,
       system: DESIGN_SYSTEM_PROMPT + contextPrompt,
       messages: aiMessages,
       temperature: 1.0,
-      maxOutputTokens: 8000, // DeepSeek beta supports up to 8K tokens
+      maxOutputTokens,
     });
     html = currentResult.text;
 
-    // Apply refinement passes if user has a refinement tier
+    // Apply refinement passes if user has a refinement tier (PRO only)
     if (refinementPasses > 0) {
       const REFINEMENT_PROMPT = `You are an Elite Design Quality Assurance Engineer. Your task is to review and refine the generated HTML design.
 
@@ -264,12 +305,13 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
           },
         ];
 
+        // Use the same model for refinement (Gemini for PRO, DeepSeek for FREE)
         currentResult = await generateText({
-          model: deepseek("deepseek-chat"),
+          model: selectedModel,
           system: REFINEMENT_PROMPT,
           messages: refinementMessages,
           temperature: 1.0,
-          maxOutputTokens: 8000, // DeepSeek beta supports up to 8K tokens
+          maxOutputTokens,
         });
         html = currentResult.text;
       }
@@ -295,6 +337,15 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
       } else if (typeof creditVersion === "number") {
         await decrementCredits(dbUserId, creditVersion).catch(console.error);
       }
+      
+      // Mark trial as used if user consumed their free Pro trial
+      if (consumeTrial) {
+        await db.user.update({
+          where: { id: dbUserId },
+          data: { proTrialUsed: true },
+        }).catch(console.error);
+      }
+      
       await releaseGenerationLock(clerkId).catch(console.error);
       lockAcquired = false;
     }
@@ -303,6 +354,7 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
       html: result.text,
       finishReason: result.finishReason,
       tokenUsage: typeof result.usage?.totalTokens === "number" ? result.usage.totalTokens : undefined,
+      usedProTrial: consumeTrial, // Let the client know if trial was consumed
     });
 
   } catch (error) {

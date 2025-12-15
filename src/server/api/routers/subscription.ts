@@ -132,6 +132,7 @@ export const subscriptionRouter = createTRPCRouter({
         subscriptionId: true,
         subscriptionStatus: true,
         stripeCustomerId: true,
+        proTrialUsed: true,
       },
     });
 
@@ -170,6 +171,8 @@ export const subscriptionRouter = createTRPCRouter({
       subscriptionId: user.subscriptionId,
       subscriptionStatus: user.subscriptionStatus,
       stripeCustomerId: user.stripeCustomerId,
+      proTrialUsed: user.proTrialUsed,
+      proTrialAvailable: !user.proTrialUsed && user.tier === "FREE",
       // Include Stripe subscription details if available
       stripeSubscription: stripeSubscriptionDetails,
     };

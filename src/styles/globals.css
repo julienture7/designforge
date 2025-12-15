@@ -1947,3 +1947,191 @@ button:disabled {
   right: 0.25rem;
   font-size: 0.625rem;
 }
+
+/* ============================================
+   PRO TRIAL SELECTOR STYLES
+   Mode toggle for free users to try Pro
+   ============================================ */
+.pro-trial-selector {
+  padding: 0.75rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  border-top: 1px solid #e2e8f0;
+}
+
+.pro-trial-toggle {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  background: #f1f5f9;
+  border-radius: 0.75rem;
+}
+
+.pro-trial-toggle-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 0.625rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pro-trial-toggle-btn:hover:not(:disabled) {
+  background: #fff;
+}
+
+.pro-trial-toggle-btn--active {
+  background: #fff !important;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.pro-trial-toggle-btn--pro.pro-trial-toggle-btn--active {
+  border-color: #a855f7;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(236, 72, 153, 0.08) 100%) !important;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.2);
+}
+
+.pro-trial-toggle-btn--used {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pro-trial-toggle-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.pro-trial-toggle-btn--pro .pro-trial-toggle-label {
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pro-trial-toggle-btn--used .pro-trial-toggle-label {
+  background: none;
+  -webkit-text-fill-color: #64748b;
+  color: #64748b;
+}
+
+.pro-trial-toggle-desc {
+  font-size: 0.625rem;
+  color: #94a3b8;
+}
+
+/* Pro Trial Info Box */
+.pro-trial-info {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.06) 0%, rgba(236, 72, 153, 0.06) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  border-radius: 0.75rem;
+}
+
+.pro-trial-info-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #7c3aed;
+}
+
+.pro-trial-info-header svg {
+  width: 1rem;
+  height: 1rem;
+  stroke: #a855f7;
+}
+
+.pro-trial-badge {
+  margin-left: auto;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  border-radius: 9999px;
+}
+
+.pro-trial-benefits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.pro-trial-benefits li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  color: #475569;
+}
+
+.pro-trial-benefits li svg {
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  stroke: #10b981;
+}
+
+.pro-trial-benefits li strong {
+  color: #1e293b;
+}
+
+.pro-trial-note {
+  margin: 0.5rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(168, 85, 247, 0.1);
+  font-size: 0.625rem;
+  color: #7c3aed;
+  text-align: center;
+}
+
+/* Pro Trial Used Notification */
+.pro-trial-used {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 0.75rem;
+}
+
+.pro-trial-used-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #059669;
+}
+
+.pro-trial-used-header svg {
+  width: 1rem;
+  height: 1rem;
+  stroke: #10b981;
+}
+
+.pro-trial-used p {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: #475569;
+}
+
+.pro-trial-upgrade-link {
+  color: #7c3aed !important;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

@@ -40,6 +40,7 @@ model User {
     refinedCredits     Int                 @default(0) // PRO tier: Refined (1 pass) generations
     enhancedCredits    Int                 @default(0) // PRO tier: Enhanced (2 passes) generations
     ultimateCredits    Int                 @default(0) // PRO tier: Ultimate (3 passes) generations
+    proTrialUsed       Boolean             @default(false) // Track if user has used their free Pro trial
     version            Int                 @default(0) // Optimistic Concurrency Control
     stripeCustomerId   String?             @unique // Stripe customer ID for webhook mapping
     subscriptionId     String?

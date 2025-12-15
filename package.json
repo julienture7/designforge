@@ -23,7 +23,7 @@
     "@ai-sdk/openai": "^2.0.0",
     "@ai-sdk/react": "^2.0.0",
     "@clerk/nextjs": "^6.36.2",
-    "@prisma/client": "^6.6.0",
+    "@prisma/client": "^5.22.0",
     "@sentry/nextjs": "^10.30.0",
     "@t3-oss/env-nextjs": "^0.12.0",
     "@tanstack/react-query": "^5.69.0",
@@ -57,7 +57,7 @@
     "fast-check": "^4.4.0",
     "jsdom": "^27.3.0",
     "postcss": "^8.5.3",
-    "prisma": "^6.6.0",
+    "prisma": "^5.22.0",
     "tailwindcss": "^4.0.15",
     "typescript": "^5.8.2",
     "vitest": "^4.0.15"
