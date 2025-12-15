@@ -16,6 +16,7 @@ export interface AppUser {
   name: string | null;
   tier: "FREE" | "PRO";
   credits: number;
+  proTrialUsed: boolean;
   version: number;
 }
 
@@ -64,6 +65,7 @@ export async function getOrCreateUser(): Promise<AppUser | null> {
     name: true,
     tier: true,
     credits: true,
+    proTrialUsed: true,
     version: true,
   } as const;
 
@@ -77,6 +79,7 @@ export async function getOrCreateUser(): Promise<AppUser | null> {
         name,
         tier: "FREE",
         credits: 5,
+        proTrialUsed: false,
         version: 0,
       },
       // Keep profile fields in sync, but never touch tier/credits/version here.
@@ -113,6 +116,7 @@ export async function getUserById(id: string): Promise<AppUser | null> {
       name: true,
       tier: true,
       credits: true,
+      proTrialUsed: true,
       version: true,
     },
   });
@@ -133,6 +137,7 @@ export async function getUserByClerkId(clerkId: string): Promise<AppUser | null>
       name: true,
       tier: true,
       credits: true,
+      proTrialUsed: true,
       version: true,
     },
   });
