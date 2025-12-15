@@ -53,6 +53,7 @@ export default async function EditorPage({ params }: EditorPageProps) {
         title: true,
         htmlContent: true,
         conversationHistory: true,
+        status: true,
       },
     });
 
@@ -98,6 +99,7 @@ export default async function EditorPage({ params }: EditorPageProps) {
         projectId={project.id}
         initialHistory={conversationHistory}
         initialHtml={project.htmlContent}
+        initialStatus={project.status}
       />
     );
   } catch (error) {

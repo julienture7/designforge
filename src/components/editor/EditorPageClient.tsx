@@ -16,12 +16,14 @@ interface EditorPageClientProps {
   projectId: string;
   initialHistory: ConversationMessage[];
   initialHtml: string;
+  initialStatus?: "GENERATING" | "READY";
 }
 
 export function EditorPageClient({
   projectId,
   initialHistory,
   initialHtml,
+  initialStatus = "READY",
 }: EditorPageClientProps) {
   const isNewProject = projectId === "new";
   const [showHistoryWarning, setShowHistoryWarning] = useState(false);
@@ -233,6 +235,28 @@ export function EditorPageClient({
 
         {/* Editor content */}
         <main className="flex-1 overflow-hidden animate-fade-in">
+          {/* Show message if project was left in GENERATING state */}
+          {initialStatus === "GENERATING" && !initialHtml && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+              <div className="text-center p-8 max-w-md">
+                <div className="mb-6">
+                  <div className="relative mx-auto w-16 h-16">
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-20 animate-ping" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <svg className="w-8 h-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <h2 className="text-xl font-semibold text-slate-800 mb-2">Generation Interrupted</h2>
+                <p className="text-slate-600 mb-6">
+                  This project was being generated but the process was interrupted. 
+                  You can start a new generation by typing your request below.
+                </p>
+              </div>
+            </div>
+          )}
           <ConnectedEditor
             projectId={currentProjectId ?? (isNewProject ? undefined : projectId)}
             initialHistory={initialHistory}
