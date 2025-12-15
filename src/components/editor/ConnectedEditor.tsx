@@ -11,6 +11,80 @@ import { processHtmlForSandbox } from "@/server/lib/html-processor";
 import { api } from "~/trpc/react";
 import type { ConversationMessage } from "@/types/editor";
 
+/**
+ * Create a protected version of HTML for free users
+ * Adds watermark and disables common source extraction methods
+ */
+function createProtectedPreviewHtml(html: string): string {
+  // Inject protection script and styles before closing </body> or at end
+  const protectionCode = `
+<style>
+  /* Disable text selection */
+  body, body * { 
+    -webkit-user-select: none !important; 
+    -moz-user-select: none !important; 
+    -ms-user-select: none !important; 
+    user-select: none !important; 
+  }
+  /* Watermark overlay */
+  .df-watermark {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 999999;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.95) 0%, rgba(139,92,246,0.95) 100%);
+    color: white;
+    font-family: system-ui, -apple-serif, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    pointer-events: auto;
+    cursor: pointer;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .df-watermark:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  }
+  .df-watermark svg { width: 14px; height: 14px; }
+</style>
+<a href="/pricing" target="_top" class="df-watermark">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 14h6l-1 6 4-4 4 4-1-6h6L12 2z"/></svg>
+  DesignForge Preview
+</a>
+<script>
+(function(){
+  // Disable right-click context menu
+  document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
+  
+  // Disable common keyboard shortcuts for viewing source
+  document.addEventListener('keydown', function(e) {
+    // Ctrl+U (view source), Ctrl+S (save), Ctrl+Shift+I (dev tools), F12
+    if ((e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'i' || e.key === 'I' || e.key === 'j' || e.key === 'J' || e.key === 'c' || e.key === 'C')) ||
+        e.key === 'F12') {
+      e.preventDefault();
+      return false;
+    }
+  });
+  
+  // Disable drag
+  document.addEventListener('dragstart', function(e) { e.preventDefault(); return false; });
+})();
+</script>`;
+
+  // Insert before </body> if present, otherwise append
+  if (html.includes('</body>')) {
+    return html.replace('</body>', protectionCode + '</body>');
+  }
+  return html + protectionCode;
+}
+
 interface ConnectedEditorProps {
   /** Project ID for generation context */
   projectId?: string;
@@ -227,26 +301,15 @@ export function ConnectedEditor({
           <button
             onClick={() => {
               if (!rawHtml) {
-                if (onError) {
-                  onError("NO_CONTENT", "Generate a design first to view the preview.");
-                }
+                onError?.("NO_CONTENT", "Generate a design first to view the preview.");
                 return;
               }
-              if (!isPro) {
-                // Show upgrade prompt for non-Pro users
-                if (onError) {
-                  onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access full preview and HTML export.");
-                } else {
-                  window.location.href = "/pricing";
-                }
-                return;
-              }
-              // Open full-page preview modal (Pro users only)
+              // Open full-page preview modal (available to all users)
               setShowFullPreview(true);
             }}
             disabled={!rawHtml}
             className="text-xs text-muted hover:text-foreground px-3 py-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 transition-all duration-200 flex items-center gap-1 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            title={!rawHtml ? "Generate a design first" : (isPro ? "View full-page preview" : "Upgrade to Pro to access full preview")}
+            title={!rawHtml ? "Generate a design first" : "View full-page preview"}
           >
             <svg className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -392,7 +455,17 @@ export function ConnectedEditor({
         >
           {/* Header with close button */}
           <div className="flex items-center justify-between px-4 py-3 bg-black/50 border-b border-white/10">
-            <span className="text-sm text-white/80 font-medium">Full Page Preview</span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-white/80 font-medium">Full Page Preview</span>
+              {!isPro && (
+                <a 
+                  href="/pricing" 
+                  className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:from-indigo-600 hover:to-purple-600 transition-all duration-200"
+                >
+                  Upgrade for HTML export
+                </a>
+              )}
+            </div>
             <button
               onClick={() => setShowFullPreview(false)}
               className="text-white/60 hover:text-white transition-colors duration-200 p-2 rounded-lg hover:bg-white/10 active:scale-95"
@@ -404,15 +477,18 @@ export function ConnectedEditor({
             </button>
           </div>
 
-          {/* Full-page iframe preview */}
+          {/* Full-page iframe preview - protected for free users */}
           <div 
             className="flex-1 overflow-hidden"
-            onContextMenu={(e) => e.preventDefault()}
+            onContextMenu={(e) => { if (!isPro) e.preventDefault(); }}
           >
             <iframe
-              srcDoc={processedHtml}
+              srcDoc={isPro ? processedHtml : createProtectedPreviewHtml(processedHtml)}
               className="w-full h-full border-0"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+              sandbox={isPro 
+                ? "allow-same-origin allow-scripts allow-forms allow-popups allow-modals" 
+                : "allow-scripts allow-forms allow-popups allow-top-navigation"
+              }
               title="Full page preview"
             />
           </div>
