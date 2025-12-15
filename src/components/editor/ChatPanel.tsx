@@ -306,7 +306,7 @@ export function ChatPanel({
             if (line.startsWith("data: ")) {
               try {
                 const data = JSON.parse(line.slice(6));
-                if (data.type === "complete" && data.newHtml) {
+                if ((data.type === "complete" || data.type === "edit-applied") && data.newHtml) {
                   fullContent = data.newHtml;
                 } else if (data.type === "error") {
                   const err = new Error(data.message ?? "Edit failed") as Error & { code?: string };
@@ -314,7 +314,10 @@ export function ChatPanel({
                   throw err;
                 }
               } catch (e) {
-                // Skip invalid JSON
+                // Skip invalid JSON (but not errors thrown above)
+                if (e instanceof Error && e.name !== "SyntaxError") {
+                  throw e;
+                }
               }
             }
           }
