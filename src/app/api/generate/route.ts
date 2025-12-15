@@ -270,6 +270,18 @@ export async function POST(req: NextRequest) {
       messages: aiMessages,
       temperature: 1.0,
       maxOutputTokens,
+      // Set thinking level to "low" for Gemini 3 Pro (minimizes latency and cost)
+      ...(isUsingProMode && {
+        experimental_providerOptions: {
+          google: {
+            generationConfig: {
+              thinkingConfig: {
+                thinkingLevel: "low",
+              },
+            },
+          },
+        },
+      }),
     });
     html = currentResult.text;
 
@@ -312,6 +324,18 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
           messages: refinementMessages,
           temperature: 1.0,
           maxOutputTokens,
+          // Set thinking level to "low" for Gemini 3 Pro (minimizes latency and cost)
+          ...(isUsingProMode && {
+            experimental_providerOptions: {
+              google: {
+                generationConfig: {
+                  thinkingConfig: {
+                    thinkingLevel: "low",
+                  },
+                },
+              },
+            },
+          }),
         });
         html = currentResult.text;
       }
