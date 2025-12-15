@@ -48,7 +48,7 @@ function createRedirectResponse(
   cacheHit: boolean
 ): NextResponse {
   const response = NextResponse.redirect(url, 302);
-  response.headers.set("Cache-Control", "public, max-age=3600, immutable");
+  response.headers.set("Cache-Control", "public, max-age=604800, immutable"); // 7 days
   if (cacheHit) {
     response.headers.set("X-Cache", "HIT");
   }
@@ -262,7 +262,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // Cache the result
   // @see Requirements 3.4
   try {
-    await setImageCache(queryHash, imageUrl, 3600); // 1 hour TTL
+    await setImageCache(queryHash, imageUrl, 86400 * 7); // 7 days TTL - Unsplash URLs are stable
   } catch (error) {
     // Log cache error but continue with response
     console.error("Redis cache write error:", error);
