@@ -605,6 +605,36 @@ function extractQueryFromContext(html: string, imgIndex: number): string {
 }
 
 /**
+ * Strips AI-generated image loading scripts that would overwrite our server-injected URLs.
+ * The AI sometimes generates JavaScript that loads images from loremflickr, picsum, etc.
+ * We need to remove these scripts since we handle image injection server-side.
+ */
+function stripImageLoadingScripts(html: string): string {
+  // Pattern to match script blocks that contain image loading logic
+  // These typically iterate over data-image-query or data-bg-query elements
+  const scriptPattern = /<script[^>]*>([\s\S]*?)<\/script>/gi;
+  
+  return html.replace(scriptPattern, (match, scriptContent: string) => {
+    // Check if this script contains image loading patterns we want to remove
+    const hasImageLoadingPatterns = 
+      // Matches loremflickr, picsum, placeholder services
+      /loremflickr\.com|picsum\.photos|placeholder\.com|placehold\.co|placekitten\.com/i.test(scriptContent) &&
+      // And targets our data attributes
+      /data-image-query|data-bg-query|data-unsplash-query/i.test(scriptContent);
+    
+    // Also check for patterns that overwrite img.src or backgroundImage for our elements
+    const hasOverwritePatterns = 
+      /querySelectorAll\s*\(\s*['"](?:img|div)\[data-(?:image|bg)-query\]['"]\s*\)[\s\S]*?\.(?:src|backgroundImage)\s*=/i.test(scriptContent);
+    
+    if (hasImageLoadingPatterns || hasOverwritePatterns) {
+      return '<!-- Removed AI-generated image loading script (server handles image injection) -->';
+    }
+    
+    return match;
+  });
+}
+
+/**
  * Injects real Unsplash image URLs into HTML, replacing:
  * 1. Unsplash Source URLs (source.unsplash.com) which are unreliable
  * 2. Images with data-image-query attributes
@@ -621,7 +651,8 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
   // Clear the cache for each new HTML processing
   imageCache.clear();
 
-  let processedHtml = html;
+  // First, strip any AI-generated image loading scripts that would overwrite our URLs
+  let processedHtml = stripImageLoadingScripts(html);
 
   // PASS 1: Find ALL source.unsplash.com URLs anywhere in the HTML and replace them
   // This is the most aggressive approach - catches URLs in src, style, or anywhere else
