@@ -27,6 +27,31 @@ interface Message {
   content: string;
 }
 
+/** Parse API error response into code + message */
+function parseApiError(response: Response, data: unknown): { code: string; message: string } {
+  const maybeData = data as Record<string, unknown> | null;
+  
+  const code = 
+    (typeof maybeData?.code === "string" ? maybeData.code : null) ??
+    (typeof (maybeData?.error as Record<string, unknown>)?.code === "string" 
+      ? (maybeData.error as Record<string, unknown>).code as string 
+      : null) ??
+    (response.status === 401 ? "UNAUTHORIZED" :
+     response.status === 402 ? "CREDITS_EXHAUSTED" :
+     response.status === 409 ? "GENERATION_IN_PROGRESS" :
+     response.status === 429 ? "RATE_LIMITED" : "API_ERROR");
+
+  const message =
+    (typeof maybeData?.error === "string" ? maybeData.error : null) ??
+    (typeof maybeData?.message === "string" ? maybeData.message : null) ??
+    (typeof (maybeData?.error as Record<string, unknown>)?.message === "string"
+      ? (maybeData.error as Record<string, unknown>).message as string
+      : null) ??
+    "Request failed";
+
+  return { code, message };
+}
+
 export function ChatPanel({
   projectId,
   initialHistory = [],
@@ -151,44 +176,10 @@ export function ChatPanel({
         });
 
         if (!response.ok) {
-          let data: unknown = null;
-          try {
-            data = await response.json();
-          } catch {
-            // Non-JSON error response
-          }
-
-          const maybeData = data as any;
-
-          const codeFromBody =
-            typeof maybeData?.code === "string"
-              ? maybeData.code
-              : typeof maybeData?.error?.code === "string"
-                ? maybeData.error.code
-                : undefined;
-
-          const messageFromBody =
-            typeof maybeData?.error === "string"
-              ? maybeData.error
-              : typeof maybeData?.message === "string"
-                ? maybeData.message
-                : typeof maybeData?.error?.message === "string"
-                  ? maybeData.error.message
-                  : undefined;
-
-          const statusFallbackCode =
-            response.status === 401
-              ? "UNAUTHORIZED"
-              : response.status === 402
-                ? "CREDITS_EXHAUSTED"
-                : response.status === 409
-                  ? "GENERATION_IN_PROGRESS"
-                  : response.status === 429
-                    ? "RATE_LIMITED"
-                    : "API_ERROR";
-
-          const err = new Error(messageFromBody ?? "Generation failed") as Error & { code?: string };
-          err.code = codeFromBody ?? statusFallbackCode;
+          const data = await response.json().catch(() => null);
+          const { code, message } = parseApiError(response, data);
+          const err = new Error(message) as Error & { code?: string };
+          err.code = code;
           throw err;
         }
 
@@ -245,44 +236,10 @@ export function ChatPanel({
         });
 
         if (!response.ok) {
-          let data: unknown = null;
-          try {
-            data = await response.json();
-          } catch {
-            // Non-JSON error response
-          }
-
-          const maybeData = data as any;
-
-          const codeFromBody =
-            typeof maybeData?.code === "string"
-              ? maybeData.code
-              : typeof maybeData?.error?.code === "string"
-                ? maybeData.error.code
-                : undefined;
-
-          const messageFromBody =
-            typeof maybeData?.error === "string"
-              ? maybeData.error
-              : typeof maybeData?.message === "string"
-                ? maybeData.message
-                : typeof maybeData?.error?.message === "string"
-                  ? maybeData.error.message
-                  : undefined;
-
-          const statusFallbackCode =
-            response.status === 401
-              ? "UNAUTHORIZED"
-              : response.status === 402
-                ? "CREDITS_EXHAUSTED"
-                : response.status === 409
-                  ? "GENERATION_IN_PROGRESS"
-                  : response.status === 429
-                    ? "RATE_LIMITED"
-                    : "API_ERROR";
-
-          const err = new Error(messageFromBody ?? "Edit failed") as Error & { code?: string };
-          err.code = codeFromBody ?? statusFallbackCode;
+          const data = await response.json().catch(() => null);
+          const { code, message } = parseApiError(response, data);
+          const err = new Error(message) as Error & { code?: string };
+          err.code = code;
           throw err;
         }
 
@@ -376,6 +333,9 @@ export function ChatPanel({
     messages,
     currentHtml,
     isLoading,
+    isPro,
+    hasGenerated,
+    refinementLevel,
     onLoadingChange,
     onError,
     onGenerationComplete,
@@ -513,98 +473,83 @@ export function ChatPanel({
   };
 
   return (
-    <div className="flex h-full flex-col border-r border-slate-200 bg-white">
+    <div className="chat-panel">
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 pr-4">
-        <div className="flex flex-col gap-y-2 gap-x-2">
+      <div className="chat-messages">
+        <div className="chat-messages-inner">
           {messages.length === 0 && !isLoading && (
-            <div className="py-8 text-center">
-              <p className="text-sm text-slate-400">
-                Describe what you want to build and I'll generate it for you.
-              </p>
+            <div className="chat-empty-state">
+              <p>Describe what you want to build and I'll generate it for you.</p>
             </div>
           )}
 
-          {messages.map((message, index) => (
-            <div key={message.id} className="flex flex-col animate-fade-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
+          {messages.map((message) => (
+            <div key={message.id} className="chat-message animate-fade-in-up">
               {message.role === "user" ? (
-                <div className="flex flex-col items-end">
-                  <div className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-800 transition-all duration-200 hover:bg-slate-50">
-                    <div className="whitespace-pre-wrap">
-                      <p>{message.content}</p>
-                    </div>
-                  </div>
+                <div className="chat-message-user">
+                  <p>{message.content}</p>
                 </div>
               ) : message.content ? (
-                <div className="flex flex-col items-start">
-                  <div className="w-full py-3 text-sm leading-relaxed text-slate-600">
-                    <div className="mb-3">
-                      <button 
-                        onClick={() => toggleExpanded(message.id)}
-                        className="mb-2 flex items-center gap-x-2 gap-y-2 text-xs text-slate-500 transition-all duration-200 ease-out-expo hover:text-slate-800 active:scale-95"
-                      >
-                        <span className="font-medium">Generated Design</span>
-                        <svg 
-                          className={`h-3 w-3 fill-none stroke-current transition-transform duration-300 ease-out-expo ${expandedMessages.has(message.id) ? 'rotate-180' : ''}`} 
-                          viewBox="0 0 24 24" 
-                          strokeWidth={2} 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round"
-                        >
-                          <path d="m6 9 6 6 6-6" />
-                        </svg>
-                      </button>
-                      {expandedMessages.has(message.id) && (
-                        <div className="overflow-hidden animate-fade-in-scale">
-                          <div className="max-h-[200px] overflow-y-auto rounded-lg bg-slate-50 p-3 pr-1 font-mono text-xs leading-relaxed text-slate-500 transition-all duration-200 hover:bg-slate-100">
-                            <p className="break-all">
-                              {message.content.length > 500 
-                                ? `${message.content.slice(0, 500)}...` 
-                                : message.content}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {!expandedMessages.has(message.id) && (
-                        <p className="text-xs text-slate-400 flex items-center gap-1.5">
-                          <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Design generated ({Math.round(message.content.length / 1000)}KB)
-                        </p>
-                      )}
+                <div className="chat-message-assistant">
+                  <button 
+                    onClick={() => toggleExpanded(message.id)}
+                    className="chat-expand-btn"
+                    type="button"
+                  >
+                    <span>Generated Design</span>
+                    <svg 
+                      className={`chat-expand-icon ${expandedMessages.has(message.id) ? 'chat-expand-icon--open' : ''}`} 
+                      viewBox="0 0 24 24" 
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2} 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                  
+                  {expandedMessages.has(message.id) ? (
+                    <div className="chat-code-preview animate-fade-in-scale">
+                      <p>
+                        {message.content.length > 500 
+                          ? `${message.content.slice(0, 500)}...` 
+                          : message.content}
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <p className="chat-success-indicator">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg>
+                      Design generated ({Math.round(message.content.length / 1000)}KB)
+                    </p>
+                  )}
                 </div>
               ) : null}
             </div>
           ))}
 
           {isLoading && messages[messages.length - 1]?.role === "assistant" && !messages[messages.length - 1]?.content && (
-            <div className="flex flex-col items-start animate-fade-in">
-              <div className="w-full py-3 text-sm leading-relaxed text-slate-600">
-                <div className="mb-3">
-                  <div className="mb-2 flex items-center gap-x-2 gap-y-2 text-xs text-slate-500">
-                    <span className="font-medium">Generating...</span>
+            <div className="chat-message animate-fade-in">
+              <div className="chat-loading">
+                <span className="chat-loading-label">Generating...</span>
+                <div className="chat-loading-indicator">
+                  <div className="chat-loading-dots">
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
                   </div>
-                  <div className="flex items-center gap-3 bg-slate-50 rounded-lg px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <span className="typing-dot h-2 w-2 rounded-full bg-blue-500"></span>
-                      <span className="typing-dot h-2 w-2 rounded-full bg-blue-500"></span>
-                      <span className="typing-dot h-2 w-2 rounded-full bg-blue-500"></span>
-                    </div>
-                    <span className="font-mono text-xs text-slate-500">Creating your design</span>
-                  </div>
+                  <span>Creating your design</span>
                 </div>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="flex flex-col items-start">
-              <div className="w-full rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-                {error}
-              </div>
+            <div className="chat-error">
+              {error}
             </div>
           )}
 
@@ -613,15 +558,8 @@ export function ChatPanel({
       </div>
 
       {/* Input area */}
-      <div className="relative z-50 bg-white px-2 pb-2">
-        <form 
-          onSubmit={handleSubmit} 
-          className="relative rounded-3xl p-2"
-          style={{
-            backgroundColor: '#ffffff',
-            boxShadow: '0 0 0 1px rgba(0,0,0,0.05), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
-          }}
-        >
+      <div className="chat-input-container">
+        <form onSubmit={handleSubmit} className="chat-input-form">
           <textarea
             ref={textareaRef}
             value={inputValue}
@@ -630,152 +568,95 @@ export function ChatPanel({
             placeholder="What do you want to build?"
             disabled={isLoading}
             rows={1}
-            data-editor-input="true"
-            className="editor-input"
-            style={{ 
-              backgroundColor: '#ffffff',
-              border: 'none',
-              outline: 'none',
-              color: '#334155',
-              resize: 'none',
-              width: '100%',
-              minHeight: '40px',
-              maxHeight: '200px',
-              padding: '8px 12px',
-              fontSize: '14px',
-              lineHeight: '1.625',
-              borderRadius: '8px',
-              pointerEvents: 'auto',
-              cursor: 'text',
-            }}
+            className="chat-textarea"
           />
-          {/* Only show refinement buttons before first generation */}
+          {/* Refinement Level Selector */}
           {!hasGenerated && (
-            <div className="px-3 pb-2">
-              <div className="flex items-center gap-2 text-xs text-slate-600 mb-1">
-                <span>Refinement Level:</span>
+            <div className="refinement-selector">
+              <div className="refinement-selector-header">
+                <svg className="refinement-selector-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                <span>Refinement Level</span>
+                {!isPro && (
+                  <span className="refinement-pro-badge">PRO</span>
+                )}
               </div>
-              <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isPro) {
-                    if (onError) {
-                      onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access refinement levels.");
-                    }
-                    return;
-                  }
-                  if (!hasGenerated) {
-                    setRefinementLevel("REFINED");
-                  }
-                }}
-                disabled={isLoading || (isPro && hasGenerated)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
-                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevel) === "REFINED"
-                    ? "bg-blue-100 text-blue-700 border border-blue-300 shadow-sm"
-                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                title={!isPro ? "Upgrade to Pro to access refinement levels" : (hasGenerated ? "Refinement level locked after first generation" : "Refined (1 credit)")}
-              >
-                Refined {isPro ? "(1 credit)" : ""}
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!isPro) {
-                    if (onError) {
-                      onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access refinement levels.");
-                    }
-                    return;
-                  }
-                  if (!hasGenerated) {
-                    setRefinementLevel("ENHANCED");
-                    refinementLevelRef.current = "ENHANCED";
-                  }
-                }}
-                disabled={isLoading || (isPro && hasGenerated)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
-                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevelRef.current) === "ENHANCED"
-                    ? "bg-blue-100 text-blue-700 border border-blue-300 shadow-sm"
-                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                title={!isPro ? "Upgrade to Pro to access refinement levels" : (hasGenerated ? "Refinement level locked after first generation" : "Enhanced (2 credits)")}
-              >
-                Enhanced {isPro ? "(2 credits)" : ""}
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!isPro) {
-                    if (onError) {
-                      onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to access refinement levels.");
-                    }
-                    return;
-                  }
-                  if (!hasGenerated) {
-                    setRefinementLevel("ULTIMATE");
-                    refinementLevelRef.current = "ULTIMATE";
-                  }
-                }}
-                disabled={isLoading || (isPro && hasGenerated)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-95 ${
-                  isPro && (hasGenerated ? lockedRefinementLevel.current : refinementLevelRef.current) === "ULTIMATE"
-                    ? "bg-purple-100 text-purple-700 border border-purple-300 shadow-sm"
-                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm"
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                title={!isPro ? "Upgrade to Pro to access refinement levels" : (hasGenerated ? "Refinement level locked after first generation" : "Ultimate (4 credits)")}
-              >
-                Ultimate {isPro ? "(4 credits)" : ""}
-              </button>
-            </div>
-            {isPro && hasGenerated && (
-              <div className="mt-1 text-xs text-slate-500">
-                Subsequent edits cost 1 credit each
+              
+              <div className="refinement-options">
+                {([
+                  { level: "REFINED" as const, label: "Refined", credits: 1, color: "blue" },
+                  { level: "ENHANCED" as const, label: "Enhanced", credits: 2, color: "indigo" },
+                  { level: "ULTIMATE" as const, label: "Ultimate", credits: 4, color: "purple" },
+                ] as const).map(({ level, label, credits, color }) => {
+                  const isSelected = isPro && refinementLevel === level;
+                  const isDisabled = isLoading || !isPro;
+                  
+                  return (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => {
+                        if (!isPro) {
+                          onError?.("UPGRADE_REQUIRED", "Upgrade to Pro to access refinement levels.");
+                          return;
+                        }
+                        setRefinementLevel(level);
+                        refinementLevelRef.current = level;
+                      }}
+                      disabled={isDisabled}
+                      className={`refinement-option ${isSelected ? `refinement-option--selected refinement-option--${color}` : ""} ${!isPro ? "refinement-option--locked" : ""}`}
+                      title={!isPro ? "Upgrade to Pro" : `${label} (${credits} credit${credits > 1 ? "s" : ""})`}
+                    >
+                      <span className="refinement-option-label">{label}</span>
+                      {isPro && <span className="refinement-option-credits">{credits}×</span>}
+                    </button>
+                  );
+                })}
               </div>
-            )}
-            {!isPro && (
-              <div className="mt-1 text-xs text-slate-500">
-                Upgrade to Pro to access refinement levels
-              </div>
-            )}
+
+              {!isPro && (
+                <div className="refinement-upgrade-hint">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  <span>Upgrade to Pro for multi-pass refinement</span>
+                </div>
+              )}
             </div>
           )}
-          {/* Show locked message after first generation */}
+          
+          {/* Locked refinement indicator (after first generation) */}
           {isPro && hasGenerated && lockedRefinementLevel.current && (
-            <div className="px-3 pb-2">
-              <div className="text-xs text-slate-500 italic">
-                Refinement level locked: {lockedRefinementLevel.current} (Subsequent edits cost 1 credit each)
-              </div>
+            <div className="refinement-locked">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span>
+                <strong>{lockedRefinementLevel.current}</strong> · Edits cost 1 credit
+              </span>
             </div>
           )}
-          <div className="flex items-end justify-between px-1 pb-1">
-            <div className="flex items-center gap-x-2 gap-y-2" />
+          
+          {/* Submit button */}
+          <div className="chat-input-actions">
             <button
               type={isLoading ? "button" : "submit"}
-              onClick={
-                isLoading
-                  ? () => abortControllerRef.current?.abort()
-                  : undefined
-              }
+              onClick={isLoading ? () => abortControllerRef.current?.abort() : undefined}
               disabled={!isLoading && !inputValue.trim()}
-              className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ease-in-out shadow-sm ${
-                isLoading
-                  ? "bg-gray-900 text-white hover:bg-gray-800 active:scale-95"
-                  : inputValue.trim()
-                    ? "bg-gray-900 text-white hover:bg-gray-800 hover:shadow-md active:scale-95"
-                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              className={`chat-submit-btn ${
+                isLoading ? "chat-submit-btn--loading" : 
+                inputValue.trim() ? "chat-submit-btn--active" : "chat-submit-btn--disabled"
               }`}
+              aria-label={isLoading ? "Stop generation" : "Send message"}
             >
               {isLoading ? (
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg className="chat-submit-icon chat-submit-icon--spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 12a9 9 0 11-6.219-8.56" />
                 </svg>
               ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg className="chat-submit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14" />
                   <path d="m12 5 7 7-7 7" />
                 </svg>

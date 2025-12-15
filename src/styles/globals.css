@@ -863,6 +863,441 @@ button:disabled {
   }
 }
 
+/* ============================================
+   REFINEMENT LEVEL SELECTOR
+   Clean, compact tier selection component
+   ============================================ */
+
+.refinement-selector {
+  padding: 0.625rem 0.75rem;
+  border-top: 1px solid #f1f5f9;
+  background: linear-gradient(to bottom, #fafbfc, #fff);
+}
+
+.refinement-selector-header {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.refinement-selector-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #94a3b8;
+}
+
+.refinement-pro-badge {
+  margin-left: auto;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  letter-spacing: 0.05em;
+}
+
+.refinement-options {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.refinement-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.5rem 0.25rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.refinement-option:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.refinement-option:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.refinement-option:disabled {
+  cursor: not-allowed;
+}
+
+.refinement-option--locked {
+  opacity: 0.5;
+}
+
+.refinement-option--locked:hover {
+  border-color: #e2e8f0;
+  background: #fff;
+}
+
+/* Selected states with color variants */
+.refinement-option--selected {
+  border-width: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.refinement-option--selected.refinement-option--blue {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.refinement-option--selected.refinement-option--indigo {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.refinement-option--selected.refinement-option--purple {
+  border-color: #8b5cf6;
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.refinement-option-label {
+  font-weight: 600;
+  line-height: 1;
+}
+
+.refinement-option-credits {
+  font-size: 0.625rem;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.refinement-upgrade-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  background: linear-gradient(135deg, #faf5ff 0%, #eef2ff 100%);
+  font-size: 0.6875rem;
+  color: #7c3aed;
+}
+
+.refinement-locked {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
+.refinement-locked strong {
+  font-weight: 600;
+  color: #475569;
+  text-transform: capitalize;
+}
+
+/* ============================================
+   CHAT PANEL COMPONENT
+   Clean, responsive chat interface
+   ============================================ */
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+/* Messages Area */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+}
+
+.chat-messages-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chat-empty-state {
+  padding: 2rem 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+/* Message Bubbles */
+.chat-message {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-message-user {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #f1f5f9;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: #1e293b;
+  white-space: pre-wrap;
+  transition: background 0.15s ease;
+}
+
+.chat-message-user:hover {
+  background: #f8fafc;
+}
+
+.chat-message-assistant {
+  width: 100%;
+  padding: 0.75rem 0;
+}
+
+/* Expand Button */
+.chat-expand-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.chat-expand-btn:hover {
+  color: #1e293b;
+}
+
+.chat-expand-btn:active {
+  transform: scale(0.97);
+}
+
+.chat-expand-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.chat-expand-icon--open {
+  transform: rotate(180deg);
+}
+
+/* Code Preview */
+.chat-code-preview {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #64748b;
+  word-break: break-all;
+  transition: background 0.15s ease;
+}
+
+.chat-code-preview:hover {
+  background: #f1f5f9;
+}
+
+/* Success Indicator */
+.chat-success-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.chat-success-indicator svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #22c55e;
+}
+
+/* Loading State */
+.chat-loading {
+  width: 100%;
+  padding: 0.75rem 0;
+}
+
+.chat-loading-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.chat-loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.chat-loading-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.chat-loading-dots .typing-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #3b82f6;
+}
+
+/* Error State */
+.chat-error {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: #fef2f2;
+  font-size: 0.875rem;
+  color: #dc2626;
+}
+
+/* Input Container */
+.chat-input-container {
+  position: relative;
+  z-index: 50;
+  padding: 0.5rem;
+  background: #fff;
+}
+
+.chat-input-form {
+  position: relative;
+  padding: 0.5rem;
+  border-radius: 1.5rem;
+  background: #fff;
+  box-shadow: 
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 12px 24px -4px rgba(0, 0, 0, 0.08),
+    0 4px 8px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* Textarea */
+.chat-textarea {
+  width: 100%;
+  min-height: 40px;
+  max-height: 200px;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #fff;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: #334155;
+  resize: none;
+  outline: none;
+}
+
+.chat-textarea::placeholder {
+  color: #94a3b8;
+}
+
+.chat-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Submit Button Area */
+.chat-input-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.25rem;
+}
+
+.chat-submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chat-submit-btn--active {
+  background: #111827;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chat-submit-btn--active:hover {
+  background: #1f2937;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.chat-submit-btn--active:active {
+  transform: scale(0.95);
+}
+
+.chat-submit-btn--loading {
+  background: #111827;
+  color: #fff;
+}
+
+.chat-submit-btn--loading:hover {
+  background: #374151;
+}
+
+.chat-submit-btn--loading:active {
+  transform: scale(0.95);
+}
+
+.chat-submit-btn--disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.chat-submit-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.chat-submit-icon--spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /*
  * Utility classes for graceful degradation
  * These provide fallback styling when Tailwind classes don't load
