@@ -26,10 +26,28 @@ async function headers() {
     },
   ];
 
+  // Note: Next.js applies ALL matching headers, not just the first match.
+  // So we need to be careful not to set conflicting X-Frame-Options.
+  // We'll only set X-Frame-Options on specific routes that need it.
   return [
     {
-      // Preview API route - allow framing from same origin (must come first to override default)
+      // Preview API route - allow framing from same origin (for dashboard thumbnails)
       source: "/api/project/:id/preview",
+      headers: [
+        ...commonSecurityHeaders,
+        {
+          key: "X-Frame-Options",
+          value: "SAMEORIGIN",
+        },
+        {
+          key: "Content-Security-Policy",
+          value: "frame-ancestors 'self'",
+        },
+      ],
+    },
+    {
+      // Public project pages - allow framing from same origin
+      source: "/p/:path*",
       headers: [
         ...commonSecurityHeaders,
         {
@@ -39,13 +57,57 @@ async function headers() {
       ],
     },
     {
-      // Editor routes - allow framing (no X-Frame-Options)
+      // Editor routes - no X-Frame-Options (allow framing for preview iframes)
       source: "/editor/:path*",
       headers: commonSecurityHeaders,
     },
     {
-      // Apply X-Frame-Options: DENY to all other routes
-      source: "/((?!editor/|api/project/.*/preview).*)",
+      // Dashboard - deny framing
+      source: "/dashboard/:path*",
+      headers: [
+        ...commonSecurityHeaders,
+        {
+          key: "X-Frame-Options",
+          value: "DENY",
+        },
+      ],
+    },
+    {
+      // Auth pages - deny framing
+      source: "/sign-in/:path*",
+      headers: [
+        ...commonSecurityHeaders,
+        {
+          key: "X-Frame-Options",
+          value: "DENY",
+        },
+      ],
+    },
+    {
+      // Auth pages - deny framing
+      source: "/sign-up/:path*",
+      headers: [
+        ...commonSecurityHeaders,
+        {
+          key: "X-Frame-Options",
+          value: "DENY",
+        },
+      ],
+    },
+    {
+      // Pricing page - deny framing
+      source: "/pricing/:path*",
+      headers: [
+        ...commonSecurityHeaders,
+        {
+          key: "X-Frame-Options",
+          value: "DENY",
+        },
+      ],
+    },
+    {
+      // Home page - deny framing
+      source: "/",
       headers: [
         ...commonSecurityHeaders,
         {
