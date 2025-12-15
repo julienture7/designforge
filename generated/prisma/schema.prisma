@@ -14,7 +14,7 @@ datasource db {
 // Enums
 enum Tier {
   FREE // Basic tier - no refinement passes
-  PRO // Pro tier - access to all refinement levels (REFINED, ENHANCED, ULTIMATE)
+  PRO // Pro tier - access to Normal (1 credit) and Refined (5 credits) modes
 }
 
 enum Visibility {
@@ -36,10 +36,7 @@ model User {
   email              String              @unique
   name               String?
   tier               Tier                @default(FREE)
-  credits            Int                 @default(5) // FREE tier daily credits
-  refinedCredits     Int                 @default(0) // PRO tier: Refined (1 pass) generations
-  enhancedCredits    Int                 @default(0) // PRO tier: Enhanced (2 passes) generations
-  ultimateCredits    Int                 @default(0) // PRO tier: Ultimate (3 passes) generations
+  credits            Int                 @default(5) // FREE tier: daily credits (5/day) | PRO tier: unified credits for Normal/Refined
   proTrialUsed       Boolean             @default(false) // Track if user has used their free Pro trial
   version            Int                 @default(0) // Optimistic Concurrency Control
   stripeCustomerId   String?             @unique // Stripe customer ID for webhook mapping

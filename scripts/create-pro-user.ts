@@ -32,14 +32,13 @@ async function main() {
 
   console.log(`Updating user: ${user.email} (${user.id})`);
 
-  // Update user to PRO tier with credits
+  // Update user to PRO tier with unified credits
+  // PRO users get unified credits: Normal (1 credit) and Refined (5 credits)
   const updated = await db.user.update({
     where: { id: user.id },
     data: {
       tier: "PRO",
-      refinedCredits: 100,
-      enhancedCredits: 50,
-      ultimateCredits: 25,
+      credits: 100, // Unified credits for PRO tier (Normal=1, Refined=5)
       subscriptionStatus: "ACTIVE",
     },
   });
@@ -47,9 +46,7 @@ async function main() {
   console.log("\n✅ User updated to PRO tier with credits:");
   console.log(`   Email: ${updated.email}`);
   console.log(`   Tier: ${updated.tier}`);
-  console.log(`   Refined Credits: ${updated.refinedCredits}`);
-  console.log(`   Enhanced Credits: ${updated.enhancedCredits}`);
-  console.log(`   Ultimate Credits: ${updated.ultimateCredits}`);
+  console.log(`   Credits: ${updated.credits} (Normal=1 credit, Refined=5 credits)`);
 }
 
 main()

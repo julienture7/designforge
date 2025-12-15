@@ -1102,17 +1102,11 @@ export namespace Prisma {
 
   export type UserAvgAggregateOutputType = {
     credits: number | null
-    refinedCredits: number | null
-    enhancedCredits: number | null
-    ultimateCredits: number | null
     version: number | null
   }
 
   export type UserSumAggregateOutputType = {
     credits: number | null
-    refinedCredits: number | null
-    enhancedCredits: number | null
-    ultimateCredits: number | null
     version: number | null
   }
 
@@ -1123,9 +1117,6 @@ export namespace Prisma {
     name: string | null
     tier: $Enums.Tier | null
     credits: number | null
-    refinedCredits: number | null
-    enhancedCredits: number | null
-    ultimateCredits: number | null
     proTrialUsed: boolean | null
     version: number | null
     stripeCustomerId: string | null
@@ -1142,9 +1133,6 @@ export namespace Prisma {
     name: string | null
     tier: $Enums.Tier | null
     credits: number | null
-    refinedCredits: number | null
-    enhancedCredits: number | null
-    ultimateCredits: number | null
     proTrialUsed: boolean | null
     version: number | null
     stripeCustomerId: string | null
@@ -1161,9 +1149,6 @@ export namespace Prisma {
     name: number
     tier: number
     credits: number
-    refinedCredits: number
-    enhancedCredits: number
-    ultimateCredits: number
     proTrialUsed: number
     version: number
     stripeCustomerId: number
@@ -1177,17 +1162,11 @@ export namespace Prisma {
 
   export type UserAvgAggregateInputType = {
     credits?: true
-    refinedCredits?: true
-    enhancedCredits?: true
-    ultimateCredits?: true
     version?: true
   }
 
   export type UserSumAggregateInputType = {
     credits?: true
-    refinedCredits?: true
-    enhancedCredits?: true
-    ultimateCredits?: true
     version?: true
   }
 
@@ -1198,9 +1177,6 @@ export namespace Prisma {
     name?: true
     tier?: true
     credits?: true
-    refinedCredits?: true
-    enhancedCredits?: true
-    ultimateCredits?: true
     proTrialUsed?: true
     version?: true
     stripeCustomerId?: true
@@ -1217,9 +1193,6 @@ export namespace Prisma {
     name?: true
     tier?: true
     credits?: true
-    refinedCredits?: true
-    enhancedCredits?: true
-    ultimateCredits?: true
     proTrialUsed?: true
     version?: true
     stripeCustomerId?: true
@@ -1236,9 +1209,6 @@ export namespace Prisma {
     name?: true
     tier?: true
     credits?: true
-    refinedCredits?: true
-    enhancedCredits?: true
-    ultimateCredits?: true
     proTrialUsed?: true
     version?: true
     stripeCustomerId?: true
@@ -1342,9 +1312,6 @@ export namespace Prisma {
     name: string | null
     tier: $Enums.Tier
     credits: number
-    refinedCredits: number
-    enhancedCredits: number
-    ultimateCredits: number
     proTrialUsed: boolean
     version: number
     stripeCustomerId: string | null
@@ -1380,9 +1347,6 @@ export namespace Prisma {
     name?: boolean
     tier?: boolean
     credits?: boolean
-    refinedCredits?: boolean
-    enhancedCredits?: boolean
-    ultimateCredits?: boolean
     proTrialUsed?: boolean
     version?: boolean
     stripeCustomerId?: boolean
@@ -1401,9 +1365,6 @@ export namespace Prisma {
     name?: boolean
     tier?: boolean
     credits?: boolean
-    refinedCredits?: boolean
-    enhancedCredits?: boolean
-    ultimateCredits?: boolean
     proTrialUsed?: boolean
     version?: boolean
     stripeCustomerId?: boolean
@@ -1420,9 +1381,6 @@ export namespace Prisma {
     name?: boolean
     tier?: boolean
     credits?: boolean
-    refinedCredits?: boolean
-    enhancedCredits?: boolean
-    ultimateCredits?: boolean
     proTrialUsed?: boolean
     version?: boolean
     stripeCustomerId?: boolean
@@ -1450,9 +1408,6 @@ export namespace Prisma {
       name: string | null
       tier: $Enums.Tier
       credits: number
-      refinedCredits: number
-      enhancedCredits: number
-      ultimateCredits: number
       proTrialUsed: boolean
       version: number
       stripeCustomerId: string | null
@@ -1860,9 +1815,6 @@ export namespace Prisma {
     readonly name: FieldRef<"User", 'String'>
     readonly tier: FieldRef<"User", 'Tier'>
     readonly credits: FieldRef<"User", 'Int'>
-    readonly refinedCredits: FieldRef<"User", 'Int'>
-    readonly enhancedCredits: FieldRef<"User", 'Int'>
-    readonly ultimateCredits: FieldRef<"User", 'Int'>
     readonly proTrialUsed: FieldRef<"User", 'Boolean'>
     readonly version: FieldRef<"User", 'Int'>
     readonly stripeCustomerId: FieldRef<"User", 'String'>
@@ -4140,9 +4092,6 @@ export namespace Prisma {
     name: 'name',
     tier: 'tier',
     credits: 'credits',
-    refinedCredits: 'refinedCredits',
-    enhancedCredits: 'enhancedCredits',
-    ultimateCredits: 'ultimateCredits',
     proTrialUsed: 'proTrialUsed',
     version: 'version',
     stripeCustomerId: 'stripeCustomerId',
@@ -4352,9 +4301,6 @@ export namespace Prisma {
     name?: StringNullableFilter<"User"> | string | null
     tier?: EnumTierFilter<"User"> | $Enums.Tier
     credits?: IntFilter<"User"> | number
-    refinedCredits?: IntFilter<"User"> | number
-    enhancedCredits?: IntFilter<"User"> | number
-    ultimateCredits?: IntFilter<"User"> | number
     proTrialUsed?: BoolFilter<"User"> | boolean
     version?: IntFilter<"User"> | number
     stripeCustomerId?: StringNullableFilter<"User"> | string | null
@@ -4372,9 +4318,6 @@ export namespace Prisma {
     name?: SortOrderInput | SortOrder
     tier?: SortOrder
     credits?: SortOrder
-    refinedCredits?: SortOrder
-    enhancedCredits?: SortOrder
-    ultimateCredits?: SortOrder
     proTrialUsed?: SortOrder
     version?: SortOrder
     stripeCustomerId?: SortOrderInput | SortOrder
@@ -4396,9 +4339,6 @@ export namespace Prisma {
     name?: StringNullableFilter<"User"> | string | null
     tier?: EnumTierFilter<"User"> | $Enums.Tier
     credits?: IntFilter<"User"> | number
-    refinedCredits?: IntFilter<"User"> | number
-    enhancedCredits?: IntFilter<"User"> | number
-    ultimateCredits?: IntFilter<"User"> | number
     proTrialUsed?: BoolFilter<"User"> | boolean
     version?: IntFilter<"User"> | number
     subscriptionId?: StringNullableFilter<"User"> | string | null
@@ -4415,9 +4355,6 @@ export namespace Prisma {
     name?: SortOrderInput | SortOrder
     tier?: SortOrder
     credits?: SortOrder
-    refinedCredits?: SortOrder
-    enhancedCredits?: SortOrder
-    ultimateCredits?: SortOrder
     proTrialUsed?: SortOrder
     version?: SortOrder
     stripeCustomerId?: SortOrderInput | SortOrder
@@ -4442,9 +4379,6 @@ export namespace Prisma {
     name?: StringNullableWithAggregatesFilter<"User"> | string | null
     tier?: EnumTierWithAggregatesFilter<"User"> | $Enums.Tier
     credits?: IntWithAggregatesFilter<"User"> | number
-    refinedCredits?: IntWithAggregatesFilter<"User"> | number
-    enhancedCredits?: IntWithAggregatesFilter<"User"> | number
-    ultimateCredits?: IntWithAggregatesFilter<"User"> | number
     proTrialUsed?: BoolWithAggregatesFilter<"User"> | boolean
     version?: IntWithAggregatesFilter<"User"> | number
     stripeCustomerId?: StringNullableWithAggregatesFilter<"User"> | string | null
@@ -4595,9 +4529,6 @@ export namespace Prisma {
     name?: string | null
     tier?: $Enums.Tier
     credits?: number
-    refinedCredits?: number
-    enhancedCredits?: number
-    ultimateCredits?: number
     proTrialUsed?: boolean
     version?: number
     stripeCustomerId?: string | null
@@ -4615,9 +4546,6 @@ export namespace Prisma {
     name?: string | null
     tier?: $Enums.Tier
     credits?: number
-    refinedCredits?: number
-    enhancedCredits?: number
-    ultimateCredits?: number
     proTrialUsed?: boolean
     version?: number
     stripeCustomerId?: string | null
@@ -4635,9 +4563,6 @@ export namespace Prisma {
     name?: NullableStringFieldUpdateOperationsInput | string | null
     tier?: EnumTierFieldUpdateOperationsInput | $Enums.Tier
     credits?: IntFieldUpdateOperationsInput | number
-    refinedCredits?: IntFieldUpdateOperationsInput | number
-    enhancedCredits?: IntFieldUpdateOperationsInput | number
-    ultimateCredits?: IntFieldUpdateOperationsInput | number
     proTrialUsed?: BoolFieldUpdateOperationsInput | boolean
     version?: IntFieldUpdateOperationsInput | number
     stripeCustomerId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -4655,9 +4580,6 @@ export namespace Prisma {
     name?: NullableStringFieldUpdateOperationsInput | string | null
     tier?: EnumTierFieldUpdateOperationsInput | $Enums.Tier
     credits?: IntFieldUpdateOperationsInput | number
-    refinedCredits?: IntFieldUpdateOperationsInput | number
-    enhancedCredits?: IntFieldUpdateOperationsInput | number
-    ultimateCredits?: IntFieldUpdateOperationsInput | number
     proTrialUsed?: BoolFieldUpdateOperationsInput | boolean
     version?: IntFieldUpdateOperationsInput | number
     stripeCustomerId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -4675,9 +4597,6 @@ export namespace Prisma {
     name?: string | null
     tier?: $Enums.Tier
     credits?: number
-    refinedCredits?: number
-    enhancedCredits?: number
-    ultimateCredits?: number
     proTrialUsed?: boolean
     version?: number
     stripeCustomerId?: string | null
@@ -4694,9 +4613,6 @@ export namespace Prisma {
     name?: NullableStringFieldUpdateOperationsInput | string | null
     tier?: EnumTierFieldUpdateOperationsInput | $Enums.Tier
     credits?: IntFieldUpdateOperationsInput | number
-    refinedCredits?: IntFieldUpdateOperationsInput | number
-    enhancedCredits?: IntFieldUpdateOperationsInput | number
-    ultimateCredits?: IntFieldUpdateOperationsInput | number
     proTrialUsed?: BoolFieldUpdateOperationsInput | boolean
     version?: IntFieldUpdateOperationsInput | number
     stripeCustomerId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -4713,9 +4629,6 @@ export namespace Prisma {
     name?: NullableStringFieldUpdateOperationsInput | string | null
     tier?: EnumTierFieldUpdateOperationsInput | $Enums.Tier
     credits?: IntFieldUpdateOperationsInput | number
-    refinedCredits?: IntFieldUpdateOperationsInput | number
-    enhancedCredits?: IntFieldUpdateOperationsInput | number
-    ultimateCredits?: IntFieldUpdateOperationsInput | number
     proTrialUsed?: BoolFieldUpdateOperationsInput | boolean
     version?: IntFieldUpdateOperationsInput | number
     stripeCustomerId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -4964,9 +4877,6 @@ export namespace Prisma {
     name?: SortOrder
     tier?: SortOrder
     credits?: SortOrder
-    refinedCredits?: SortOrder
-    enhancedCredits?: SortOrder
-    ultimateCredits?: SortOrder
     proTrialUsed?: SortOrder
     version?: SortOrder
     stripeCustomerId?: SortOrder
@@ -4978,9 +4888,6 @@ export namespace Prisma {
 
   export type UserAvgOrderByAggregateInput = {
     credits?: SortOrder
-    refinedCredits?: SortOrder
-    enhancedCredits?: SortOrder
-    ultimateCredits?: SortOrder
     version?: SortOrder
   }
 
@@ -4991,9 +4898,6 @@ export namespace Prisma {
     name?: SortOrder
     tier?: SortOrder
     credits?: SortOrder
-    refinedCredits?: SortOrder
-    enhancedCredits?: SortOrder
-    ultimateCredits?: SortOrder
     proTrialUsed?: SortOrder
     version?: SortOrder
     stripeCustomerId?: SortOrder
@@ -5010,9 +4914,6 @@ export namespace Prisma {
     name?: SortOrder
     tier?: SortOrder
     credits?: SortOrder
-    refinedCredits?: SortOrder
-    enhancedCredits?: SortOrder
-    ultimateCredits?: SortOrder
     proTrialUsed?: SortOrder
     version?: SortOrder
     stripeCustomerId?: SortOrder
@@ -5024,9 +4925,6 @@ export namespace Prisma {
 
   export type UserSumOrderByAggregateInput = {
     credits?: SortOrder
-    refinedCredits?: SortOrder
-    enhancedCredits?: SortOrder
-    ultimateCredits?: SortOrder
     version?: SortOrder
   }
 
@@ -5652,9 +5550,6 @@ export namespace Prisma {
     name?: string | null
     tier?: $Enums.Tier
     credits?: number
-    refinedCredits?: number
-    enhancedCredits?: number
-    ultimateCredits?: number
     proTrialUsed?: boolean
     version?: number
     stripeCustomerId?: string | null
@@ -5671,9 +5566,6 @@ export namespace Prisma {
     name?: string | null
     tier?: $Enums.Tier
     credits?: number
-    refinedCredits?: number
-    enhancedCredits?: number
-    ultimateCredits?: number
     proTrialUsed?: boolean
     version?: number
     stripeCustomerId?: string | null
@@ -5706,9 +5598,6 @@ export namespace Prisma {
     name?: NullableStringFieldUpdateOperationsInput | string | null
     tier?: EnumTierFieldUpdateOperationsInput | $Enums.Tier
     credits?: IntFieldUpdateOperationsInput | number
-    refinedCredits?: IntFieldUpdateOperationsInput | number
-    enhancedCredits?: IntFieldUpdateOperationsInput | number
-    ultimateCredits?: IntFieldUpdateOperationsInput | number
     proTrialUsed?: BoolFieldUpdateOperationsInput | boolean
     version?: IntFieldUpdateOperationsInput | number
     stripeCustomerId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -5725,9 +5614,6 @@ export namespace Prisma {
     name?: NullableStringFieldUpdateOperationsInput | string | null
     tier?: EnumTierFieldUpdateOperationsInput | $Enums.Tier
     credits?: IntFieldUpdateOperationsInput | number
-    refinedCredits?: IntFieldUpdateOperationsInput | number
-    enhancedCredits?: IntFieldUpdateOperationsInput | number
-    ultimateCredits?: IntFieldUpdateOperationsInput | number
     proTrialUsed?: BoolFieldUpdateOperationsInput | boolean
     version?: IntFieldUpdateOperationsInput | number
     stripeCustomerId?: NullableStringFieldUpdateOperationsInput | string | null

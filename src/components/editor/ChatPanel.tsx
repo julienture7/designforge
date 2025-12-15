@@ -91,10 +91,10 @@ export function ChatPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
-  const [refinementLevel, setRefinementLevel] = useState<"REFINED" | "ENHANCED" | "ULTIMATE">("REFINED");
-  const refinementLevelRef = useRef<"REFINED" | "ENHANCED" | "ULTIMATE">("REFINED"); // Persist selection even on re-renders
+  const [refinementLevel, setRefinementLevel] = useState<"NORMAL" | "REFINED">("NORMAL");
+  const refinementLevelRef = useRef<"NORMAL" | "REFINED">("NORMAL"); // Persist selection even on re-renders
   const [hasGenerated, setHasGenerated] = useState(() => !!currentHtml || initialHistory.length > 0); // Track if first generation happened
-  const lockedRefinementLevel = useRef<"REFINED" | "ENHANCED" | "ULTIMATE" | null>(null); // Lock refinement after first gen
+  const lockedRefinementLevel = useRef<"NORMAL" | "REFINED" | null>(null); // Lock refinement after first gen
   
   // Sync ref with state
   useEffect(() => {
@@ -727,9 +727,8 @@ export function ChatPanel({
               
               <div className="refinement-options">
                 {([
-                  { level: "REFINED" as const, label: "Refined", credits: 1, color: "blue" },
-                  { level: "ENHANCED" as const, label: "Enhanced", credits: 2, color: "indigo" },
-                  { level: "ULTIMATE" as const, label: "Ultimate", credits: 4, color: "purple" },
+                  { level: "NORMAL" as const, label: "Normal", credits: 1, color: "blue" },
+                  { level: "REFINED" as const, label: "Refined", credits: 5, color: "purple" },
                 ] as const).map(({ level, label, credits, color }) => {
                   const isSelected = refinementLevel === level;
                   
@@ -762,7 +761,7 @@ export function ChatPanel({
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
               <span>
-                <strong>{lockedRefinementLevel.current}</strong> · Edits cost 1 credit
+                <strong>{lockedRefinementLevel.current}</strong> · Edits use same mode
               </span>
             </div>
           )}

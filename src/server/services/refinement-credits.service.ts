@@ -5,26 +5,23 @@
  * based on refinement level selection.
  * 
  * Credit costs:
- * - REFINED: 1 credit
- * - ENHANCED: 2 credits
- * - ULTIMATE: 4 credits
+ * - NORMAL: 1 credit (Gemini 3 Pro, no refinement)
+ * - REFINED: 5 credits (Gemini 3 Pro with 1 refinement pass)
  */
 
 import { db } from "~/server/db";
 
-export type RefinementLevel = "REFINED" | "ENHANCED" | "ULTIMATE";
+export type RefinementLevel = "NORMAL" | "REFINED";
 
 /**
  * Get credit cost for a refinement level
  */
 export function getRefinementCreditCost(refinementLevel: RefinementLevel): number {
   switch (refinementLevel) {
-    case "REFINED":
+    case "NORMAL":
       return 1;
-    case "ENHANCED":
-      return 2;
-    case "ULTIMATE":
-      return 4;
+    case "REFINED":
+      return 5;
   }
 }
 

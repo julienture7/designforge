@@ -45,7 +45,7 @@ export function getTierDescription(tier: Tier): string {
     case "FREE":
       return "Perfect for trying out";
     case "PRO":
-      return "Access to all refinement levels with separate credit pools";
+      return "Normal (1 credit) and Refined (5 credits) modes with Gemini 3 Pro";
     default:
       return "";
   }

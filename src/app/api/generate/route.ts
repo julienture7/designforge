@@ -159,9 +159,9 @@ export async function POST(req: NextRequest) {
     if (userTier === "PRO") {
       // PRO tier: Always use Gemini 3 Pro, check refinement credits
       isUsingProMode = true;
-      if (!refinementLevel || !["REFINED", "ENHANCED", "ULTIMATE"].includes(refinementLevel)) {
+      if (!refinementLevel || !["NORMAL", "REFINED"].includes(refinementLevel)) {
         return NextResponse.json(
-          { error: "Refinement level required for Pro tier", code: "REFINEMENT_LEVEL_REQUIRED" },
+          { error: "Refinement level required for Pro tier (NORMAL or REFINED)", code: "REFINEMENT_LEVEL_REQUIRED" },
           { status: 400 }
         );
       }
@@ -240,14 +240,11 @@ export async function POST(req: NextRequest) {
     if (userTier === "PRO" && selectedRefinementLevel) {
       // Map refinement level to number of passes
       switch (selectedRefinementLevel) {
+        case "NORMAL":
+          refinementPasses = 0; // No refinement, just Gemini 3 Pro
+          break;
         case "REFINED":
-          refinementPasses = 1;
-          break;
-        case "ENHANCED":
-          refinementPasses = 2;
-          break;
-        case "ULTIMATE":
-          refinementPasses = 3; // Keep 3 passes for Ultimate (4 credits)
+          refinementPasses = 1; // 1 refinement pass (costs 5 credits)
           break;
       }
     } else {
