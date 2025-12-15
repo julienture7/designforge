@@ -729,6 +729,11 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
       newImgTag = newImgTag.replace(/<img/, `<img data-image-query="${query}"`);
     }
 
+    // Mark as resolved to prevent client-side re-injection
+    if (!newImgTag.includes('data-image-resolved')) {
+      newImgTag = newImgTag.replace(/<img/, '<img data-image-resolved="true"');
+    }
+
     processedHtml = processedHtml.replace(imgTag, newImgTag);
   }
 
@@ -762,6 +767,9 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
       ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
       : `/api/proxy/image?query=${encodeURIComponent(query)}`;
 
+    // Skip if already resolved (prevent re-injection)
+    if (element.includes('data-bg-resolved="true"')) continue;
+
     // Add or update background-image style with proxy URL
     let newElement = element;
     if (element.includes('style="')) {
@@ -781,6 +789,12 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
     } else {
       // Add style attribute
       newElement = element.replace(/>$/, ` style="background-image: url('${proxyUrl}'); background-size: cover; background-position: center;">`);
+    }
+
+    // Mark as resolved to prevent client-side re-injection
+    if (!newElement.includes('data-bg-resolved')) {
+      // Add data-bg-resolved attribute before the closing >
+      newElement = newElement.replace(/>$/, ' data-bg-resolved="true">');
     }
 
     if (newElement !== element) {
