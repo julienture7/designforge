@@ -8,9 +8,12 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { ToastProvider } from "~/contexts/ToastContext";
 
 export const metadata: Metadata = {
-  title: "AIDesigner",
+  title: "DesignForge",
   description: "AI-powered website generation and editing",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  icons: [
+    { rel: "icon", url: "/favicon.svg", type: "image/svg+xml" },
+    { rel: "icon", url: "/favicon.ico", sizes: "32x32" },
+  ],
 };
 
 const geist = Geist({

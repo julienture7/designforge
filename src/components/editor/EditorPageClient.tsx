@@ -213,7 +213,7 @@ export function EditorPageClient({
                 }
                 handleExport();
               }}
-              className={`pro-feature-btn pro-feature-btn--header ${!isPro ? 'pro-feature-btn--locked' : ''}`}
+              className={`pro-feature-btn ${!isPro ? 'pro-feature-btn--locked' : ''}`}
               title={isPro ? "Download the current HTML" : "Upgrade to Pro to export HTML"}
             >
               <svg className="pro-feature-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -221,7 +221,7 @@ export function EditorPageClient({
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              <span>Export HTML</span>
+              <span>Export</span>
               {!isPro && <span className="pro-feature-btn__badge">PRO</span>}
             </button>
 
