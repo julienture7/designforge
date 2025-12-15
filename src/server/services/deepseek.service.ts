@@ -6,7 +6,7 @@
  * Each fix must be small and targeted - fixing bugs, not rewriting.
  */
 
-import { parseSearchReplaceBlocks, applySearchReplaceBlocks } from "~/server/lib/edit-parser";
+import { parseEditResponse, applyEditBlocks, addLineNumbers } from "~/server/lib/edit-engine";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -172,23 +172,23 @@ export async function runPolishPhase(
 
   const systemPrompt = `${phase.prompt}
 
-FORMAT FOR CHANGES (use exactly this format):
-<<<<<<< SEARCH
-[exact existing code to find - include 2-3 lines of context]
-=======
-[minimal fix - change as little as possible]
->>>>>>> REPLACE
+FORMAT FOR CHANGES (use edit blocks with line numbers):
+\`\`\`edit
+[START_LINE-END_LINE]
+replacement content here
+\`\`\`
 
 CRITICAL RULES:
 - Make the SMALLEST possible change
 - NEVER remove images, sections, or major elements
 - NEVER change the visual design
-- Include enough context in SEARCH to be unique
+- Use exact line numbers from the provided HTML
 - If unsure, respond "No changes required."`;
 
+  const numberedHtml = addLineNumbers(html.substring(0, 15000));
   const userPrompt = `Review this HTML and make ONLY essential bug fixes (max 3):
 
-${html.substring(0, 15000)}${html.length > 15000 ? '\n... (truncated)' : ''}`;
+${numberedHtml}${html.length > 15000 ? '\n... (truncated)' : ''}`;
 
   try {
     const response = await callDeepSeek(systemPrompt, userPrompt);
@@ -209,8 +209,20 @@ ${html.substring(0, 15000)}${html.length > 15000 ? '\n... (truncated)' : ''}`;
       };
     }
 
-    // Parse and apply blocks
-    const parseResult = parseSearchReplaceBlocks(response);
+    // Parse and apply blocks using new edit engine
+    const parseResult = parseEditResponse(response);
+
+    if (parseResult.fullRewrite) {
+      // Don't allow full rewrites in polish phase
+      return {
+        success: true,
+        html,
+        appliedFixes: 0,
+        failedFixes: 0,
+        issues: [],
+        duration,
+      };
+    }
 
     if (parseResult.blocks.length === 0) {
       return {
@@ -225,14 +237,14 @@ ${html.substring(0, 15000)}${html.length > 15000 ? '\n... (truncated)' : ''}`;
 
     // Limit to max 5 fixes per phase to prevent over-modification
     const limitedBlocks = parseResult.blocks.slice(0, 5);
-    const applyResult = applySearchReplaceBlocks(html, limitedBlocks);
+    const applyResult = applyEditBlocks(html, limitedBlocks);
 
     return {
       success: true,
-      html: applyResult.newContent,
-      appliedFixes: applyResult.appliedBlocks.length,
-      failedFixes: applyResult.failedBlocks.length,
-      issues: applyResult.failedBlocks.map(fb => fb.reason),
+      html: applyResult.html,
+      appliedFixes: applyResult.appliedCount,
+      failedFixes: limitedBlocks.length - applyResult.appliedCount,
+      issues: [],
       duration,
     };
   } catch (error) {
