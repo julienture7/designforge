@@ -234,7 +234,7 @@ export function EditorPageClient({
         {/* Editor content */}
         <main className="flex-1 overflow-hidden animate-fade-in">
           <ConnectedEditor
-            key={currentProjectId ?? projectId} // Force re-mount when project changes
+            key={projectId} // Only re-mount when navigating to a different project, not when project is created
             projectId={currentProjectId ?? (isNewProject ? undefined : projectId)}
             initialHistory={initialHistory}
             initialHtml={initialHtml}
