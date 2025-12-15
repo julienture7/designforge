@@ -256,7 +256,7 @@ export async function POST(req: NextRequest) {
 
     // Select model based on tier (PRO/Trial uses Gemini 3 Pro, FREE uses DeepSeek)
     const selectedModel = isUsingProMode
-      ? google("gemini-2.0-flash") // Gemini 2.0 Flash (stable, fast) - will switch to gemini-3-pro-preview when available
+      ? google("gemini-3-pro-preview") // Gemini 3 Pro Preview - Google's most advanced AI model
       : deepseek("deepseek-chat");
     
     // For Gemini, we use different output token limits
