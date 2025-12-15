@@ -403,14 +403,15 @@ export function useAutoSave({
 
     try {
       // Use ref to check current project ID (avoids stale closure issues)
-      let projectIdToUse = currentProjectIdRef.current;
+      let projectIdToUse: string | undefined = currentProjectIdRef.current;
       
       if (!projectIdToUse) {
         // Project should have been created by createProjectForGeneration, but fallback just in case
-        projectIdToUse = await createProjectForGeneration();
-        if (!projectIdToUse) {
+        const newProjectId = await createProjectForGeneration();
+        if (!newProjectId) {
           throw new Error("Failed to create project");
         }
+        projectIdToUse = newProjectId;
       }
 
       // Call generation complete mutation (this also sets status to READY)
