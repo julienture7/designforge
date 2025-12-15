@@ -258,6 +258,7 @@ export function EditorPageClient({
             </div>
           )}
           <ConnectedEditor
+            key={currentProjectId ?? projectId} // Force re-mount when project changes
             projectId={currentProjectId ?? (isNewProject ? undefined : projectId)}
             initialHistory={initialHistory}
             initialHtml={initialHtml}

@@ -400,6 +400,12 @@ export function ChatPanel({
     
     // Clear any stale sessionStorage on mount
     // This prevents old queries from persisting across sessions
+    try {
+      window.sessionStorage.removeItem("aidesigner_pending_editor_url");
+    } catch {
+      // Ignore storage errors
+    }
+    
     return () => {
       // On unmount, clear pending refs
       pendingPromptRef.current = null;
