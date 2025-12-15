@@ -129,6 +129,8 @@ async function redirects() {
     { source: "/auth/signup", destination: "/sign-up", permanent: false },
     { source: "/login", destination: "/sign-in", permanent: false },
     { source: "/register", destination: "/sign-up", permanent: false },
+    // Redirect /editor to /editor/new (handles edge cases)
+    { source: "/editor", destination: "/editor/new", permanent: false },
   ];
 }
 
