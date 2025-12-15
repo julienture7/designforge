@@ -320,27 +320,25 @@ export function ConnectedEditor({
           <button
             onClick={() => {
               if (!rawHtml) {
-                if (onError) {
-                  onError("NO_CONTENT", "Generate a design first to view raw HTML.");
-                }
+                onError?.("NO_CONTENT", "Generate a design first to view raw HTML.");
                 return;
               }
               if (!isPro) {
-                // Show upgrade prompt for non-Pro users
-                if (onError) {
-                  onError("UPGRADE_REQUIRED", "This feature requires a Pro subscription. Upgrade to view raw HTML.");
-                } else {
-                  window.location.href = "/pricing";
-                }
+                onError?.("UPGRADE_REQUIRED", "Upgrade to Pro to export HTML code.");
                 return;
               }
               setShowRawHtml(true);
             }}
             disabled={!rawHtml}
-            className="text-xs text-muted hover:text-foreground px-2 py-1 rounded border border-border hover:border-accent hover:shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            title={!rawHtml ? "Generate a design first" : (isPro ? "View Raw HTML" : "Upgrade to Pro to view raw HTML")}
+            className={`pro-feature-btn ${!isPro ? 'pro-feature-btn--locked' : ''}`}
+            title={!rawHtml ? "Generate a design first" : (isPro ? "View Raw HTML" : "Upgrade to Pro")}
           >
-            {"</>"}
+            <svg className="pro-feature-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+            <span>HTML</span>
+            {!isPro && <span className="pro-feature-btn__badge">PRO</span>}
           </button>
           <ViewportToggle
             selectedViewport={viewportType}

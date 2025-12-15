@@ -584,6 +584,24 @@ export function ChatPanel({
         </div>
       </div>
 
+      {/* Upgrade CTA for free users - shown after first generation */}
+      {!isPro && hasGenerated && (
+        <div className="upgrade-cta mx-2 mb-2">
+          <div className="upgrade-cta__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </div>
+          <div className="upgrade-cta__text">
+            <div className="upgrade-cta__title">Unlock Pro Features</div>
+            <div className="upgrade-cta__desc">Export HTML, multi-pass refinement & more</div>
+          </div>
+          <a href="/pricing" className="upgrade-cta__btn">
+            Upgrade
+          </a>
+        </div>
+      )}
+
       {/* Input area */}
       <div className="chat-input-container">
         <form onSubmit={handleSubmit} className="chat-input-form">

@@ -12,14 +12,10 @@ export interface ViewportConfig {
   label: string;
   width: number | '100%';
   height: number | '100%';
-  icon: string;
 }
 
 /**
  * Predefined viewport configurations
- * - Mobile: 375×667px (iPhone SE/8 size)
- * - Tablet: 768×1024px (iPad portrait)
- * - Desktop: 100%×100% (full container)
  */
 export const VIEWPORT_CONFIGS: Record<ViewportType, ViewportConfig> = {
   mobile: {
@@ -27,51 +23,62 @@ export const VIEWPORT_CONFIGS: Record<ViewportType, ViewportConfig> = {
     label: 'Mobile',
     width: 375,
     height: 667,
-    icon: '📱',
   },
   tablet: {
     type: 'tablet',
     label: 'Tablet',
     width: 768,
     height: 1024,
-    icon: '📱',
   },
   desktop: {
     type: 'desktop',
     label: 'Desktop',
     width: '100%',
     height: '100%',
-    icon: '🖥️',
   },
 };
 
+/** SVG icons for viewport types */
+const ViewportIcons = {
+  mobile: (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="7" y="2" width="10" height="20" rx="2" />
+      <line x1="12" y1="18" x2="12" y2="18.01" strokeWidth="2" />
+    </svg>
+  ),
+  tablet: (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <line x1="12" y1="17" x2="12" y2="17.01" strokeWidth="2" />
+    </svg>
+  ),
+  desktop: (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+    </svg>
+  ),
+};
+
 interface ViewportToggleProps {
-  /** Currently selected viewport */
   selectedViewport: ViewportType;
-  /** Callback when viewport changes */
   onViewportChange: (viewport: ViewportType) => void;
-  /** Optional className for the container */
   className?: string;
 }
 
 /**
- * ViewportToggle - Toggle buttons for switching between device viewport sizes
- * 
- * Provides buttons for Mobile (375×667), Tablet (768×1024), and Desktop (100%)
- * viewport sizes. The selected viewport is highlighted.
- * 
- * Requirements: 4.4
- * DoD: Clicking Mobile button resizes preview to 375×667px
+ * ViewportToggle - Modern toggle for switching between device viewports
  */
 export function ViewportToggle({ 
   selectedViewport, 
   onViewportChange,
   className = "" 
 }: ViewportToggleProps) {
-  const viewports: ViewportType[] = ['mobile', 'tablet', 'desktop'];
+  const viewports: ViewportType[] = ['desktop', 'tablet', 'mobile'];
 
   return (
-    <div className={`flex items-center gap-1 bg-surface rounded-lg p-1 ${className}`}>
+    <div className={`viewport-toggle ${className}`}>
       {viewports.map((viewport) => {
         const config = VIEWPORT_CONFIGS[viewport];
         const isSelected = selectedViewport === viewport;
@@ -80,19 +87,12 @@ export function ViewportToggle({
           <button
             key={viewport}
             onClick={() => onViewportChange(viewport)}
-            className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium
-              transition-all duration-200 ease-out-expo active:scale-95
-              ${isSelected 
-                ? 'bg-accent text-accent-foreground shadow-sm' 
-                : 'text-muted hover:text-foreground hover:bg-border hover:shadow-sm'
-              }
-            `}
-            title={`${config.label} (${typeof config.width === 'number' ? `${config.width}×${config.height}` : 'Full width'})`}
+            className={`viewport-toggle-btn ${isSelected ? 'viewport-toggle-btn--active' : ''}`}
+            title={`${config.label} ${typeof config.width === 'number' ? `(${config.width}×${config.height})` : ''}`}
             aria-pressed={isSelected}
+            aria-label={config.label}
           >
-            <span className={`transition-transform duration-200 ${isSelected ? 'scale-110' : ''}`}>{config.icon}</span>
-            <span className="hidden sm:inline">{config.label}</span>
+            {ViewportIcons[viewport]}
           </button>
         );
       })}

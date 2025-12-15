@@ -23,6 +23,7 @@ export function ProjectCard({
   index = 0,
 }: ProjectCardProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
@@ -37,50 +38,49 @@ export function ProjectCard({
       setIsEditing(false);
       setIsSaving(false);
       toast.success("Project title updated");
-      // Invalidate and refetch project list
       void utils.project.list.invalidate();
     },
     onError: (error) => {
       setIsSaving(false);
       toast.error("Failed to update title", error.message);
-      setEditedTitle(title); // Revert to original title
+      setEditedTitle(title);
     },
   });
 
-  // Hide fallback when iframe loads or handle errors
+  // Handle iframe loading with timeout
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const handleLoad = () => {
-      // Check if iframe loaded successfully (not an error page)
-      try {
-        // If we can access the iframe's location, check it's not the homepage
-        const iframeUrl = iframe.contentWindow?.location.href;
-        if (iframeUrl && iframeUrl.includes('/api/project/')) {
-          setIsLoading(false);
-        } else {
-          // Iframe redirected - keep showing placeholder
-          console.warn("Preview iframe redirected to:", iframeUrl);
-        }
-      } catch (e) {
-        // Cross-origin or other error - assume it loaded if we get here
+    // Timeout after 8 seconds
+    const timeout = setTimeout(() => {
+      if (isLoading) {
         setIsLoading(false);
+        setLoadError(true);
       }
+    }, 8000);
+
+    const handleLoad = () => {
+      clearTimeout(timeout);
+      setIsLoading(false);
+      setLoadError(false);
     };
 
     const handleError = () => {
-      console.error("Preview iframe failed to load");
-      setIsLoading(false); // Hide loading state even on error
+      clearTimeout(timeout);
+      setIsLoading(false);
+      setLoadError(true);
     };
 
     iframe.addEventListener("load", handleLoad);
     iframe.addEventListener("error", handleError);
+    
     return () => {
+      clearTimeout(timeout);
       iframe.removeEventListener("load", handleLoad);
       iframe.removeEventListener("error", handleError);
     };
-  }, []);
+  }, [isLoading]);
 
   // Sync editedTitle when title prop changes
   useEffect(() => {
@@ -189,11 +189,27 @@ export function ProjectCard({
           loading="lazy"
           aria-hidden="true"
         />
-        {/* Fallback placeholder - shown while iframe loads */}
+        {/* Loading placeholder */}
         {isLoading && (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center pointer-events-none">
-            <div className="text-gray-300 animate-pulse">
-              <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-100 via-slate-50 to-white flex items-center justify-center pointer-events-none">
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative">
+                <div className="w-10 h-10 rounded-full border-2 border-slate-200" />
+                <div className="absolute inset-0 w-10 h-10 rounded-full border-2 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+              </div>
+              <span className="text-xs text-slate-400 font-medium">Loading preview...</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Error fallback */}
+        {loadError && !isLoading && (
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center pointer-events-none">
+            <div className="flex flex-col items-center gap-2 text-slate-400">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              <span className="text-xs font-medium">Preview unavailable</span>
             </div>
           </div>
         )}

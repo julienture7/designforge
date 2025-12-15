@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignedIn, SignedOut, UserButton, useAuth, useClerk } from "@clerk/nextjs";
+
+const EXAMPLE_PROMPTS = [
+  "A modern SaaS landing page with pricing",
+  "Portfolio website for a photographer",
+  "Restaurant homepage with menu section",
+  "Startup landing page with waitlist",
+  "E-commerce product showcase page",
+  "Personal blog with minimalist design",
+];
 
 export default function Home() {
   const router = useRouter();
@@ -11,7 +20,49 @@ export default function Home() {
   const clerk = useClerk();
 
   const [prompt, setPrompt] = useState("");
+  const [placeholderText, setPlaceholderText] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  const exampleIndexRef = useRef(0);
+  const charIndexRef = useRef(0);
+
+  // Animated placeholder effect
+  useEffect(() => {
+    // Don't animate if user has typed something
+    if (prompt) {
+      setPlaceholderText("Describe your website...");
+      return;
+    }
+
+    const currentExample = EXAMPLE_PROMPTS[exampleIndexRef.current] ?? "";
+    
+    const tick = () => {
+      if (isTyping) {
+        // Typing forward
+        if (charIndexRef.current < currentExample.length) {
+          charIndexRef.current++;
+          setPlaceholderText(currentExample.slice(0, charIndexRef.current));
+        } else {
+          // Pause at end, then start deleting
+          setTimeout(() => setIsTyping(false), 2000);
+        }
+      } else {
+        // Deleting
+        if (charIndexRef.current > 0) {
+          charIndexRef.current--;
+          setPlaceholderText(currentExample.slice(0, charIndexRef.current));
+        } else {
+          // Move to next example
+          exampleIndexRef.current = (exampleIndexRef.current + 1) % EXAMPLE_PROMPTS.length;
+          setIsTyping(true);
+        }
+      }
+    };
+
+    const speed = isTyping ? 50 : 30;
+    const timer = setInterval(tick, speed);
+    return () => clearInterval(timer);
+  }, [prompt, isTyping]);
 
   // Clear stale pending URL when landing on home page
   // This prevents old queries from auto-loading when user returns to home
@@ -151,7 +202,7 @@ export default function Home() {
                 type="text"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe your website..."
+                placeholder={placeholderText || "Describe your website..."}
                 className="prompt-input"
                 aria-label="Describe what you want to build"
               />
