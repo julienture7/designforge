@@ -254,13 +254,7 @@ export async function POST(req: NextRequest) {
     // Select model based on tier (PRO/Trial uses Gemini 3 Pro, FREE uses DeepSeek)
     // For Gemini 3 Pro, configure thinking level to "low" for faster, lower-cost generations
     const selectedModel = isUsingProMode
-      ? google("gemini-3-pro-preview", {
-          generationConfig: {
-            thinkingConfig: {
-              thinkingLevel: "low",
-            },
-          },
-        })
+      ? google("gemini-3-pro-preview")
       : deepseek("deepseek-chat");
     
     // For Gemini, we use different output token limits
@@ -310,7 +304,6 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
         ];
 
         // Use the same model for refinement (Gemini for PRO, DeepSeek for FREE)
-        // Thinking level is already configured when creating the model
         currentResult = await generateText({
           model: selectedModel,
           system: REFINEMENT_PROMPT,
