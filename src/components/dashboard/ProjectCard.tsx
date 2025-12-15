@@ -25,13 +25,10 @@ export function ProjectCard({
   index = 0,
 }: ProjectCardProps) {
   const isGenerating = status === "GENERATING";
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
   const [isSaving, setIsSaving] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const toast = useToastContext();
   
@@ -49,41 +46,6 @@ export function ProjectCard({
       setEditedTitle(title);
     },
   });
-
-  // Handle iframe loading with timeout
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    // Timeout after 8 seconds
-    const timeout = setTimeout(() => {
-      if (isLoading) {
-        setIsLoading(false);
-        setLoadError(true);
-      }
-    }, 8000);
-
-    const handleLoad = () => {
-      clearTimeout(timeout);
-      setIsLoading(false);
-      setLoadError(false);
-    };
-
-    const handleError = () => {
-      clearTimeout(timeout);
-      setIsLoading(false);
-      setLoadError(true);
-    };
-
-    iframe.addEventListener("load", handleLoad);
-    iframe.addEventListener("error", handleError);
-    
-    return () => {
-      clearTimeout(timeout);
-      iframe.removeEventListener("load", handleLoad);
-      iframe.removeEventListener("error", handleError);
-    };
-  }, [isLoading]);
 
   // Sync editedTitle when title prop changes
   useEffect(() => {
@@ -172,29 +134,41 @@ export function ProjectCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Preview Thumbnail */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-50">
-        <iframe
-          ref={iframeRef}
-          src={`/api/project/${id}/preview`}
-          className="absolute inset-0 w-full h-full border-0 transition-transform duration-500 ease-out-expo"
-          style={{
-            transform: isHovered ? "scale(0.26)" : "scale(0.25)",
-            transformOrigin: "top left",
-            width: "400%",
-            height: "400%",
-            pointerEvents: "none",
-            opacity: isLoading ? 0 : 1,
-            transition: "opacity 0.4s ease-out, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}
-          title={`Preview of ${title}`}
-          sandbox="allow-scripts"
-          loading="lazy"
-          aria-hidden="true"
-        />
+      {/* Preview Thumbnail - Simple gradient design (no iframe for reliability) */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        {/* Decorative design elements */}
+        <div className="absolute inset-0 p-4">
+          {/* Mock browser chrome */}
+          <div className="h-full w-full rounded-lg border border-slate-200/60 bg-white shadow-sm overflow-hidden">
+            {/* Browser header */}
+            <div className="h-6 bg-slate-50 border-b border-slate-100 flex items-center px-2 gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-red-300" />
+              <div className="w-2 h-2 rounded-full bg-yellow-300" />
+              <div className="w-2 h-2 rounded-full bg-green-300" />
+              <div className="flex-1 mx-2">
+                <div className="h-3 bg-slate-100 rounded-full w-3/4" />
+              </div>
+            </div>
+            {/* Mock content */}
+            <div className="p-3 space-y-2">
+              {/* Hero section mock */}
+              <div className="h-8 bg-gradient-to-r from-indigo-100 to-purple-100 rounded" />
+              <div className="space-y-1">
+                <div className="h-2 bg-slate-100 rounded w-3/4" />
+                <div className="h-2 bg-slate-100 rounded w-1/2" />
+              </div>
+              {/* Cards mock */}
+              <div className="flex gap-2 mt-3">
+                <div className="flex-1 h-10 bg-slate-50 rounded border border-slate-100" />
+                <div className="flex-1 h-10 bg-slate-50 rounded border border-slate-100" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Generating indicator - shown when project is being generated */}
         {isGenerating && (
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center pointer-events-none z-30">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/95 via-purple-50/95 to-pink-50/95 flex items-center justify-center z-30">
             <div className="flex flex-col items-center gap-3">
               <div className="relative">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-20 animate-ping" />
@@ -209,37 +183,12 @@ export function ProjectCard({
           </div>
         )}
 
-        {/* Loading placeholder */}
-        {isLoading && !isGenerating && (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-100 via-slate-50 to-white flex items-center justify-center pointer-events-none">
-            <div className="flex flex-col items-center gap-2">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full border-2 border-slate-200" />
-                <div className="absolute inset-0 w-10 h-10 rounded-full border-2 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-              </div>
-              <span className="text-xs text-slate-400 font-medium">Loading preview...</span>
-            </div>
-          </div>
-        )}
-        
-        {/* Error fallback */}
-        {loadError && !isLoading && (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center pointer-events-none">
-            <div className="flex flex-col items-center gap-2 text-slate-400">
-              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-              </svg>
-              <span className="text-xs font-medium">Preview unavailable</span>
-            </div>
-          </div>
-        )}
-
-        {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10" />
+        {/* Overlay gradient on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10" />
         
         {/* Hover action indicator */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 ease-out-expo">
+          <div className="bg-white/95 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 ease-out-expo">
             <span className="text-sm font-medium text-gray-900 flex items-center gap-2">
               Open Editor
               <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
