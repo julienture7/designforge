@@ -258,7 +258,7 @@ CRITICAL REQUIREMENTS:
             let fullResponse = "";
             for await (const part of result.fullStream) {
               if (part.type === "text-delta") {
-                fullResponse += part.textDelta;
+                fullResponse += part.text;
               }
             }
 
