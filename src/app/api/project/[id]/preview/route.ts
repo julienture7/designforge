@@ -50,11 +50,14 @@ export async function GET(
 
     // Check ownership or public visibility
     // Allow access if: user owns the project OR project is public
-    const hasAccess = userId === project.userId || project.visibility === "PUBLIC";
+    // Note: For dashboard previews, we need to allow the owner to see their own projects
+    const isOwner = userId && userId === project.userId;
+    const isPublic = project.visibility === "PUBLIC";
+    const hasAccess = isOwner || isPublic;
     
     if (!hasAccess) {
       // Return empty HTML instead of JSON for iframe compatibility
-      const emptyHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#f3f4f6;}</style></head><body></body></html>`;
+      const emptyHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#f3f4f6;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui;color:#6b7280;}</style></head><body><div>Private project</div></body></html>`;
       return new NextResponse(emptyHtml, {
         status: 403,
         headers: {

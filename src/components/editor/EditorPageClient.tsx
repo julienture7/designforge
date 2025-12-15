@@ -27,14 +27,6 @@ export function EditorPageClient({
   const [showHistoryWarning, setShowHistoryWarning] = useState(false);
   const latestHtmlRef = useRef<string>(initialHtml);
 
-  // #region agent log
-  if (typeof window !== 'undefined') {
-    useEffect(() => {
-      fetch('http://127.0.0.1:7242/ingest/08685b61-6ac0-4a56-9b63-af8f251df805',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EditorPageClient.tsx:26',message:'EditorPageClient mounted',data:{projectId,currentUrl:window.location.href,urlParams:Object.fromEntries(new URLSearchParams(window.location.search))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    }, []);
-  }
-  // #endregion
-
   const toast = useToastContext();
   const { isSignedIn } = useAuth();
 
