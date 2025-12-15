@@ -168,11 +168,22 @@ export function EditorPageClient({
         <header className="navbar-animate relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-4 md:px-6">
           {/* Left: Logo / Back */}
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-90 transition-all duration-200 hover:scale-105 active:scale-95">
-              <svg className="h-6 w-6 text-slate-800 animate-float" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 2L3 14h6l-1 6 4-4 4 4-1-6h6L12 2z" />
-              </svg>
-              <span className="hidden text-[18px] font-semibold -tracking-wide text-slate-800 md:block">
+            <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-all duration-200 hover:scale-105 active:scale-95 group">
+              <div className="relative h-8 w-8 flex items-center justify-center">
+                {/* Gradient background circle */}
+                <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity shadow-lg shadow-indigo-500/25" />
+                {/* Logo mark - stylized DF monogram */}
+                <svg className="relative h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  {/* D shape */}
+                  <path d="M6 4h4c4.418 0 8 3.582 8 8s-3.582 8-8 8H6V4z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  {/* F crossbar / spark accent */}
+                  <path d="M9 12h5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  {/* Spark dots */}
+                  <circle cx="19" cy="6" r="1.5" fill="currentColor" className="animate-pulse" />
+                  <circle cx="21" cy="9" r="1" fill="currentColor" opacity="0.6" />
+                </svg>
+              </div>
+              <span className="hidden text-lg font-semibold tracking-tight bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent md:block">
                 DesignForge
               </span>
               <span className="sr-only">Back to dashboard</span>

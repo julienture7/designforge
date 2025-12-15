@@ -54,7 +54,7 @@ function createProtectedPreviewHtml(html: string): string {
   .df-watermark svg { width: 14px; height: 14px; }
 </style>
 <a href="/pricing" target="_top" class="df-watermark">
-  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 14h6l-1 6 4-4 4 4-1-6h6L12 2z"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h4c4.418 0 8 3.582 8 8s-3.582 8-8 8H6V4z"/><path d="M9 12h5"/></svg>
   DesignForge Preview
 </a>
 <script>

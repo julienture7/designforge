@@ -47,9 +47,17 @@ export function DashboardContent({
         <nav className="navbar-animate border-b border-gray-100 bg-white">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 justify-between items-center">
-              <Link href="/dashboard" className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95">
-                <span className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <svg className="w-6 h-6 animate-float" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L3 14h6l-1 6 4-4 4 4-1-6h6L12 2z" /></svg>
+              <Link href="/dashboard" className="flex items-center gap-2.5 transition-transform duration-200 hover:scale-105 active:scale-95 group">
+                <div className="relative h-9 w-9 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-90 group-hover:opacity-100 transition-opacity shadow-lg shadow-indigo-500/30" />
+                  <svg className="relative h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 4h4c4.418 0 8 3.582 8 8s-3.582 8-8 8H6V4z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                    <path d="M9 12h5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                    <circle cx="19" cy="6" r="1.5" fill="currentColor" className="animate-pulse" />
+                    <circle cx="21" cy="9" r="1" fill="currentColor" opacity="0.6" />
+                  </svg>
+                </div>
+                <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent">
                   DesignForge
                 </span>
               </Link>
