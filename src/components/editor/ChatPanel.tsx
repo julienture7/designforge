@@ -30,24 +30,37 @@ interface Message {
 /** Parse API error response into code + message */
 function parseApiError(response: Response, data: unknown): { code: string; message: string } {
   const maybeData = data as Record<string, unknown> | null;
+  const errorObj = maybeData?.error as Record<string, unknown> | string | null | undefined;
   
-  const code = 
-    (typeof maybeData?.code === "string" ? maybeData.code : null) ??
-    (typeof (maybeData?.error as Record<string, unknown>)?.code === "string" 
-      ? (maybeData.error as Record<string, unknown>).code as string 
-      : null) ??
-    (response.status === 401 ? "UNAUTHORIZED" :
-     response.status === 402 ? "CREDITS_EXHAUSTED" :
-     response.status === 409 ? "GENERATION_IN_PROGRESS" :
-     response.status === 429 ? "RATE_LIMITED" : "API_ERROR");
+  // Extract code
+  let code: string;
+  if (typeof maybeData?.code === "string") {
+    code = maybeData.code;
+  } else if (typeof errorObj === "object" && errorObj && typeof errorObj.code === "string") {
+    code = errorObj.code;
+  } else if (response.status === 401) {
+    code = "UNAUTHORIZED";
+  } else if (response.status === 402) {
+    code = "CREDITS_EXHAUSTED";
+  } else if (response.status === 409) {
+    code = "GENERATION_IN_PROGRESS";
+  } else if (response.status === 429) {
+    code = "RATE_LIMITED";
+  } else {
+    code = "API_ERROR";
+  }
 
-  const message =
-    (typeof maybeData?.error === "string" ? maybeData.error : null) ??
-    (typeof maybeData?.message === "string" ? maybeData.message : null) ??
-    (typeof (maybeData?.error as Record<string, unknown>)?.message === "string"
-      ? (maybeData.error as Record<string, unknown>).message as string
-      : null) ??
-    "Request failed";
+  // Extract message
+  let message: string;
+  if (typeof errorObj === "string") {
+    message = errorObj;
+  } else if (typeof maybeData?.message === "string") {
+    message = maybeData.message;
+  } else if (typeof errorObj === "object" && errorObj && typeof errorObj.message === "string") {
+    message = errorObj.message;
+  } else {
+    message = "Request failed";
+  }
 
   return { code, message };
 }
