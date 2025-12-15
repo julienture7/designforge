@@ -398,6 +398,12 @@ export function ChatPanel({
     hasAutoSubmittedRef.current = false;
     pendingPromptRef.current = null;
     
+    // Clear any pending auto-submit timeout
+    if (autoSubmitTimeoutRef.current) {
+      clearTimeout(autoSubmitTimeoutRef.current);
+      autoSubmitTimeoutRef.current = null;
+    }
+    
     // Clear any stale sessionStorage on mount
     // This prevents old queries from persisting across sessions
     try {
@@ -407,8 +413,12 @@ export function ChatPanel({
     }
     
     return () => {
-      // On unmount, clear pending refs
+      // On unmount, clear pending refs and timeouts
       pendingPromptRef.current = null;
+      if (autoSubmitTimeoutRef.current) {
+        clearTimeout(autoSubmitTimeoutRef.current);
+        autoSubmitTimeoutRef.current = null;
+      }
     };
   }, [projectId]);
 
