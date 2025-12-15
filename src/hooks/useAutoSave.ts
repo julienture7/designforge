@@ -123,6 +123,8 @@ interface UseAutoSaveReturn {
     conversationHistory: ConversationMessage[];
     tokenUsage: number;
   }) => void;
+  /** Create project immediately when generation starts (with GENERATING status) */
+  createProjectForGeneration: () => Promise<string | null>;
   /** Retry pending save from localStorage */
   retryPendingSave: () => void;
   /** Clear pending save from localStorage */
@@ -334,6 +336,51 @@ export function useAutoSave({
   }, [performSave]);
 
   /**
+   * Create project immediately when generation starts (with GENERATING status)
+   * This ensures the project is visible in dashboard during generation
+   */
+  const createProjectForGeneration = useCallback(async (): Promise<string | null> => {
+    // Check if we already have a project ID
+    if (currentProjectIdRef.current) {
+      return currentProjectIdRef.current;
+    }
+
+    // Check if we're already creating a project (prevent race condition)
+    if (isCreatingProjectRef.current) {
+      // Wait for existing creation to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return currentProjectIdRef.current ?? null;
+    }
+
+    // Set flag to prevent duplicate creation
+    isCreatingProjectRef.current = true;
+
+    try {
+      const result = await createMutation.mutateAsync({
+        title: "Untitled Project",
+        htmlContent: "",
+        conversationHistory: [],
+        status: "GENERATING", // Mark as generating immediately
+      });
+
+      // Update both state and ref immediately
+      setCurrentProjectId(result.id);
+      currentProjectIdRef.current = result.id;
+      onProjectCreated?.(result.id);
+
+      // Update URL without full page reload
+      window.history.replaceState(null, "", `/editor/${result.id}`);
+
+      return result.id;
+    } catch (error) {
+      console.error("Failed to create project for generation:", error);
+      return null;
+    } finally {
+      isCreatingProjectRef.current = false;
+    }
+  }, [createMutation, onProjectCreated]);
+
+  /**
    * Handle generation complete
    * Immediately saves and increments generationCount
    */
@@ -356,67 +403,23 @@ export function useAutoSave({
 
     try {
       // Use ref to check current project ID (avoids stale closure issues)
-      const projectIdToUse = currentProjectIdRef.current;
+      let projectIdToUse = currentProjectIdRef.current;
       
       if (!projectIdToUse) {
-        // Check if we're already creating a project (prevent race condition)
-        if (isCreatingProjectRef.current) {
-          console.log("Project creation already in progress, will retry after creation");
-          // Wait a bit and retry - the project should be created by then
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          // Check ref again after wait
-          const retryProjectId = currentProjectIdRef.current;
-          if (retryProjectId) {
-            // Project was created, use it
-            await generationCompleteMutation.mutateAsync({
-              id: retryProjectId,
-              htmlContent: data.htmlContent,
-              conversationHistory: validatedHistory,
-              tokenUsage: data.tokenUsage,
-            });
-            return; // Exit early, we're done
-          }
-          throw new Error("Project creation failed");
+        // Project should have been created by createProjectForGeneration, but fallback just in case
+        projectIdToUse = await createProjectForGeneration();
+        if (!projectIdToUse) {
+          throw new Error("Failed to create project");
         }
-        
-        // Set flag to prevent duplicate creation
-        isCreatingProjectRef.current = true;
-        
-        try {
-          // Create new project first
-          const result = await createMutation.mutateAsync({
-            title: "Untitled Project",
-            htmlContent: data.htmlContent,
-            conversationHistory: validatedHistory,
-          });
-          
-          // Update both state and ref immediately
-          setCurrentProjectId(result.id);
-          currentProjectIdRef.current = result.id;
-          onProjectCreated?.(result.id);
-          
-          // Update URL without full page reload
-          window.history.replaceState(null, "", `/editor/${result.id}`);
-          
-          // Now call generation complete to increment count
-          await generationCompleteMutation.mutateAsync({
-            id: result.id,
-            htmlContent: data.htmlContent,
-            conversationHistory: validatedHistory,
-            tokenUsage: data.tokenUsage,
-          });
-        } finally {
-          isCreatingProjectRef.current = false;
-        }
-      } else {
-        // Call generation complete mutation
-        await generationCompleteMutation.mutateAsync({
-          id: projectIdToUse,
-          htmlContent: data.htmlContent,
-          conversationHistory: validatedHistory,
-          tokenUsage: data.tokenUsage,
-        });
       }
+
+      // Call generation complete mutation (this also sets status to READY)
+      await generationCompleteMutation.mutateAsync({
+        id: projectIdToUse,
+        htmlContent: data.htmlContent,
+        conversationHistory: validatedHistory,
+        tokenUsage: data.tokenUsage,
+      });
 
       // Clear any pending save on success
       if (currentProjectId) {
@@ -447,7 +450,7 @@ export function useAutoSave({
       
       onSaveError?.(error instanceof Error ? error : new Error("Save failed"));
     }
-  }, [createMutation, generationCompleteMutation, onProjectCreated, onSaveError, saveToLocalStorage]);
+  }, [createProjectForGeneration, generationCompleteMutation, currentProjectId, onSaveError, saveToLocalStorage]);
 
   /**
    * Retry pending save from localStorage
@@ -481,6 +484,7 @@ export function useAutoSave({
     hasPendingSave,
     save,
     onGenerationComplete,
+    createProjectForGeneration, // Call this when generation starts
     retryPendingSave,
     clearPendingSave,
     currentProjectId,

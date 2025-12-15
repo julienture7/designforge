@@ -52,6 +52,7 @@ export function EditorPageClient({
     hasPendingSave,
     save,
     onGenerationComplete: autoSaveOnGenerationComplete,
+    createProjectForGeneration,
     retryPendingSave,
     currentProjectId,
   } = useAutoSave({
@@ -245,6 +246,7 @@ export function EditorPageClient({
             initialHistory={initialHistory}
             initialHtml={initialHtml}
             onHtmlChange={handleHtmlChange}
+            onGenerationStart={createProjectForGeneration}
             onGenerationComplete={handleGenerationComplete}
             onError={handleError}
           />

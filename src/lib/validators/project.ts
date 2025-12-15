@@ -7,6 +7,11 @@ import {
 } from "./common";
 
 /**
+ * Project status enum schema
+ */
+export const projectStatusSchema = z.enum(["GENERATING", "READY"]);
+
+/**
  * Project Zod validation schemas
  * All schemas use .strict() mode to reject unknown keys
  * 
@@ -42,6 +47,7 @@ export const projectCreateSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title exceeds maximum length of 200 characters"),
   htmlContent: z.string().default(""),
   conversationHistory: z.array(conversationMessageSchema).default([]),
+  status: projectStatusSchema.optional(), // Allow setting initial status (GENERATING for new generations)
 }).strict();
 
 export type ProjectCreateInput = z.infer<typeof projectCreateSchema>;
@@ -57,6 +63,7 @@ export const projectUpdateSchema = z.object({
   conversationHistory: z.array(conversationMessageSchema).optional(),
   tokenUsage: z.number().int().min(0, "Token usage cannot be negative").optional(),
   visibility: visibilitySchema.optional(),
+  status: projectStatusSchema.optional(), // Allow updating status (GENERATING -> READY)
 }).strict();
 
 export type ProjectUpdateInput = z.infer<typeof projectUpdateSchema>;

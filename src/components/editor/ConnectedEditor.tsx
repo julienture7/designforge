@@ -94,6 +94,8 @@ interface ConnectedEditorProps {
   initialHtml?: string;
   /** Callback when HTML content changes (for auto-save) */
   onHtmlChange?: (html: string, conversationHistory: ConversationMessage[]) => void;
+  /** Callback when generation starts (to create project with GENERATING status) */
+  onGenerationStart?: () => Promise<string | null>;
   /** Callback when generation completes */
   onGenerationComplete?: (
     html: string,
@@ -122,6 +124,7 @@ export function ConnectedEditor({
   initialHistory = [],
   initialHtml = "",
   onHtmlChange,
+  onGenerationStart,
   onGenerationComplete,
   onError,
 }: ConnectedEditorProps) {
@@ -285,6 +288,7 @@ export function ConnectedEditor({
           setProgress(1);
         }
       }}
+      onGenerationStart={onGenerationStart}
       onGenerationComplete={handleGenerationComplete}
       onMessagesUpdate={handleMessagesUpdate}
       onError={handleError}

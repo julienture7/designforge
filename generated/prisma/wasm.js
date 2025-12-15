@@ -145,6 +145,7 @@ exports.Prisma.ProjectScalarFieldEnum = {
   htmlContent: 'htmlContent',
   conversationHistory: 'conversationHistory',
   visibility: 'visibility',
+  status: 'status',
   tokenUsage: 'tokenUsage',
   versionHistory: 'versionHistory',
   generationCount: 'generationCount',
@@ -198,6 +199,11 @@ exports.SubscriptionStatus = exports.$Enums.SubscriptionStatus = {
 exports.Visibility = exports.$Enums.Visibility = {
   PUBLIC: 'PUBLIC',
   PRIVATE: 'PRIVATE'
+};
+
+exports.ProjectStatus = exports.$Enums.ProjectStatus = {
+  GENERATING: 'GENERATING',
+  READY: 'READY'
 };
 
 exports.Prisma.ModelName = {

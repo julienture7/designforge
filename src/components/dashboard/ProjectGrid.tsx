@@ -27,6 +27,13 @@ export function ProjectGrid({ query = "" }: ProjectGridProps) {
     page,
     pageSize: PAGE_SIZE,
     query: normalizedQuery.length > 0 ? normalizedQuery : undefined,
+  }, {
+    // Auto-refresh every 5 seconds if there are generating projects
+    refetchInterval: (query) => {
+      const projects = query.state.data?.projects ?? [];
+      const hasGenerating = projects.some(p => p.status === "GENERATING");
+      return hasGenerating ? 5000 : false;
+    },
   });
 
   // Show toast notification when error occurs
@@ -112,6 +119,7 @@ export function ProjectGrid({ query = "" }: ProjectGridProps) {
             id={project.id}
             title={project.title}
             visibility={project.visibility}
+            status={project.status}
             generationCount={project.generationCount}
             updatedAt={project.updatedAt}
             index={index}

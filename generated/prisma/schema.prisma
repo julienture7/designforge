@@ -29,6 +29,11 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+enum ProjectStatus {
+  GENERATING // Generation in progress
+  READY // Generation complete, project ready
+}
+
 // User model with OCC version field and Stripe customer ID
 model User {
   id                 String              @id @default(cuid())
@@ -49,18 +54,19 @@ model User {
 
 // Project model with visibility, tokenUsage, and versionHistory
 model Project {
-  id                  String     @id @default(cuid())
+  id                  String        @id @default(cuid())
   userId              String
-  user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   title               String
-  htmlContent         String     @db.Text
+  htmlContent         String        @db.Text
   conversationHistory Json // Array of {role: 'user'|'model', content: string}
-  visibility          Visibility @default(PUBLIC)
-  tokenUsage          Int        @default(0)
-  versionHistory      Json       @default("[]") // Array of {html: string, timestamp: string}
-  generationCount     Int        @default(0)
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  visibility          Visibility    @default(PUBLIC)
+  status              ProjectStatus @default(READY) // Track generation status
+  tokenUsage          Int           @default(0)
+  versionHistory      Json          @default("[]") // Array of {html: string, timestamp: string}
+  generationCount     Int           @default(0)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
   @@index([userId])
 }

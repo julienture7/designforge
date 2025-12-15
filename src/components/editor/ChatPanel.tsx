@@ -11,6 +11,7 @@ interface ChatPanelProps {
   currentHtml?: string;
   onHtmlGenerated?: (html: string) => void;
   onLoadingChange?: (isLoading: boolean) => void;
+  onGenerationStart?: () => Promise<string | null>; // Called before generation starts, returns project ID
   onGenerationComplete?: (
     html: string,
     finishReason: string,
@@ -71,6 +72,7 @@ export function ChatPanel({
   currentHtml = "",
   onHtmlGenerated,
   onLoadingChange,
+  onGenerationStart,
   onGenerationComplete,
   onMessagesUpdate,
   onError,
@@ -171,6 +173,16 @@ export function ChatPanel({
       // Otherwise, use /api/edit for subsequent edits
       const isFirstGeneration = !hasGenerated && !currentHtmlSnapshot;
       
+      // For first generation, create project immediately with GENERATING status
+      // This ensures the project is visible in dashboard during generation
+      let effectiveProjectId = projectId;
+      if (isFirstGeneration && onGenerationStart) {
+        const newProjectId = await onGenerationStart();
+        if (newProjectId) {
+          effectiveProjectId = newProjectId;
+        }
+      }
+      
       if (isFirstGeneration) {
         // Lock refinement level on first generation
         if (isPro && !lockedRefinementLevel.current) {
@@ -185,7 +197,7 @@ export function ChatPanel({
               role: m.role,
               content: m.content,
             })),
-            projectId,
+            projectId: effectiveProjectId,
             currentHtml: currentHtmlSnapshot,
             prompt: trimmed,
             refinementLevel: isPro ? refinementLevelRef.current : undefined,

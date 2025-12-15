@@ -9,6 +9,7 @@ interface ProjectCardProps {
   id: string;
   title: string;
   visibility: "PUBLIC" | "PRIVATE";
+  status?: "GENERATING" | "READY";
   generationCount: number;
   updatedAt: Date;
   index?: number;
@@ -18,10 +19,12 @@ export function ProjectCard({
   id,
   title,
   visibility,
+  status = "READY",
   generationCount,
   updatedAt,
   index = 0,
 }: ProjectCardProps) {
+  const isGenerating = status === "GENERATING";
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -189,8 +192,25 @@ export function ProjectCard({
           loading="lazy"
           aria-hidden="true"
         />
+        {/* Generating indicator - shown when project is being generated */}
+        {isGenerating && (
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center pointer-events-none z-30">
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-20 animate-ping" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-indigo-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+              </div>
+              <span className="text-sm font-medium text-indigo-600">Generating...</span>
+            </div>
+          </div>
+        )}
+
         {/* Loading placeholder */}
-        {isLoading && (
+        {isLoading && !isGenerating && (
           <div className="absolute inset-0 bg-gradient-to-br from-slate-100 via-slate-50 to-white flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-2">
               <div className="relative">

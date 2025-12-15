@@ -80,6 +80,7 @@ export const projectRouter = createTRPCRouter({
           id: true,
           title: true,
           visibility: true,
+          status: true, // Include status to show generating indicator
           tokenUsage: true,
           generationCount: true,
           createdAt: true,
@@ -165,12 +166,14 @@ export const projectRouter = createTRPCRouter({
           htmlContent: input.htmlContent,
           conversationHistory: input.conversationHistory,
           visibility,
+          status: input.status ?? "READY", // Default to READY, but allow GENERATING for new generations
           versionHistory: [],
         },
         select: {
           id: true,
           title: true,
           visibility: true,
+          status: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -229,6 +232,10 @@ export const projectRouter = createTRPCRouter({
       
       if (input.visibility !== undefined) {
         updateData.visibility = input.visibility;
+      }
+
+      if (input.status !== undefined) {
+        updateData.status = input.status;
       }
 
       // Handle htmlContent update with versionHistory management
@@ -353,10 +360,12 @@ export const projectRouter = createTRPCRouter({
           tokenUsage: input.tokenUsage,
           generationCount: { increment: 1 },
           versionHistory: versionHistory,
+          status: "READY", // Mark as ready when generation completes
         },
         select: {
           id: true,
           generationCount: true,
+          status: true,
           updatedAt: true,
         },
       });

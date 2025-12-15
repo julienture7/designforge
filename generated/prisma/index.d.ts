@@ -58,6 +58,14 @@ export const Visibility: {
 
 export type Visibility = (typeof Visibility)[keyof typeof Visibility]
 
+
+export const ProjectStatus: {
+  GENERATING: 'GENERATING',
+  READY: 'READY'
+};
+
+export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus]
+
 }
 
 export type Tier = $Enums.Tier
@@ -71,6 +79,10 @@ export const SubscriptionStatus: typeof $Enums.SubscriptionStatus
 export type Visibility = $Enums.Visibility
 
 export const Visibility: typeof $Enums.Visibility
+
+export type ProjectStatus = $Enums.ProjectStatus
+
+export const ProjectStatus: typeof $Enums.ProjectStatus
 
 /**
  * ##  Prisma Client ʲˢ
@@ -2198,6 +2210,7 @@ export namespace Prisma {
     title: string | null
     htmlContent: string | null
     visibility: $Enums.Visibility | null
+    status: $Enums.ProjectStatus | null
     tokenUsage: number | null
     generationCount: number | null
     createdAt: Date | null
@@ -2210,6 +2223,7 @@ export namespace Prisma {
     title: string | null
     htmlContent: string | null
     visibility: $Enums.Visibility | null
+    status: $Enums.ProjectStatus | null
     tokenUsage: number | null
     generationCount: number | null
     createdAt: Date | null
@@ -2223,6 +2237,7 @@ export namespace Prisma {
     htmlContent: number
     conversationHistory: number
     visibility: number
+    status: number
     tokenUsage: number
     versionHistory: number
     generationCount: number
@@ -2248,6 +2263,7 @@ export namespace Prisma {
     title?: true
     htmlContent?: true
     visibility?: true
+    status?: true
     tokenUsage?: true
     generationCount?: true
     createdAt?: true
@@ -2260,6 +2276,7 @@ export namespace Prisma {
     title?: true
     htmlContent?: true
     visibility?: true
+    status?: true
     tokenUsage?: true
     generationCount?: true
     createdAt?: true
@@ -2273,6 +2290,7 @@ export namespace Prisma {
     htmlContent?: true
     conversationHistory?: true
     visibility?: true
+    status?: true
     tokenUsage?: true
     versionHistory?: true
     generationCount?: true
@@ -2374,6 +2392,7 @@ export namespace Prisma {
     htmlContent: string
     conversationHistory: JsonValue
     visibility: $Enums.Visibility
+    status: $Enums.ProjectStatus
     tokenUsage: number
     versionHistory: JsonValue
     generationCount: number
@@ -2407,6 +2426,7 @@ export namespace Prisma {
     htmlContent?: boolean
     conversationHistory?: boolean
     visibility?: boolean
+    status?: boolean
     tokenUsage?: boolean
     versionHistory?: boolean
     generationCount?: boolean
@@ -2422,6 +2442,7 @@ export namespace Prisma {
     htmlContent?: boolean
     conversationHistory?: boolean
     visibility?: boolean
+    status?: boolean
     tokenUsage?: boolean
     versionHistory?: boolean
     generationCount?: boolean
@@ -2437,6 +2458,7 @@ export namespace Prisma {
     htmlContent?: boolean
     conversationHistory?: boolean
     visibility?: boolean
+    status?: boolean
     tokenUsage?: boolean
     versionHistory?: boolean
     generationCount?: boolean
@@ -2463,6 +2485,7 @@ export namespace Prisma {
       htmlContent: string
       conversationHistory: Prisma.JsonValue
       visibility: $Enums.Visibility
+      status: $Enums.ProjectStatus
       tokenUsage: number
       versionHistory: Prisma.JsonValue
       generationCount: number
@@ -2868,6 +2891,7 @@ export namespace Prisma {
     readonly htmlContent: FieldRef<"Project", 'String'>
     readonly conversationHistory: FieldRef<"Project", 'Json'>
     readonly visibility: FieldRef<"Project", 'Visibility'>
+    readonly status: FieldRef<"Project", 'ProjectStatus'>
     readonly tokenUsage: FieldRef<"Project", 'Int'>
     readonly versionHistory: FieldRef<"Project", 'Json'>
     readonly generationCount: FieldRef<"Project", 'Int'>
@@ -4111,6 +4135,7 @@ export namespace Prisma {
     htmlContent: 'htmlContent',
     conversationHistory: 'conversationHistory',
     visibility: 'visibility',
+    status: 'status',
     tokenUsage: 'tokenUsage',
     versionHistory: 'versionHistory',
     generationCount: 'generationCount',
@@ -4275,6 +4300,20 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'ProjectStatus'
+   */
+  export type EnumProjectStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProjectStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'ProjectStatus[]'
+   */
+  export type ListEnumProjectStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProjectStatus[]'>
+    
+
+
+  /**
    * Reference to a field of type 'Float'
    */
   export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -4398,6 +4437,7 @@ export namespace Prisma {
     htmlContent?: StringFilter<"Project"> | string
     conversationHistory?: JsonFilter<"Project">
     visibility?: EnumVisibilityFilter<"Project"> | $Enums.Visibility
+    status?: EnumProjectStatusFilter<"Project"> | $Enums.ProjectStatus
     tokenUsage?: IntFilter<"Project"> | number
     versionHistory?: JsonFilter<"Project">
     generationCount?: IntFilter<"Project"> | number
@@ -4413,6 +4453,7 @@ export namespace Prisma {
     htmlContent?: SortOrder
     conversationHistory?: SortOrder
     visibility?: SortOrder
+    status?: SortOrder
     tokenUsage?: SortOrder
     versionHistory?: SortOrder
     generationCount?: SortOrder
@@ -4431,6 +4472,7 @@ export namespace Prisma {
     htmlContent?: StringFilter<"Project"> | string
     conversationHistory?: JsonFilter<"Project">
     visibility?: EnumVisibilityFilter<"Project"> | $Enums.Visibility
+    status?: EnumProjectStatusFilter<"Project"> | $Enums.ProjectStatus
     tokenUsage?: IntFilter<"Project"> | number
     versionHistory?: JsonFilter<"Project">
     generationCount?: IntFilter<"Project"> | number
@@ -4446,6 +4488,7 @@ export namespace Prisma {
     htmlContent?: SortOrder
     conversationHistory?: SortOrder
     visibility?: SortOrder
+    status?: SortOrder
     tokenUsage?: SortOrder
     versionHistory?: SortOrder
     generationCount?: SortOrder
@@ -4468,6 +4511,7 @@ export namespace Prisma {
     htmlContent?: StringWithAggregatesFilter<"Project"> | string
     conversationHistory?: JsonWithAggregatesFilter<"Project">
     visibility?: EnumVisibilityWithAggregatesFilter<"Project"> | $Enums.Visibility
+    status?: EnumProjectStatusWithAggregatesFilter<"Project"> | $Enums.ProjectStatus
     tokenUsage?: IntWithAggregatesFilter<"Project"> | number
     versionHistory?: JsonWithAggregatesFilter<"Project">
     generationCount?: IntWithAggregatesFilter<"Project"> | number
@@ -4644,6 +4688,7 @@ export namespace Prisma {
     htmlContent: string
     conversationHistory: JsonNullValueInput | InputJsonValue
     visibility?: $Enums.Visibility
+    status?: $Enums.ProjectStatus
     tokenUsage?: number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: number
@@ -4659,6 +4704,7 @@ export namespace Prisma {
     htmlContent: string
     conversationHistory: JsonNullValueInput | InputJsonValue
     visibility?: $Enums.Visibility
+    status?: $Enums.ProjectStatus
     tokenUsage?: number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: number
@@ -4672,6 +4718,7 @@ export namespace Prisma {
     htmlContent?: StringFieldUpdateOperationsInput | string
     conversationHistory?: JsonNullValueInput | InputJsonValue
     visibility?: EnumVisibilityFieldUpdateOperationsInput | $Enums.Visibility
+    status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     tokenUsage?: IntFieldUpdateOperationsInput | number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: IntFieldUpdateOperationsInput | number
@@ -4687,6 +4734,7 @@ export namespace Prisma {
     htmlContent?: StringFieldUpdateOperationsInput | string
     conversationHistory?: JsonNullValueInput | InputJsonValue
     visibility?: EnumVisibilityFieldUpdateOperationsInput | $Enums.Visibility
+    status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     tokenUsage?: IntFieldUpdateOperationsInput | number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: IntFieldUpdateOperationsInput | number
@@ -4701,6 +4749,7 @@ export namespace Prisma {
     htmlContent: string
     conversationHistory: JsonNullValueInput | InputJsonValue
     visibility?: $Enums.Visibility
+    status?: $Enums.ProjectStatus
     tokenUsage?: number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: number
@@ -4714,6 +4763,7 @@ export namespace Prisma {
     htmlContent?: StringFieldUpdateOperationsInput | string
     conversationHistory?: JsonNullValueInput | InputJsonValue
     visibility?: EnumVisibilityFieldUpdateOperationsInput | $Enums.Visibility
+    status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     tokenUsage?: IntFieldUpdateOperationsInput | number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: IntFieldUpdateOperationsInput | number
@@ -4728,6 +4778,7 @@ export namespace Prisma {
     htmlContent?: StringFieldUpdateOperationsInput | string
     conversationHistory?: JsonNullValueInput | InputJsonValue
     visibility?: EnumVisibilityFieldUpdateOperationsInput | $Enums.Visibility
+    status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     tokenUsage?: IntFieldUpdateOperationsInput | number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: IntFieldUpdateOperationsInput | number
@@ -5051,6 +5102,13 @@ export namespace Prisma {
     not?: NestedEnumVisibilityFilter<$PrismaModel> | $Enums.Visibility
   }
 
+  export type EnumProjectStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.ProjectStatus | EnumProjectStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumProjectStatusFilter<$PrismaModel> | $Enums.ProjectStatus
+  }
+
   export type UserRelationFilter = {
     is?: UserWhereInput
     isNot?: UserWhereInput
@@ -5063,6 +5121,7 @@ export namespace Prisma {
     htmlContent?: SortOrder
     conversationHistory?: SortOrder
     visibility?: SortOrder
+    status?: SortOrder
     tokenUsage?: SortOrder
     versionHistory?: SortOrder
     generationCount?: SortOrder
@@ -5081,6 +5140,7 @@ export namespace Prisma {
     title?: SortOrder
     htmlContent?: SortOrder
     visibility?: SortOrder
+    status?: SortOrder
     tokenUsage?: SortOrder
     generationCount?: SortOrder
     createdAt?: SortOrder
@@ -5093,6 +5153,7 @@ export namespace Prisma {
     title?: SortOrder
     htmlContent?: SortOrder
     visibility?: SortOrder
+    status?: SortOrder
     tokenUsage?: SortOrder
     generationCount?: SortOrder
     createdAt?: SortOrder
@@ -5137,6 +5198,16 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumVisibilityFilter<$PrismaModel>
     _max?: NestedEnumVisibilityFilter<$PrismaModel>
+  }
+
+  export type EnumProjectStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ProjectStatus | EnumProjectStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumProjectStatusWithAggregatesFilter<$PrismaModel> | $Enums.ProjectStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumProjectStatusFilter<$PrismaModel>
+    _max?: NestedEnumProjectStatusFilter<$PrismaModel>
   }
 
   export type ProcessedWebhookCountOrderByAggregateInput = {
@@ -5242,6 +5313,10 @@ export namespace Prisma {
 
   export type EnumVisibilityFieldUpdateOperationsInput = {
     set?: $Enums.Visibility
+  }
+
+  export type EnumProjectStatusFieldUpdateOperationsInput = {
+    set?: $Enums.ProjectStatus
   }
 
   export type UserUpdateOneRequiredWithoutProjectsNestedInput = {
@@ -5441,6 +5516,13 @@ export namespace Prisma {
     notIn?: $Enums.Visibility[] | ListEnumVisibilityFieldRefInput<$PrismaModel>
     not?: NestedEnumVisibilityFilter<$PrismaModel> | $Enums.Visibility
   }
+
+  export type NestedEnumProjectStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.ProjectStatus | EnumProjectStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumProjectStatusFilter<$PrismaModel> | $Enums.ProjectStatus
+  }
   export type NestedJsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -5474,12 +5556,23 @@ export namespace Prisma {
     _max?: NestedEnumVisibilityFilter<$PrismaModel>
   }
 
+  export type NestedEnumProjectStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ProjectStatus | EnumProjectStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumProjectStatusWithAggregatesFilter<$PrismaModel> | $Enums.ProjectStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumProjectStatusFilter<$PrismaModel>
+    _max?: NestedEnumProjectStatusFilter<$PrismaModel>
+  }
+
   export type ProjectCreateWithoutUserInput = {
     id?: string
     title: string
     htmlContent: string
     conversationHistory: JsonNullValueInput | InputJsonValue
     visibility?: $Enums.Visibility
+    status?: $Enums.ProjectStatus
     tokenUsage?: number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: number
@@ -5493,6 +5586,7 @@ export namespace Prisma {
     htmlContent: string
     conversationHistory: JsonNullValueInput | InputJsonValue
     visibility?: $Enums.Visibility
+    status?: $Enums.ProjectStatus
     tokenUsage?: number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: number
@@ -5536,6 +5630,7 @@ export namespace Prisma {
     htmlContent?: StringFilter<"Project"> | string
     conversationHistory?: JsonFilter<"Project">
     visibility?: EnumVisibilityFilter<"Project"> | $Enums.Visibility
+    status?: EnumProjectStatusFilter<"Project"> | $Enums.ProjectStatus
     tokenUsage?: IntFilter<"Project"> | number
     versionHistory?: JsonFilter<"Project">
     generationCount?: IntFilter<"Project"> | number
@@ -5629,6 +5724,7 @@ export namespace Prisma {
     htmlContent: string
     conversationHistory: JsonNullValueInput | InputJsonValue
     visibility?: $Enums.Visibility
+    status?: $Enums.ProjectStatus
     tokenUsage?: number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: number
@@ -5642,6 +5738,7 @@ export namespace Prisma {
     htmlContent?: StringFieldUpdateOperationsInput | string
     conversationHistory?: JsonNullValueInput | InputJsonValue
     visibility?: EnumVisibilityFieldUpdateOperationsInput | $Enums.Visibility
+    status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     tokenUsage?: IntFieldUpdateOperationsInput | number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: IntFieldUpdateOperationsInput | number
@@ -5655,6 +5752,7 @@ export namespace Prisma {
     htmlContent?: StringFieldUpdateOperationsInput | string
     conversationHistory?: JsonNullValueInput | InputJsonValue
     visibility?: EnumVisibilityFieldUpdateOperationsInput | $Enums.Visibility
+    status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     tokenUsage?: IntFieldUpdateOperationsInput | number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: IntFieldUpdateOperationsInput | number
@@ -5668,6 +5766,7 @@ export namespace Prisma {
     htmlContent?: StringFieldUpdateOperationsInput | string
     conversationHistory?: JsonNullValueInput | InputJsonValue
     visibility?: EnumVisibilityFieldUpdateOperationsInput | $Enums.Visibility
+    status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     tokenUsage?: IntFieldUpdateOperationsInput | number
     versionHistory?: JsonNullValueInput | InputJsonValue
     generationCount?: IntFieldUpdateOperationsInput | number
