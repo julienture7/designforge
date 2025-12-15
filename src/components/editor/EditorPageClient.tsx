@@ -202,10 +202,16 @@ export function EditorPageClient({
                 }
                 handleExport();
               }}
-              className="inline-flex h-8 items-center justify-center rounded-full bg-[#4c6aff] px-4 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#3d5aef] hover:shadow-md hover:scale-105 active:scale-95"
+              className={`pro-feature-btn pro-feature-btn--header ${!isPro ? 'pro-feature-btn--locked' : ''}`}
               title={isPro ? "Download the current HTML" : "Upgrade to Pro to export HTML"}
             >
-              Export HTML
+              <svg className="pro-feature-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span>Export HTML</span>
+              {!isPro && <span className="pro-feature-btn__badge">PRO</span>}
             </button>
 
             <UserButton

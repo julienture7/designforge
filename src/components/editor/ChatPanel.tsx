@@ -93,7 +93,7 @@ export function ChatPanel({
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const [refinementLevel, setRefinementLevel] = useState<"REFINED" | "ENHANCED" | "ULTIMATE">("REFINED");
   const refinementLevelRef = useRef<"REFINED" | "ENHANCED" | "ULTIMATE">("REFINED"); // Persist selection even on re-renders
-  const [hasGenerated, setHasGenerated] = useState(false); // Track if first generation happened
+  const [hasGenerated, setHasGenerated] = useState(() => !!currentHtml || initialHistory.length > 0); // Track if first generation happened
   const lockedRefinementLevel = useRef<"REFINED" | "ENHANCED" | "ULTIMATE" | null>(null); // Lock refinement after first gen
   
   // Sync ref with state
