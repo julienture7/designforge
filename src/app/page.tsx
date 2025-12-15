@@ -13,25 +13,28 @@ export default function Home() {
   const [prompt, setPrompt] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // If auth completes but Clerk doesn't navigate (e.g., modal close),
-  // continue to the pending generation URL automatically.
-  // Only run this on the home page (not on editor pages)
+  // Clear stale pending URL when landing on home page
+  // This prevents old queries from auto-loading when user returns to home
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    // Only redirect if we're still on the home page
-    if (window.location.pathname !== "/") return;
+    if (!isLoaded) return;
     
-    try {
-      const pending = window.sessionStorage.getItem("aidesigner_pending_editor_url");
-      if (!pending) return;
-      console.log("[Home] Redirecting to pending editor URL:", pending);
-      // DON'T remove sessionStorage here - let the editor page consume it
-      // The editor page will remove it after reading the prompt
-      router.push(pending);
-    } catch {
-      // Ignore storage errors
+    // If user is signed in and intentionally on home page (not mid-auth),
+    // clear any stale pending URLs after a short delay
+    // The delay allows the auth redirect flow to complete first
+    if (isSignedIn && window.location.pathname === "/") {
+      const timeout = setTimeout(() => {
+        try {
+          // Only clear if we're still on home page (user didn't navigate away)
+          if (window.location.pathname === "/") {
+            window.sessionStorage.removeItem("aidesigner_pending_editor_url");
+          }
+        } catch {
+          // Ignore storage errors
+        }
+      }, 500);
+      return () => clearTimeout(timeout);
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoaded, isSignedIn]);
 
   const startDesign = () => {
     if (!isLoaded) return;

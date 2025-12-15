@@ -364,22 +364,31 @@ export function ChatPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // Reset auto-submit state when projectId changes (navigating to different editor)
+  // Reset auto-submit state when component mounts or projectId changes
   useEffect(() => {
     // Reset the auto-submit flag when we navigate to a new/different project
     hasAutoSubmittedRef.current = false;
     pendingPromptRef.current = null;
+    
+    // Clear any stale sessionStorage on mount
+    // This prevents old queries from persisting across sessions
+    return () => {
+      // On unmount, clear pending refs
+      pendingPromptRef.current = null;
+    };
   }, [projectId]);
 
   // Deep link support: /editor/new?prompt=...
   // Auto-submits the prompt when arriving from home page after login
-  // 
-  // Strategy to handle React Strict Mode (which unmounts/remounts in dev):
-  // We store the prompt in a ref, and only mark as submitted INSIDE the timeout callback.
-  // This way, if the timeout is cleared during Strict Mode cleanup, we can retry on remount.
   useEffect(() => {
     // Don't process if there's already content (existing project)
     if (initialHistory.length > 0 || currentHtml) {
+      // Clear any stale sessionStorage when loading existing project
+      try {
+        window.sessionStorage.removeItem("aidesigner_pending_editor_url");
+      } catch {
+        // Ignore
+      }
       return;
     }
     
@@ -388,7 +397,7 @@ export function ChatPanel({
       return;
     }
 
-    // Only check URL params - don't use stored refs from previous navigations
+    // Only check URL params first
     const url = new URL(window.location.href);
     let promptToSubmit = url.searchParams.get("prompt")?.trim() || null;
     
@@ -396,6 +405,12 @@ export function ChatPanel({
     if (promptToSubmit) {
       url.searchParams.delete("prompt");
       window.history.replaceState(null, "", url.toString());
+      // Also clear sessionStorage since we're using URL param
+      try {
+        window.sessionStorage.removeItem("aidesigner_pending_editor_url");
+      } catch {
+        // Ignore
+      }
     }
     
     // If no URL prompt, check sessionStorage as fallback (for Clerk auth flow)
@@ -427,7 +442,7 @@ export function ChatPanel({
     autoSubmitTimeoutRef.current = setTimeout(() => {
       const prompt = pendingPromptRef.current;
       if (prompt && !hasAutoSubmittedRef.current) {
-        // Mark as submitted INSIDE the callback, so if timeout is cleared, we can retry
+        // Mark as submitted INSIDE the callback
         hasAutoSubmittedRef.current = true;
         pendingPromptRef.current = null;
         void submitPromptRef.current?.(prompt);
@@ -441,8 +456,7 @@ export function ChatPanel({
         autoSubmitTimeoutRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]); // Re-run when projectId changes
+  }, [projectId, initialHistory.length, currentHtml]);
 
   // Auto-resize textarea
   useEffect(() => {

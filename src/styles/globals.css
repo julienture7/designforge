@@ -66,6 +66,41 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent layout shifts during page load */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Smooth page transitions */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.2s;
+  animation-timing-function: ease-out;
+}
+
+/* Prevent content flash during hydration */
+html {
+  opacity: 1;
+}
+
+/* Smooth scroll for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
 }
 
 /*
@@ -91,13 +126,35 @@ input, textarea, select, button {
   padding: 0.5rem 0.75rem;
 }
 
+/* Remove default focus outline for mouse users */
 input:focus, textarea:focus, select:focus, button:focus {
-  outline: 2px solid var(--color-accent, #3b82f6);
-  outline-offset: 2px;
+  outline: none;
+}
+
+/* Show subtle focus ring only for keyboard navigation */
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
 
 button {
   cursor: pointer;
+}
+
+/* Global focus-visible utility - modern focus styles */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
 }
 
 button:disabled {
@@ -755,6 +812,13 @@ button:disabled {
   background: transparent;
   border: none;
   outline: none;
+  box-shadow: none;
+}
+
+.prompt-input:focus,
+.prompt-input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .prompt-input::placeholder {
@@ -1220,6 +1284,13 @@ button:disabled {
   color: #334155;
   resize: none;
   outline: none;
+  box-shadow: none;
+}
+
+.chat-textarea:focus,
+.chat-textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .chat-textarea::placeholder {
