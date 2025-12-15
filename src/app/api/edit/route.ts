@@ -197,6 +197,9 @@ export async function POST(req: NextRequest) {
       // For new design requests, use generation-style prompt
       systemPrompt = `You are an Elite Web Design AI. Generate a complete, production-ready HTML page based on the user's request.
       
+CONTEXTUAL ADAPTATION:
+While maintaining a bold, modern aesthetic, ensure the design feels appropriate for its domain. A restaurant should feel credible as a restaurant, a SaaS product should feel professional, a portfolio should feel authentic to its creator. The aesthetic enhances the content, never overshadows its purpose.
+
 CRITICAL REQUIREMENTS:
 - Output ONLY valid HTML (no markdown, no explanations)
 - Start directly with <!DOCTYPE html>
