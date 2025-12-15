@@ -705,6 +705,164 @@ button:disabled {
   opacity: 1;
 }
 
+/* ============================================
+   PROMPT BAR COMPONENT
+   Clean, responsive search/input bar
+   ============================================ */
+
+.prompt-bar {
+  width: 100%;
+}
+
+.prompt-bar-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 1rem;
+  background: #fff;
+  border: 2px solid #e5e7eb;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  transition: 
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.prompt-bar-inner:hover {
+  border-color: #d1d5db;
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.07),
+    0 4px 6px -4px rgba(0, 0, 0, 0.05);
+}
+
+.prompt-bar-inner:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 
+    0 0 0 3px rgba(59, 130, 246, 0.15),
+    0 10px 15px -3px rgba(0, 0, 0, 0.07);
+}
+
+/* Input field */
+.prompt-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #111827;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.prompt-input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+/* Button base */
+.prompt-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.875rem 1.5rem;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: #111827;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: 
+    background 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.prompt-button:hover {
+  background: #1f2937;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.prompt-button:active {
+  transform: scale(0.98);
+}
+
+.prompt-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.prompt-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Active state with gradient */
+.prompt-button--active {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 4s ease infinite;
+}
+
+.prompt-button--active:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #9333ea 100%);
+  background-size: 200% 200%;
+  box-shadow: 
+    0 4px 16px rgba(99, 102, 241, 0.4),
+    0 0 24px rgba(139, 92, 246, 0.2);
+}
+
+/* Button text wrapper */
+.prompt-button-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Responsive: tablet and up */
+@media (min-width: 640px) {
+  .prompt-bar-inner {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem;
+    border-radius: 1.25rem;
+  }
+
+  .prompt-input {
+    padding: 0.875rem 1.25rem;
+    font-size: 1.0625rem;
+  }
+
+  .prompt-button {
+    padding: 0.875rem 1.75rem;
+    border-radius: 0.875rem;
+  }
+}
+
+/* Responsive: desktop */
+@media (min-width: 768px) {
+  .prompt-bar-inner {
+    padding: 0.75rem;
+    border-radius: 1.5rem;
+  }
+
+  .prompt-input {
+    padding: 1rem 1.5rem;
+    font-size: 1.125rem;
+  }
+
+  .prompt-button {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    border-radius: 1rem;
+  }
+}
+
 /*
  * Utility classes for graceful degradation
  * These provide fallback styling when Tailwind classes don't load

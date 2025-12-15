@@ -133,53 +133,47 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Prompt box - Made more prominent */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            startDesign();
-          }}
-          className="animate-fade-in-scale w-full max-w-4xl rounded-2xl md:rounded-3xl shadow-2xl border-2 border-gray-200 p-2 md:p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 bg-white transition-all duration-300 hover:shadow-3xl hover:border-blue-400 focus-within:shadow-3xl focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100 mx-4 sm:mx-auto"
-          style={{ animationDelay: '0.15s' }}
-        >
-          <input
-            ref={inputRef}
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe your website..."
-            className="flex-1 text-base sm:text-lg md:text-xl py-3 sm:py-4 px-4 sm:px-5 outline-none border-none bg-transparent text-gray-900 placeholder:text-gray-400 transition-all duration-200 font-medium"
-            aria-label="Describe what you want to build"
-          />
-
-          <button
-            type="submit"
-            disabled={!isLoaded}
-            className={`relative text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base md:text-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group active:scale-95 shadow-lg whitespace-nowrap ${
-              isLoaded && prompt.trim()
-                ? "btn-generate-animated hover:scale-105 hover:shadow-xl"
-                : "bg-gray-900 hover:bg-gray-800 hover:scale-105 hover:shadow-xl"
-            }`}
+        {/* Prompt Box */}
+        <div className="w-full max-w-3xl px-4 animate-fade-in-scale stagger-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              startDesign();
+            }}
+            className="prompt-bar"
           >
-            {/* Glow effect - only when prompt is valid */}
-            {isLoaded && prompt.trim() && (
-              <span className="btn-generate-glow" />
-            )}
-            
-            <span className="relative z-10 flex items-center gap-2">
-              Generate
-              <svg 
-                className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor" 
-                aria-hidden="true"
+            <div className="prompt-bar-inner">
+              <input
+                ref={inputRef}
+                type="text"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Describe your website..."
+                className="prompt-input"
+                aria-label="Describe what you want to build"
+              />
+
+              <button
+                type="submit"
+                disabled={!isLoaded}
+                className={`prompt-button group ${isLoaded && prompt.trim() ? "prompt-button--active" : ""}`}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </span>
-          </button>
-        </form>
+                <span className="prompt-button-text">
+                  Generate
+                  <svg 
+                    className="w-4 h-4 md:w-5 md:h-5 transition-transform duration-300 group-hover:translate-x-0.5" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor" 
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </form>
+        </div>
 
         {/* Examples - Simplified */}
         <div className="animate-fade-in-up mt-4 sm:mt-6 flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm text-gray-500 px-4" style={{ animationDelay: '0.2s' }}>
