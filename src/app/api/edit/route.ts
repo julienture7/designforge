@@ -188,14 +188,10 @@ export async function POST(req: NextRequest) {
           const parsed = parseEditResponse(fullResponse);
           let finalHtml: string;
 
-          if (parsed.fullRewrite || isNewDesign) {
-            // Full HTML replacement
-            finalHtml = parsed.rawResponse;
-            if (!finalHtml.includes('<!DOCTYPE') && !finalHtml.includes('<html')) {
-              // Try to extract HTML from response
-              const htmlMatch = fullResponse.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
-              finalHtml = htmlMatch?.[1] ?? fullResponse;
-            }
+          if (isNewDesign) {
+            // Only allow full HTML for explicit new design requests
+            const htmlMatch = fullResponse.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
+            finalHtml = htmlMatch?.[1] ?? fullResponse;
           } else if (parsed.blocks.length > 0) {
             // Apply edit blocks
             const applied = applyEditBlocks(currentHtml, parsed.blocks);
@@ -210,8 +206,23 @@ export async function POST(req: NextRequest) {
             finalHtml = applied.html;
             console.log({ event: "edit_applied", correlationId, blocksApplied: applied.appliedCount });
           } else {
-            // No edits found - might be "no changes needed" or parsing failed
-            // Return original HTML
+            // No edit blocks found - check if AI output full HTML (bad behavior)
+            const hasFullHtml = fullResponse.includes('<!DOCTYPE') || fullResponse.includes('<html');
+            if (hasFullHtml) {
+              // AI ignored instructions - log and return error
+              console.warn({ 
+                event: "edit_ai_ignored_format", 
+                correlationId, 
+                responsePreview: fullResponse.slice(0, 300) 
+              });
+              controller.enqueue(encoder.encode(encodeSSE({
+                type: "error",
+                code: "EDIT_FAILED",
+                message: "Edit failed. Please try a simpler request like 'change X to Y'.",
+              })));
+              return;
+            }
+            // No changes needed
             finalHtml = currentHtml;
             console.log({ event: "edit_no_changes", correlationId, response: fullResponse.slice(0, 200) });
           }
@@ -228,7 +239,6 @@ export async function POST(req: NextRequest) {
             correlationId,
             durationMs: duration,
             blocksApplied: parsed.blocks.length,
-            fullRewrite: parsed.fullRewrite,
           });
 
           controller.enqueue(encoder.encode(encodeSSE({

@@ -212,18 +212,6 @@ ${numberedHtml}${html.length > 15000 ? '\n... (truncated)' : ''}`;
     // Parse and apply blocks using new edit engine
     const parseResult = parseEditResponse(response);
 
-    if (parseResult.fullRewrite) {
-      // Don't allow full rewrites in polish phase
-      return {
-        success: true,
-        html,
-        appliedFixes: 0,
-        failedFixes: 0,
-        issues: [],
-        duration,
-      };
-    }
-
     if (parseResult.blocks.length === 0) {
       return {
         success: true,

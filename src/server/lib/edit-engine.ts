@@ -1,8 +1,8 @@
 /**
  * Smart Edit Engine - Targeted, fast, reliable HTML editing
  * 
- * Uses line-numbered diffs (like Cursor/Aider) for precise edits.
- * The AI outputs only the changed lines with line numbers.
+ * Uses line-numbered diffs for precise edits.
+ * NEVER allows full rewrites - always targeted changes.
  */
 
 export interface EditBlock {
@@ -13,7 +13,6 @@ export interface EditBlock {
 
 export interface ParsedEdit {
   blocks: EditBlock[];
-  fullRewrite: boolean;
   rawResponse: string;
 }
 
@@ -21,192 +20,158 @@ export interface ParsedEdit {
  * Add line numbers to HTML for AI context
  */
 export function addLineNumbers(html: string): string {
-  const lines = html.split('\n');
-  return lines.map((line, i) => `${String(i + 1).padStart(4, ' ')}| ${line}`).join('\n');
+  const lines = html.split("\n");
+  return lines
+    .map((line, i) => `${String(i + 1).padStart(4, " ")}| ${line}`)
+    .join("\n");
 }
 
 /**
  * Parse AI response for edit blocks
  * 
- * Format the AI uses:
+ * Format:
  * ```edit
  * [LINE_START-LINE_END]
  * new content here
- * can be multiple lines
  * ```
  * 
- * Or for full rewrite:
- * ```html
- * <!DOCTYPE html>...
- * ```
+ * STRICT: Never accepts full HTML rewrites
  */
 export function parseEditResponse(response: string): ParsedEdit {
-  const trimmed = response.trim();
-  
-  // Check for full HTML rewrite
-  const fullHtmlMatch = trimmed.match(/```html\s*\n([\s\S]*?)```/);
-  if (fullHtmlMatch?.[1]) {
-    const html = fullHtmlMatch[1].trim();
-    if (html.startsWith('<!DOCTYPE') || html.startsWith('<html')) {
-      return { blocks: [], fullRewrite: true, rawResponse: html };
-    }
-  }
-  
-  // Also check if response is just raw HTML (no code blocks)
-  if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
-    return { blocks: [], fullRewrite: true, rawResponse: trimmed };
-  }
-  
-  // Parse edit blocks
   const blocks: EditBlock[] = [];
+
+  // Parse edit blocks - multiple formats for robustness
+  // Format 1: ```edit\n[START-END]\ncontent```
   const editBlockRegex = /```edit\s*\n\[(\d+)-(\d+)\]\s*\n([\s\S]*?)```/g;
-  
+
   let match;
   while ((match = editBlockRegex.exec(response)) !== null) {
     const startLine = parseInt(match[1]!, 10);
     const endLine = parseInt(match[2]!, 10);
     const newContent = match[3]!;
-    
+
     if (startLine > 0 && endLine >= startLine) {
-      blocks.push({ startLine, endLine, newContent });
+      blocks.push({ startLine, endLine, newContent: newContent.trimEnd() });
     }
   }
-  
-  // Sort blocks by line number (descending) for safe application
-  blocks.sort((a, b) => b.startLine - a.startLine);
-  
-  return { blocks, fullRewrite: false, rawResponse: response };
-}
 
-/**
- * Apply edit blocks to HTML with fuzzy matching fallback
- */
-export function applyEditBlocks(html: string, blocks: EditBlock[]): { success: boolean; html: string; appliedCount: number } {
+  // Format 2: [START-END]\n```\ncontent\n``` (alternative format)
   if (blocks.length === 0) {
-    return { success: true, html, appliedCount: 0 };
-  }
-  
-  const lines = html.split('\n');
-  const totalLines = lines.length;
-  let appliedCount = 0;
-  
-  // Apply blocks in reverse order (highest line numbers first)
-  // This prevents line number shifts from affecting subsequent edits
-  for (const block of blocks) {
-    let { startLine, endLine } = block;
-    const { newContent } = block;
-    
-    // Clamp line numbers to valid range (AI sometimes gets them slightly wrong)
-    startLine = Math.max(1, Math.min(startLine, totalLines));
-    endLine = Math.max(startLine, Math.min(endLine, totalLines));
-    
-    // Replace lines (0-indexed)
-    const newLines = newContent.trimEnd().split('\n');
-    lines.splice(startLine - 1, endLine - startLine + 1, ...newLines);
-    appliedCount++;
-  }
-  
-  return { success: appliedCount > 0, html: lines.join('\n'), appliedCount };
-}
+    const altRegex = /\[(\d+)-(\d+)\]\s*\n```(?:\w*)\n([\s\S]*?)```/g;
+    while ((match = altRegex.exec(response)) !== null) {
+      const startLine = parseInt(match[1]!, 10);
+      const endLine = parseInt(match[2]!, 10);
+      const newContent = match[3]!;
 
-/**
- * Alternative: Content-based matching when line numbers fail
- * Finds content by matching the first line of the edit block
- */
-export function applyEditBlocksFuzzy(html: string, blocks: EditBlock[], originalHtml: string): { success: boolean; html: string; appliedCount: number } {
-  if (blocks.length === 0) {
-    return { success: true, html, appliedCount: 0 };
-  }
-  
-  const originalLines = originalHtml.split('\n');
-  let currentHtml = html;
-  let appliedCount = 0;
-  
-  for (const block of blocks) {
-    const { startLine, endLine, newContent } = block;
-    
-    // Get the original content that should be replaced
-    if (startLine < 1 || endLine > originalLines.length) continue;
-    
-    const originalContent = originalLines.slice(startLine - 1, endLine).join('\n');
-    const trimmedOriginal = originalContent.trim();
-    
-    if (!trimmedOriginal) continue;
-    
-    // Try to find this content in current HTML
-    const index = currentHtml.indexOf(originalContent);
-    if (index !== -1) {
-      // Exact match found
-      currentHtml = currentHtml.slice(0, index) + newContent.trimEnd() + currentHtml.slice(index + originalContent.length);
-      appliedCount++;
-    } else {
-      // Try fuzzy match (ignore leading/trailing whitespace per line)
-      const fuzzyOriginal = originalContent.split('\n').map(l => l.trim()).join('\n');
-      const currentLines = currentHtml.split('\n');
-      
-      for (let i = 0; i <= currentLines.length - (endLine - startLine + 1); i++) {
-        const slice = currentLines.slice(i, i + (endLine - startLine + 1));
-        const fuzzySlice = slice.map(l => l.trim()).join('\n');
-        
-        if (fuzzySlice === fuzzyOriginal) {
-          // Found fuzzy match
-          const newLines = newContent.trimEnd().split('\n');
-          currentLines.splice(i, endLine - startLine + 1, ...newLines);
-          currentHtml = currentLines.join('\n');
-          appliedCount++;
-          break;
-        }
+      if (startLine > 0 && endLine >= startLine) {
+        blocks.push({ startLine, endLine, newContent: newContent.trimEnd() });
       }
     }
   }
-  
-  return { success: appliedCount > 0, html: currentHtml, appliedCount };
+
+  // Format 3: Lines START-END:\n```\ncontent\n```
+  if (blocks.length === 0) {
+    const linesRegex = /[Ll]ines?\s*(\d+)[-–](\d+)[:\s]*\n```(?:\w*)\n([\s\S]*?)```/g;
+    while ((match = linesRegex.exec(response)) !== null) {
+      const startLine = parseInt(match[1]!, 10);
+      const endLine = parseInt(match[2]!, 10);
+      const newContent = match[3]!;
+
+      if (startLine > 0 && endLine >= startLine) {
+        blocks.push({ startLine, endLine, newContent: newContent.trimEnd() });
+      }
+    }
+  }
+
+  // Sort blocks by line number (descending) for safe application
+  blocks.sort((a, b) => b.startLine - a.startLine);
+
+  return { blocks, rawResponse: response };
 }
 
 /**
- * Build the edit system prompt
+ * Apply edit blocks to HTML
+ */
+export function applyEditBlocks(
+  html: string,
+  blocks: EditBlock[]
+): { success: boolean; html: string; appliedCount: number } {
+  if (blocks.length === 0) {
+    return { success: false, html, appliedCount: 0 };
+  }
+
+  const lines = html.split("\n");
+  const totalLines = lines.length;
+  let appliedCount = 0;
+
+  // Apply blocks in reverse order (highest line numbers first)
+  for (const block of blocks) {
+    let { startLine, endLine } = block;
+    const { newContent } = block;
+
+    // Clamp line numbers to valid range
+    startLine = Math.max(1, Math.min(startLine, totalLines));
+    endLine = Math.max(startLine, Math.min(endLine, totalLines));
+
+    // Replace lines (0-indexed)
+    const newLines = newContent.split("\n");
+    lines.splice(startLine - 1, endLine - startLine + 1, ...newLines);
+    appliedCount++;
+  }
+
+  return { success: appliedCount > 0, html: lines.join("\n"), appliedCount };
+}
+
+/**
+ * Build the edit system prompt - STRICT, no full rewrites allowed
  */
 export function buildEditSystemPrompt(): string {
-  return `You are a precise HTML editor. Make ONLY the requested changes.
+  return `You are a precise HTML editor. Your job is to make SMALL, TARGETED changes.
 
-OUTPUT FORMAT - Use edit blocks with line numbers:
+CRITICAL: You must ONLY output edit blocks. NEVER output full HTML.
+
+FORMAT (use exactly this):
 \`\`\`edit
 [START_LINE-END_LINE]
-replacement content here
+replacement content
 \`\`\`
 
 RULES:
-1. Output ONLY edit blocks - no explanations before or after
-2. Use exact line numbers from the provided HTML
-3. Include complete replacement content (not partial lines)
-4. For multiple changes, use multiple edit blocks
-5. Keep changes minimal - only modify what's necessary
-6. Preserve indentation and formatting
+1. ONLY output edit blocks - nothing else
+2. Use the exact line numbers shown in the HTML
+3. Make the SMALLEST change possible
+4. For "change background to blue" - only edit the specific element's class
+5. Multiple changes = multiple edit blocks
+6. Preserve all existing content not being changed
 
-EXAMPLE - Change button color on lines 45-47:
+EXAMPLE - User says "make background blue":
 \`\`\`edit
-[45-47]
-        <button class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg">
-          Click Me
-        </button>
+[15-15]
+    <body class="bg-blue-500">
 \`\`\`
 
-EXAMPLE - Add new section after line 100:
+EXAMPLE - User says "change the title":
 \`\`\`edit
-[100-100]
-      </section>
-      
-      <section class="py-16 bg-gray-50">
-        <h2 class="text-3xl font-bold">New Section</h2>
-      </section>
+[23-23]
+        <h1 class="text-4xl font-bold">New Title Here</h1>
 \`\`\`
 
-IMAGE RULES:
-- New images: <img data-image-query="description" alt="..." class="...">
-- New backgrounds: <div data-bg-query="description" class="bg-cover">
-- NEVER use hardcoded image URLs
+EXAMPLE - User says "add a button after the heading":
+\`\`\`edit
+[23-23]
+        <h1 class="text-4xl font-bold">Welcome</h1>
+        <button class="mt-4 px-6 py-2 bg-indigo-600 text-white rounded">Click Me</button>
+\`\`\`
 
-For MAJOR redesigns only, output full HTML in \`\`\`html block.`;
+IMAGE RULES (when adding images):
+- Use: <img data-image-query="description" alt="..." class="...">
+- For backgrounds: add data-bg-query="description" to the element
+- NEVER use URLs like source.unsplash.com
+
+DO NOT:
+- Output full HTML documents
+- Add explanations or comments
+- Make changes the user didn't ask for`;
 }
 
 /**
@@ -214,112 +179,127 @@ For MAJOR redesigns only, output full HTML in \`\`\`html block.`;
  */
 export function buildEditUserPrompt(html: string, instruction: string): string {
   const numberedHtml = addLineNumbers(html);
-  const lineCount = html.split('\n').length;
-  
+  const lineCount = html.split("\n").length;
+
   return `HTML (${lineCount} lines):
 ${numberedHtml}
 
-EDIT REQUEST: ${instruction}
+USER REQUEST: ${instruction}
 
-Output edit blocks with [LINE-LINE] format. Be precise.`;
+Respond with ONLY edit blocks. Use [LINE-LINE] format.`;
 }
 
 /**
- * Analyze edit scope to determine if we need full context or can chunk
+ * Analyze edit scope
  */
-export function analyzeEditScope(instruction: string): 'targeted' | 'section' | 'global' {
+export function analyzeEditScope(
+  instruction: string
+): "targeted" | "section" | "global" {
   const lower = instruction.toLowerCase();
-  
-  // Global changes - affect entire document
+
+  // Global changes
   const globalKeywords = [
-    'all ', 'every ', 'entire ', 'whole ', 'throughout',
-    'font', 'color scheme', 'theme', 'dark mode', 'light mode',
-    'responsive', 'mobile', 'spacing everywhere'
+    "all ",
+    "every ",
+    "entire ",
+    "whole ",
+    "throughout",
+    "color scheme",
+    "theme",
+    "dark mode",
+    "light mode",
   ];
-  if (globalKeywords.some(k => lower.includes(k))) {
-    return 'global';
+  if (globalKeywords.some((k) => lower.includes(k))) {
+    return "global";
   }
-  
-  // Section changes - affect a specific section
+
+  // Section changes
   const sectionKeywords = [
-    'header', 'footer', 'navbar', 'nav ', 'hero', 'about',
-    'contact', 'pricing', 'features', 'testimonials', 'section',
-    'sidebar', 'menu', 'banner'
+    "header",
+    "footer",
+    "navbar",
+    "nav ",
+    "hero",
+    "about",
+    "contact",
+    "pricing",
+    "features",
+    "testimonials",
+    "section",
+    "sidebar",
+    "menu",
+    "banner",
   ];
-  if (sectionKeywords.some(k => lower.includes(k))) {
-    return 'section';
+  if (sectionKeywords.some((k) => lower.includes(k))) {
+    return "section";
   }
-  
-  // Targeted changes - specific elements
-  return 'targeted';
+
+  return "targeted";
 }
 
 /**
  * Extract relevant section from HTML based on keywords
  */
-export function extractRelevantSection(html: string, instruction: string): { 
-  section: string; 
-  startLine: number; 
+export function extractRelevantSection(
+  html: string,
+  instruction: string
+): {
+  section: string;
+  startLine: number;
   endLine: number;
   fullHtml: string;
 } | null {
   const lower = instruction.toLowerCase();
-  const lines = html.split('\n');
-  
-  // Define section patterns
+  const lines = html.split("\n");
+
   const sectionPatterns: { keywords: string[]; patterns: RegExp[] }[] = [
     {
-      keywords: ['header', 'navbar', 'nav ', 'navigation', 'menu'],
-      patterns: [/<header[\s>]/i, /<nav[\s>]/i, /class="[^"]*nav[^"]*"/i]
+      keywords: ["header", "navbar", "nav ", "navigation", "menu"],
+      patterns: [/<header[\s>]/i, /<nav[\s>]/i, /class="[^"]*nav[^"]*"/i],
     },
     {
-      keywords: ['footer'],
-      patterns: [/<footer[\s>]/i, /class="[^"]*footer[^"]*"/i]
+      keywords: ["footer"],
+      patterns: [/<footer[\s>]/i, /class="[^"]*footer[^"]*"/i],
     },
     {
-      keywords: ['hero', 'banner', 'jumbotron'],
-      patterns: [/class="[^"]*hero[^"]*"/i, /class="[^"]*banner[^"]*"/i]
+      keywords: ["hero", "banner", "jumbotron"],
+      patterns: [/class="[^"]*hero[^"]*"/i, /class="[^"]*banner[^"]*"/i],
     },
     {
-      keywords: ['about'],
-      patterns: [/id="about"/i, /class="[^"]*about[^"]*"/i]
+      keywords: ["about"],
+      patterns: [/id="about"/i, /class="[^"]*about[^"]*"/i],
     },
     {
-      keywords: ['contact'],
-      patterns: [/id="contact"/i, /class="[^"]*contact[^"]*"/i, /<form/i]
+      keywords: ["contact"],
+      patterns: [/id="contact"/i, /class="[^"]*contact[^"]*"/i, /<form/i],
     },
     {
-      keywords: ['pricing'],
-      patterns: [/id="pricing"/i, /class="[^"]*pricing[^"]*"/i]
+      keywords: ["pricing"],
+      patterns: [/id="pricing"/i, /class="[^"]*pricing[^"]*"/i],
     },
     {
-      keywords: ['features'],
-      patterns: [/id="features"/i, /class="[^"]*features[^"]*"/i]
+      keywords: ["features"],
+      patterns: [/id="features"/i, /class="[^"]*features[^"]*"/i],
     },
     {
-      keywords: ['testimonial'],
-      patterns: [/id="testimonial/i, /class="[^"]*testimonial[^"]*"/i]
-    }
+      keywords: ["testimonial"],
+      patterns: [/id="testimonial/i, /class="[^"]*testimonial[^"]*"/i],
+    },
   ];
-  
-  // Find matching section
+
   for (const { keywords, patterns } of sectionPatterns) {
-    if (!keywords.some(k => lower.includes(k))) continue;
-    
-    // Find section start
+    if (!keywords.some((k) => lower.includes(k))) continue;
+
     let startLine = -1;
     let depth = 0;
     let endLine = -1;
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
-      
+
       if (startLine === -1) {
-        // Look for section start
-        if (patterns.some(p => p.test(line))) {
+        if (patterns.some((p) => p.test(line))) {
           startLine = i;
-          depth = 1;
-          // Count opening tags on this line
           const opens = (line.match(/<(?!\/)[a-z]/gi) || []).length;
           const closes = (line.match(/<\/[a-z]/gi) || []).length;
           depth = opens - closes;
@@ -329,31 +309,29 @@ export function extractRelevantSection(html: string, instruction: string): {
           }
         }
       } else {
-        // Track depth to find section end
         const opens = (line.match(/<(?!\/)[a-z]/gi) || []).length;
         const closes = (line.match(/<\/[a-z]/gi) || []).length;
         depth += opens - closes;
-        
+
         if (depth <= 0) {
           endLine = i;
           break;
         }
       }
     }
-    
+
     if (startLine !== -1 && endLine !== -1) {
-      // Add some context lines
       const contextStart = Math.max(0, startLine - 2);
       const contextEnd = Math.min(lines.length - 1, endLine + 2);
-      
+
       return {
-        section: lines.slice(contextStart, contextEnd + 1).join('\n'),
-        startLine: contextStart + 1, // 1-indexed
+        section: lines.slice(contextStart, contextEnd + 1).join("\n"),
+        startLine: contextStart + 1,
         endLine: contextEnd + 1,
-        fullHtml: html
+        fullHtml: html,
       };
     }
   }
-  
+
   return null;
 }
