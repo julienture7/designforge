@@ -109,11 +109,6 @@ export function ChatPanel({
   });
   const userTier = subscriptionStatus.data?.tier ?? "FREE";
   const isPro = userTier === "PRO";
-  const proTrialAvailable = subscriptionStatus.data?.proTrialAvailable ?? false;
-  
-  // Pro trial toggle for free users
-  const [useProTrial, setUseProTrial] = useState(false);
-  const [trialJustUsed, setTrialJustUsed] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -201,7 +196,6 @@ export function ChatPanel({
             currentHtml: currentHtmlSnapshot,
             prompt: trimmed,
             refinementLevel: isPro ? refinementLevelRef.current : undefined,
-            useProTrial: !isPro && useProTrial && proTrialAvailable, // Use Pro trial if available
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -218,13 +212,11 @@ export function ChatPanel({
           html?: unknown;
           finishReason?: unknown;
           tokenUsage?: unknown;
-          usedProTrial?: unknown;
         };
 
         const fullContent = typeof data?.html === "string" ? data.html : "";
         const finishReason = typeof data?.finishReason === "string" ? data.finishReason : "stop";
         const tokenUsage = typeof data?.tokenUsage === "number" ? data.tokenUsage : undefined;
-        const didUseProTrial = data?.usedProTrial === true;
 
         if (!fullContent) {
           const err = new Error("Empty HTML response") as Error & { code?: string };
@@ -241,14 +233,6 @@ export function ChatPanel({
         // Mark as generated and update HTML ref
         setHasGenerated(true);
         currentHtmlRef.current = fullContent;
-        
-        // If trial was used, mark it and refresh subscription status
-        if (didUseProTrial) {
-          setTrialJustUsed(true);
-          setUseProTrial(false);
-          // Refetch subscription status to update proTrialAvailable
-          void subscriptionStatus.refetch();
-        }
 
         // Notify completion (no streaming updates; swap preview atomically)
         onHtmlGenerated?.(fullContent);
@@ -662,87 +646,58 @@ export function ChatPanel({
             rows={1}
             className="chat-textarea"
           />
-          {/* Pro Trial Mode Selector for FREE users */}
+          {/* Pro Mode Upsell for FREE users */}
           {!isPro && !hasGenerated && (
             <div className="pro-trial-selector">
               {/* Mode Toggle */}
               <div className="pro-trial-toggle">
                 <button
                   type="button"
-                  onClick={() => setUseProTrial(false)}
-                  className={`pro-trial-toggle-btn ${!useProTrial ? 'pro-trial-toggle-btn--active' : ''}`}
+                  className="pro-trial-toggle-btn pro-trial-toggle-btn--active"
                 >
                   <span className="pro-trial-toggle-label">Free Mode</span>
-                  <span className="pro-trial-toggle-desc">DeepSeek AI</span>
+                  <span className="pro-trial-toggle-desc">Standard AI</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!proTrialAvailable) {
-                      onError?.("TRIAL_EXHAUSTED", "You've already used your free Pro trial. Upgrade to Pro for unlimited access.");
-                      return;
-                    }
-                    setUseProTrial(true);
-                  }}
-                  disabled={!proTrialAvailable}
-                  className={`pro-trial-toggle-btn pro-trial-toggle-btn--pro ${useProTrial ? 'pro-trial-toggle-btn--active' : ''} ${!proTrialAvailable ? 'pro-trial-toggle-btn--used' : ''}`}
+                <a
+                  href="/pricing"
+                  className="pro-trial-toggle-btn pro-trial-toggle-btn--pro"
                 >
-                  <span className="pro-trial-toggle-label">
-                    {proTrialAvailable ? '⚡ Try Pro' : '✓ Trial Used'}
-                  </span>
-                  <span className="pro-trial-toggle-desc">
-                    {proTrialAvailable ? 'Gemini 3 Pro' : 'Upgrade for more'}
-                  </span>
-                </button>
+                  <span className="pro-trial-toggle-label">⚡ Pro Mode</span>
+                  <span className="pro-trial-toggle-desc">Upgrade to unlock</span>
+                </a>
               </div>
 
-              {/* Pro Benefits Info */}
-              {useProTrial && proTrialAvailable && (
-                <div className="pro-trial-info animate-fade-in">
-                  <div className="pro-trial-info-header">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                    </svg>
-                    <span>Pro Mode Enabled</span>
-                    <span className="pro-trial-badge">1 FREE TRIAL</span>
-                  </div>
-                  <ul className="pro-trial-benefits">
-                    <li>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                      <span><strong>Gemini 3 Pro</strong> - Google's most advanced AI</span>
-                    </li>
-                    <li>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                      <span><strong>Better designs</strong> - More creative & polished</span>
-                    </li>
-                    <li>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                      <span><strong>Smarter code</strong> - Cleaner, more responsive</span>
-                    </li>
-                  </ul>
-                  <p className="pro-trial-note">This is your 1 free Pro generation. Love it? Upgrade for unlimited!</p>
+              {/* Pro Benefits Info - Always visible to entice upgrade */}
+              <div className="pro-trial-info animate-fade-in">
+                <div className="pro-trial-info-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </svg>
+                  <span>Unlock Pro Mode</span>
+                  <span className="pro-trial-badge">PRO</span>
                 </div>
-              )}
-
-              {/* Trial used notification */}
-              {trialJustUsed && (
-                <div className="pro-trial-used animate-fade-in">
-                  <div className="pro-trial-used-header">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                      <polyline points="22 4 12 14.01 9 11.01"/>
+                <ul className="pro-trial-benefits">
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
                     </svg>
-                    <span>Pro trial used!</span>
-                  </div>
-                  <p>Loved it? <a href="/pricing" className="pro-trial-upgrade-link">Upgrade to Pro</a> for unlimited Gemini 3 Pro generations.</p>
-                </div>
-              )}
+                    <span><strong>Mixture of Experts</strong> - Advanced multi-model architecture</span>
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span><strong>In-house refinement</strong> - Proprietary design optimization</span>
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span><strong>Stunning results</strong> - Truly impressive, polished designs</span>
+                  </li>
+                </ul>
+                <a href="/pricing" className="pro-trial-upgrade-link-btn">Upgrade to Pro →</a>
+              </div>
             </div>
           )}
 
