@@ -247,8 +247,8 @@ export function ConnectedEditor({
         if (isBuilding) {
           const start = buildStartRef.current ?? now;
           const elapsed = Math.max(0, now - start);
-          // Ease toward 82% over ~90s (generation can be long).
-          const target = 82 * (1 - Math.exp(-elapsed / 18000)); // ~82 by ~60-70s
+          // Ease toward 82% over ~180s (doubled for longer generation times).
+          const target = 82 * (1 - Math.exp(-elapsed / 36000)); // ~82 by ~120-140s
           const next = Math.max(prev, Math.min(82, target));
           return Math.round(next);
         }
