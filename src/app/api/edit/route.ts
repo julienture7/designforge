@@ -16,6 +16,7 @@ import {
   applyEditBlocks,
   buildEditSystemPrompt,
   buildEditUserPrompt,
+  type ReplaceOperation,
 } from "~/server/lib/edit-engine";
 import {
   acquireGenerationLock,
@@ -232,7 +233,7 @@ export async function POST(req: NextRequest) {
             );
             finalHtml = htmlMatch?.[1] ?? fullResponse;
           } else {
-            // Parse and apply search/replace blocks
+            // Parse and apply search/replace operations
             const parsed = parseEditResponse(fullResponse);
 
             // Check for "no changes" response
@@ -245,8 +246,8 @@ export async function POST(req: NextRequest) {
                 event: "edit_no_changes",
                 correlationId,
               });
-            } else if (parsed.blocks.length > 0) {
-              const applied = applyEditBlocks(currentHtml, parsed.blocks);
+            } else if (parsed.operations.length > 0) {
+              const applied = applyEditBlocks(currentHtml, parsed.operations);
 
               if (!applied.success) {
                 console.warn({

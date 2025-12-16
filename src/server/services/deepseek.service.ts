@@ -6,7 +6,7 @@
  * Each fix must be small and targeted - fixing bugs, not rewriting.
  */
 
-import { parseEditResponse, applyEditBlocks } from "~/server/lib/edit-engine";
+import { parseEditResponse, applyEditBlocks, type ReplaceOperation } from "~/server/lib/edit-engine";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -212,10 +212,10 @@ ${truncatedHtml}${html.length > 15000 ? '\n... (truncated)' : ''}
       };
     }
 
-    // Parse and apply blocks using new edit engine
+    // Parse and apply operations using new edit engine
     const parseResult = parseEditResponse(response);
 
-    if (parseResult.blocks.length === 0) {
+    if (parseResult.operations.length === 0) {
       return {
         success: true,
         html,
@@ -227,14 +227,14 @@ ${truncatedHtml}${html.length > 15000 ? '\n... (truncated)' : ''}
     }
 
     // Limit to max 5 fixes per phase to prevent over-modification
-    const limitedBlocks = parseResult.blocks.slice(0, 5);
-    const applyResult = applyEditBlocks(html, limitedBlocks);
+    const limitedOps = parseResult.operations.slice(0, 5);
+    const applyResult = applyEditBlocks(html, limitedOps);
 
     return {
       success: true,
       html: applyResult.html,
       appliedFixes: applyResult.appliedCount,
-      failedFixes: limitedBlocks.length - applyResult.appliedCount,
+      failedFixes: limitedOps.length - applyResult.appliedCount,
       issues: [],
       duration,
     };
