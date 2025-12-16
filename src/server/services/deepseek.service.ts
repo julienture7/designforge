@@ -6,7 +6,7 @@
  * Each fix must be small and targeted - fixing bugs, not rewriting.
  */
 
-import { parseEditResponse, applyEditBlocks, addLineNumbers } from "~/server/lib/edit-engine";
+import { parseEditResponse, applyEditBlocks } from "~/server/lib/edit-engine";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -172,23 +172,26 @@ export async function runPolishPhase(
 
   const systemPrompt = `${phase.prompt}
 
-FORMAT FOR CHANGES (use edit blocks with line numbers):
-\`\`\`edit
-[START_LINE-END_LINE]
-replacement content here
-\`\`\`
+FORMAT FOR CHANGES (use search/replace blocks):
+<<<<<<< SEARCH
+exact content to find
+=======
+replacement content
+>>>>>>> REPLACE
 
 CRITICAL RULES:
 - Make the SMALLEST possible change
 - NEVER remove images, sections, or major elements
 - NEVER change the visual design
-- Use exact line numbers from the provided HTML
+- Copy SEARCH content exactly from the HTML
 - If unsure, respond "No changes required."`;
 
-  const numberedHtml = addLineNumbers(html.substring(0, 15000));
+  const truncatedHtml = html.substring(0, 15000);
   const userPrompt = `Review this HTML and make ONLY essential bug fixes (max 3):
 
-${numberedHtml}${html.length > 15000 ? '\n... (truncated)' : ''}`;
+\`\`\`html
+${truncatedHtml}${html.length > 15000 ? '\n... (truncated)' : ''}
+\`\`\``;
 
   try {
     const response = await callDeepSeek(systemPrompt, userPrompt);
