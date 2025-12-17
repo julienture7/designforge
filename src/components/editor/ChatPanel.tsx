@@ -95,13 +95,19 @@ export function ChatPanel({
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const [refinementLevel, setRefinementLevel] = useState<"NORMAL" | "REFINED">("NORMAL");
   const refinementLevelRef = useRef<"NORMAL" | "REFINED">("NORMAL"); // Persist selection even on re-renders
+  const [generationMode, setGenerationMode] = useState<"basic" | "medium">("basic"); // FREE tier mode
+  const generationModeRef = useRef<"basic" | "medium">("basic");
   const [hasGenerated, setHasGenerated] = useState(() => !!currentHtml || initialHistory.length > 0); // Track if first generation happened
   const lockedRefinementLevel = useRef<"NORMAL" | "REFINED" | null>(null); // Lock refinement after first gen
   
-  // Sync ref with state
+  // Sync refs with state
   useEffect(() => {
     refinementLevelRef.current = refinementLevel;
   }, [refinementLevel]);
+  
+  useEffect(() => {
+    generationModeRef.current = generationMode;
+  }, [generationMode]);
   
   const { isSignedIn } = useAuth();
   const subscriptionStatus = api.subscription.getStatus.useQuery(undefined, {
@@ -196,6 +202,7 @@ export function ChatPanel({
             currentHtml: currentHtmlSnapshot,
             prompt: trimmed,
             refinementLevel: isPro ? refinementLevelRef.current : undefined,
+            generationMode: !isPro ? generationModeRef.current : undefined,
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -646,34 +653,57 @@ export function ChatPanel({
             rows={1}
             className="chat-textarea"
           />
-          {/* Pro Mode Upsell for FREE users */}
+          {/* Generation Mode Selector for FREE users */}
           {!isPro && !hasGenerated && (
             <div className="pro-trial-selector">
-              {/* Mode Toggle */}
-              <div className="pro-trial-toggle">
-                <button
-                  type="button"
-                  className="pro-trial-toggle-btn pro-trial-toggle-btn--active"
-                >
-                  <span className="pro-trial-toggle-label">Free Mode</span>
-                  <span className="pro-trial-toggle-desc">Standard AI</span>
-                </button>
-                <a
-                  href="/pricing"
-                  className="pro-trial-toggle-btn pro-trial-toggle-btn--pro"
-                >
-                  <span className="pro-trial-toggle-label">⚡ Pro Mode</span>
-                  <span className="pro-trial-toggle-desc">Upgrade to unlock</span>
-                </a>
+              {/* Quality Mode Toggle */}
+              <div className="refinement-selector">
+                <div className="refinement-selector-header">
+                  <svg className="refinement-selector-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                  <span>Quality Mode</span>
+                </div>
+                
+                <div className="refinement-options">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGenerationMode("basic");
+                      generationModeRef.current = "basic";
+                    }}
+                    disabled={isLoading}
+                    className={`refinement-option ${generationMode === "basic" ? "refinement-option--selected refinement-option--blue" : ""}`}
+                    title="Basic mode - Fast generation (2 credits)"
+                  >
+                    <span className="refinement-option-label">Basic</span>
+                    <span className="refinement-option-credits">2×</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGenerationMode("medium");
+                      generationModeRef.current = "medium";
+                    }}
+                    disabled={isLoading}
+                    className={`refinement-option ${generationMode === "medium" ? "refinement-option--selected refinement-option--purple" : ""}`}
+                    title="Medium mode - Higher quality (4 credits)"
+                  >
+                    <span className="refinement-option-label">Medium</span>
+                    <span className="refinement-option-credits">4×</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Pro Benefits Info - Always visible to entice upgrade */}
-              <div className="pro-trial-info animate-fade-in">
+              {/* Pro Mode Upsell */}
+              <div className="pro-trial-info animate-fade-in" style={{ marginTop: '8px' }}>
                 <div className="pro-trial-info-header">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                   </svg>
-                  <span>Unlock Pro Mode</span>
+                  <span>Want better results?</span>
                   <span className="pro-trial-badge">PRO</span>
                 </div>
                 <ul className="pro-trial-benefits">
@@ -681,19 +711,13 @@ export function ChatPanel({
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
-                    <span><strong>Mixture of Experts</strong> - Advanced multi-model architecture</span>
+                    <span><strong>Gemini 3 Pro</strong> - Premium AI model</span>
                   </li>
                   <li>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
-                    <span><strong>In-house refinement</strong> - Proprietary design optimization</span>
-                  </li>
-                  <li>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    <span><strong>Stunning results</strong> - Truly impressive, polished designs</span>
+                    <span><strong>Export HTML</strong> - Download your designs</span>
                   </li>
                 </ul>
                 <a href="/pricing" className="pro-trial-upgrade-link-btn">Upgrade to Pro →</a>
