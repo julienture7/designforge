@@ -1,11 +1,14 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
+import Script from "next/script";
 import { Geist } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ToastProvider } from "~/contexts/ToastContext";
+import { GoogleAnalytics } from "~/components/GoogleAnalytics";
+import { env } from "~/env";
 
 export const metadata: Metadata = {
   title: "DesignForge",
@@ -41,8 +44,33 @@ export default function RootLayout({
     >
       <html lang="en" className={`${geist.variable}`}>
         <body className="bg-background text-foreground min-h-screen antialiased">
+          {env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID && (
+            <>
+              <Script
+                strategy="afterInteractive"
+                src={`https://www.googletagmanager.com/gtag/js?id=${env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID}`}
+              />
+              <Script
+                id="google-analytics"
+                strategy="afterInteractive"
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    window.dataLayer = window.dataLayer || [];
+                    function gtag(){dataLayer.push(arguments);}
+                    gtag('js', new Date());
+                    gtag('config', '${env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID}', {
+                      page_path: window.location.pathname,
+                    });
+                  `,
+                }}
+              />
+            </>
+          )}
           <TRPCReactProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              {children}
+              {env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID && <GoogleAnalytics />}
+            </ToastProvider>
           </TRPCReactProvider>
         </body>
       </html>

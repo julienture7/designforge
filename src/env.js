@@ -63,6 +63,8 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string().min(1, "NEXT_PUBLIC_STRIPE_PRICE_ID is required")
         : z.string().min(1).optional(),
+    // Google Analytics ID (optional - only loads if provided)
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: z.string().optional(),
   },
 
   /**
@@ -81,6 +83,7 @@ export const env = createEnv({
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_STRIPE_PRICE_ID: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     SENTRY_DSN: process.env.SENTRY_DSN,
