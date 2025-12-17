@@ -93,18 +93,11 @@ export function ChatPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
-  const [refinementLevel, setRefinementLevel] = useState<"NORMAL" | "REFINED">("NORMAL");
-  const refinementLevelRef = useRef<"NORMAL" | "REFINED">("NORMAL"); // Persist selection even on re-renders
   const [generationMode, setGenerationMode] = useState<"basic" | "medium">("basic"); // FREE tier mode
   const generationModeRef = useRef<"basic" | "medium">("basic");
   const [hasGenerated, setHasGenerated] = useState(() => !!currentHtml || initialHistory.length > 0); // Track if first generation happened
-  const lockedRefinementLevel = useRef<"NORMAL" | "REFINED" | null>(null); // Lock refinement after first gen
   
   // Sync refs with state
-  useEffect(() => {
-    refinementLevelRef.current = refinementLevel;
-  }, [refinementLevel]);
-  
   useEffect(() => {
     generationModeRef.current = generationMode;
   }, [generationMode]);
@@ -127,11 +120,8 @@ export function ChatPanel({
     // If we have HTML and haven't marked as generated, mark it
     if (currentHtml && !hasGenerated) {
       setHasGenerated(true);
-      if (isPro && !lockedRefinementLevel.current) {
-        lockedRefinementLevel.current = refinementLevel;
-      }
     }
-  }, [currentHtml, hasGenerated, isPro, refinementLevel]);
+  }, [currentHtml, hasGenerated]);
 
   /**
    * Submit a prompt (shared by form submit + deep-link auto-submit).
@@ -185,11 +175,6 @@ export function ChatPanel({
       }
       
       if (isFirstGeneration) {
-        // Lock refinement level on first generation
-        if (isPro && !lockedRefinementLevel.current) {
-          lockedRefinementLevel.current = refinementLevel;
-        }
-        
         const response = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -201,7 +186,6 @@ export function ChatPanel({
             projectId: effectiveProjectId,
             currentHtml: currentHtmlSnapshot,
             prompt: trimmed,
-            refinementLevel: isPro ? refinementLevelRef.current : undefined,
             generationMode: !isPro ? generationModeRef.current : undefined,
           }),
           signal: abortControllerRef.current.signal,
@@ -370,7 +354,6 @@ export function ChatPanel({
     isLoading,
     isPro,
     hasGenerated,
-    refinementLevel,
     onLoadingChange,
     onError,
     onGenerationComplete,
@@ -631,8 +614,8 @@ export function ChatPanel({
             </svg>
           </div>
           <div className="upgrade-cta__text">
-            <div className="upgrade-cta__title">Unlock Pro Features</div>
-            <div className="upgrade-cta__desc">Export HTML, multi-pass refinement & more</div>
+            <div className="upgrade-cta__title">Want stunning designs?</div>
+            <div className="upgrade-cta__desc">Pro AI generates award-winning websites</div>
           </div>
           <a href="/pricing" className="upgrade-cta__btn">
             Upgrade
@@ -703,7 +686,7 @@ export function ChatPanel({
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                   </svg>
-                  <span>Want better results?</span>
+                  <span>Want stunning results?</span>
                   <span className="pro-trial-badge">PRO</span>
                 </div>
                 <ul className="pro-trial-benefits">
@@ -711,13 +694,19 @@ export function ChatPanel({
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
-                    <span><strong>Gemini 3 Pro</strong> - Premium AI model</span>
+                    <span><strong>Premium AI</strong> - Award-winning designs</span>
                   </li>
                   <li>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
-                    <span><strong>Export HTML</strong> - Download your designs</span>
+                    <span><strong>Export HTML</strong> - Download your code</span>
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span><strong>Private projects</strong> - Keep designs secure</span>
                   </li>
                 </ul>
                 <a href="/pricing" className="pro-trial-upgrade-link-btn">Upgrade to Pro →</a>
@@ -725,54 +714,16 @@ export function ChatPanel({
             </div>
           )}
 
-          {/* Refinement Level Selector - PRO only */}
+          {/* Pro mode indicator */}
           {isPro && !hasGenerated && (
-            <div className="refinement-selector">
-              <div className="refinement-selector-header">
-                <svg className="refinement-selector-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div className="pro-mode-indicator">
+              <div className="pro-mode-indicator-content">
+                <svg className="pro-mode-indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
-                <span>Refinement Level</span>
+                <span className="pro-mode-indicator-text">Pro Mode Active</span>
+                <span className="pro-mode-indicator-badge">Premium AI</span>
               </div>
-              
-              <div className="refinement-options">
-                {([
-                  { level: "NORMAL" as const, label: "Normal", credits: 1, color: "blue" },
-                  { level: "REFINED" as const, label: "Refined", credits: 5, color: "purple" },
-                ] as const).map(({ level, label, credits, color }) => {
-                  const isSelected = refinementLevel === level;
-                  
-                  return (
-                    <button
-                      key={level}
-                      type="button"
-                      onClick={() => {
-                        setRefinementLevel(level);
-                        refinementLevelRef.current = level;
-                      }}
-                      disabled={isLoading}
-                      className={`refinement-option ${isSelected ? `refinement-option--selected refinement-option--${color}` : ""}`}
-                      title={`${label} (${credits} credit${credits > 1 ? "s" : ""})`}
-                    >
-                      <span className="refinement-option-label">{label}</span>
-                      <span className="refinement-option-credits">{credits}×</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          
-          {/* Locked refinement indicator (after first generation) */}
-          {isPro && hasGenerated && lockedRefinementLevel.current && (
-            <div className="refinement-locked">
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              <span>
-                <strong>{lockedRefinementLevel.current}</strong> · Edits use same mode
-              </span>
             </div>
           )}
           

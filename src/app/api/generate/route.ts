@@ -39,13 +39,7 @@ import { getOrCreateUser } from "~/server/auth";
 import { acquireGenerationLock, releaseGenerationLock } from "~/server/lib/redis";
 import { checkCredits, decrementCredits, getGenerationCreditCost, type GenerationMode } from "~/server/services/credit.service";
 import { checkRateLimit, createRateLimitResponse } from "~/server/lib/rate-limiter";
-import { getRefinementPasses, type Tier } from "~/server/lib/tier-utils";
-import {
-  checkRefinementCredits,
-  decrementRefinementCredits,
-  getRefinementCreditCost,
-  type RefinementLevel,
-} from "~/server/services/refinement-credits.service";
+import { type Tier } from "~/server/lib/tier-utils";
 import { injectUnsplashImages } from "~/server/lib/html-processor";
 import { getDevstralSystemPrompt } from "~/server/lib/devstral-prompt";
 import { getBriefGeneratorPrompt } from "~/server/lib/brief-generator";
@@ -123,7 +117,7 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json();
-    const { messages = [], currentHtml, prompt, refinementLevel, useProTrial = false, generationMode = "basic" } = body;
+    const { messages = [], currentHtml, prompt, useProTrial = false, generationMode = "basic" } = body;
 
     // Validate generation mode for FREE tier
     const validModes: GenerationMode[] = ["basic", "medium"];
@@ -132,30 +126,19 @@ export async function POST(req: NextRequest) {
     // Credit Check based on tier
     const userTier = (user.tier as Tier) || "FREE";
     let creditVersion: number | undefined;
-    let refinementCreditVersion: number | undefined;
-    let selectedRefinementLevel: RefinementLevel | null = null;
     let isUsingProMode = false;
     let consumeTrial = false;
     let creditCost = 1; // Default
 
     if (userTier === "PRO") {
+      // PRO tier: Premium AI generation, 1 credit per generation
       isUsingProMode = true;
-      if (!refinementLevel || !["NORMAL", "REFINED"].includes(refinementLevel)) {
-        return NextResponse.json(
-          { error: "Refinement level required for Pro tier (NORMAL or REFINED)", code: "REFINEMENT_LEVEL_REQUIRED" },
-          { status: 400 }
-        );
+      creditCost = 1;
+      const creditCheck = await checkCredits(dbUserId);
+      if (!creditCheck.allowed) {
+        return NextResponse.json({ error: "No Pro credits remaining", code: "CREDITS_EXHAUSTED" }, { status: 402 });
       }
-      selectedRefinementLevel = refinementLevel as RefinementLevel;
-      const refinementCheck = await checkRefinementCredits(dbUserId, selectedRefinementLevel);
-      if (!refinementCheck.allowed) {
-        const cost = getRefinementCreditCost(selectedRefinementLevel);
-        const message = refinementCheck.remainingCredits === 0 
-          ? "No Pro credits remaining" 
-          : `Need ${cost} credits but only have ${refinementCheck.remainingCredits}`;
-        return NextResponse.json({ error: message, code: "CREDITS_EXHAUSTED" }, { status: 402 });
-      }
-      refinementCreditVersion = refinementCheck.version;
+      creditVersion = creditCheck.version;
     } else {
       // FREE tier - calculate credit cost based on generation mode
       creditCost = getGenerationCreditCost(selectedGenerationMode);
@@ -213,20 +196,7 @@ export async function POST(req: NextRequest) {
       aiMessages.push({ role: "user", content: prompt });
     }
 
-    // Get refinement passes based on selected level (PRO) or tier (FREE)
-    let refinementPasses = 0;
-    if (userTier === "PRO" && selectedRefinementLevel) {
-      switch (selectedRefinementLevel) {
-        case "NORMAL":
-          refinementPasses = 0;
-          break;
-        case "REFINED":
-          refinementPasses = 1;
-          break;
-      }
-    } else {
-      refinementPasses = getRefinementPasses(userTier);
-    }
+    // No refinement passes - single generation for all tiers
 
     // Select model and prompt based on tier and generation mode
     let selectedModel;
@@ -296,48 +266,11 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    let currentResult: { text: string; finishReason: string; usage: { totalTokens?: number } } = { 
+    const currentResult = { 
       text: html, 
       finishReason: "stop", 
       usage: { totalTokens: 0 } 
     };
-
-    // Apply refinement passes if user has a refinement tier (PRO only)
-    if (refinementPasses > 0) {
-      const REFINEMENT_PROMPT = `You are an Elite Design Quality Assurance Engineer. Your task is to review and refine the generated HTML design.
-
-CRITICAL REFINEMENT OBJECTIVES:
-1. Code Quality: Ensure semantic HTML, proper accessibility attributes, and clean structure
-2. Visual Polish: Enhance spacing, typography hierarchy, and visual rhythm
-3. Performance: Optimize animations, ensure efficient CSS, and verify image placeholders
-4. User Experience: Improve interactivity, ensure mobile responsiveness, and enhance micro-interactions
-5. Design Consistency: Verify color palette consistency, font pairing harmony, and visual alignment
-
-REFINEMENT PROCESS:
-- Preserve all data-image-query and data-bg-query attributes
-- If you find any images with src URLs, replace them with data-image-query attributes
-- ALL images MUST use data-image-query or data-bg-query attributes (NO URLs)
-
-OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start directly with <!DOCTYPE html>.`;
-
-      for (let pass = 1; pass <= refinementPasses; pass++) {
-        const refinementMessages: Array<{ role: "user" | "assistant"; content: string }> = [
-          {
-            role: "user",
-            content: `Refinement Pass ${pass} of ${refinementPasses}:\n\nReview and refine this HTML design:\n\n${html}`,
-          },
-        ];
-
-        currentResult = await generateText({
-          model: selectedModel,
-          system: REFINEMENT_PROMPT,
-          messages: refinementMessages,
-          temperature: 1.0,
-          maxOutputTokens,
-        });
-        html = currentResult.text;
-      }
-    }
 
     // Inject real Unsplash images
     const baseUrl = new URL(req.url).origin;
@@ -351,10 +284,8 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
 
     // Charge credits + release lock only after a successful generation
     if (dbUserId && clerkId) {
-      if (userTier === "PRO" && selectedRefinementLevel && typeof refinementCreditVersion === "number") {
-        await decrementRefinementCredits(dbUserId, refinementCreditVersion, selectedRefinementLevel).catch(console.error);
-      } else if (typeof creditVersion === "number") {
-        // Decrement credits based on generation mode (basic=2, medium=4, trial=1)
+      if (typeof creditVersion === "number") {
+        // Decrement credits based on tier and mode
         await decrementCredits(dbUserId, creditVersion, creditCost).catch(console.error);
       }
       
