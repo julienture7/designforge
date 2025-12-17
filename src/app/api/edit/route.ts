@@ -166,11 +166,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if user wants a completely new design
-    const isNewDesign =
-      /(?:start\s*over|from\s*scratch|completely\s*new|brand\s*new|new\s*website|new\s*page|replace\s*everything|redo\s*everything)/i.test(
-        editInstruction
-      );
+    // All requests to /api/edit are treated as edits (never new designs)
+    // If user wants a new design, they should start a new project
 
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -179,30 +176,19 @@ export async function POST(req: NextRequest) {
             encoder.encode(
               encodeSSE({
                 type: "status",
-                message: isNewDesign
-                  ? "Generating new design..."
-                  : "Applying edit...",
+                message: "Applying edit...",
               })
             )
           );
 
           const startTime = Date.now();
 
-          let systemPrompt: string;
-          let userPrompt: string;
-
-          if (isNewDesign) {
-            systemPrompt = buildNewDesignPrompt();
-            userPrompt = `Generate a complete HTML page for: ${editInstruction}`;
-          } else {
-            systemPrompt = buildEditSystemPrompt();
-            userPrompt = buildEditUserPrompt(currentHtml, editInstruction);
-          }
+          const systemPrompt = buildEditSystemPrompt();
+          const userPrompt = buildEditUserPrompt(currentHtml, editInstruction);
 
           console.log({
             event: "edit_start",
             correlationId,
-            isNewDesign,
             htmlLength: currentHtml.length,
             instructionLength: editInstruction.length,
           });
@@ -211,8 +197,8 @@ export async function POST(req: NextRequest) {
             model: deepseek("deepseek-chat"),
             system: systemPrompt,
             messages: [{ role: "user", content: userPrompt }],
-            temperature: isNewDesign ? 1.0 : 0.2,
-            maxOutputTokens: isNewDesign ? 16000 : 4000,
+            temperature: 0.2,
+            maxOutputTokens: 4000,
             abortSignal: AbortSignal.timeout(120000),
           });
 
@@ -226,13 +212,7 @@ export async function POST(req: NextRequest) {
           const duration = Date.now() - startTime;
           let finalHtml: string;
 
-          if (isNewDesign) {
-            // Extract HTML from response
-            const htmlMatch = fullResponse.match(
-              /(<!DOCTYPE[\s\S]*<\/html>)/i
-            );
-            finalHtml = htmlMatch?.[1] ?? fullResponse;
-          } else {
+          {
             // Parse and apply search/replace operations
             const parsed = parseEditResponse(fullResponse);
 
@@ -318,7 +298,6 @@ export async function POST(req: NextRequest) {
             event: "edit_complete",
             correlationId,
             durationMs: duration,
-            isNewDesign,
           });
 
           controller.enqueue(
@@ -426,23 +405,4 @@ function hasNewImageQueries(html: string): boolean {
     /data-image-query=["'][^"']+["'](?![^>]*data-image-resolved)/i.test(html) ||
     /data-bg-query=["'][^"']+["'](?![^>]*data-bg-resolved)/i.test(html)
   );
-}
-
-function buildNewDesignPrompt(): string {
-  return `You are an Elite Web Design AI. Generate a complete, production-ready HTML page.
-
-OUTPUT: Only valid HTML starting with <!DOCTYPE html>. No markdown, no explanations.
-
-REQUIREMENTS:
-- Use Tailwind CSS classes
-- Mobile responsive
-- Smooth animations
-- Semantic HTML
-- Use Lucide icons (https://unpkg.com/lucide@latest)
-
-IMAGES (MANDATORY):
-- Use data-image-query for images: <img data-image-query="description" alt="..." class="...">
-- Use data-bg-query for backgrounds: <div data-bg-query="description" class="bg-cover">
-- Include 10-15 images minimum
-- NEVER use hardcoded image URLs`;
 }
