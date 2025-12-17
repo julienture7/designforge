@@ -226,10 +226,15 @@ export async function POST(req: NextRequest) {
 
     // Initial generation
     let html = "";
+    // For FREE tier (Devstral), the brief is in the system prompt, but we still need a user message
+    const messagesForGeneration = isUsingProMode 
+      ? aiMessages 
+      : [{ role: "user" as const, content: "Generate the website now." }];
+    
     let currentResult = await generateText({
       model: selectedModel,
       system: systemPrompt,
-      messages: isUsingProMode ? aiMessages : [],
+      messages: messagesForGeneration,
       temperature: 1.0,
       maxOutputTokens,
     });
