@@ -93,6 +93,7 @@ export function ChatPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
+  // PRO users default to "high" mode, FREE users default to "basic"
   const [generationMode, setGenerationMode] = useState<"basic" | "medium" | "high">("basic");
   const generationModeRef = useRef<"basic" | "medium" | "high">("basic");
   const [hasGenerated, setHasGenerated] = useState(() => !!currentHtml || initialHistory.length > 0); // Track if first generation happened
@@ -108,6 +109,14 @@ export function ChatPanel({
   });
   const userTier = subscriptionStatus.data?.tier ?? "FREE";
   const isPro = userTier === "PRO";
+  
+  // Set default mode to "high" for PRO users when subscription loads
+  useEffect(() => {
+    if (isPro && !hasGenerated) {
+      setGenerationMode("high");
+      generationModeRef.current = "high";
+    }
+  }, [isPro, hasGenerated]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
