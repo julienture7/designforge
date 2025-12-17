@@ -8,7 +8,10 @@
  * - Basic mode: Devstral (2 credits)
  * - Medium mode: DeepSeek (4 credits)
  * 
- * PRO users use Gemini 3 Pro Preview.
+ * PRO users can choose:
+ * - Basic mode: Devstral (2 credits)
+ * - Medium mode: DeepSeek (4 credits)
+ * - High mode: Gemini 3 Pro (10 credits)
  */
 
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
@@ -119,43 +122,60 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { messages = [], currentHtml, prompt, useProTrial = false, generationMode = "basic" } = body;
 
-    // Validate generation mode for FREE tier
-    const validModes: GenerationMode[] = ["basic", "medium"];
-    const selectedGenerationMode: GenerationMode = validModes.includes(generationMode) ? generationMode : "basic";
-
     // Credit Check based on tier
     const userTier = (user.tier as Tier) || "FREE";
     let creditVersion: number | undefined;
-    let isUsingProMode = false;
     let consumeTrial = false;
-    let creditCost = 1; // Default
+
+    // Validate generation mode based on tier
+    // FREE: basic, medium only
+    // PRO: basic, medium, high
+    const freeValidModes: GenerationMode[] = ["basic", "medium"];
+    const proValidModes: GenerationMode[] = ["basic", "medium", "high"];
+    
+    let selectedGenerationMode: GenerationMode;
+    if (userTier === "PRO") {
+      selectedGenerationMode = proValidModes.includes(generationMode) ? generationMode : "high";
+    } else {
+      selectedGenerationMode = freeValidModes.includes(generationMode) ? generationMode : "basic";
+    }
+
+    // Calculate credit cost based on mode
+    let creditCost = getGenerationCreditCost(selectedGenerationMode);
 
     if (userTier === "PRO") {
-      // PRO tier: Premium AI generation, 1 credit per generation
-      isUsingProMode = true;
-      creditCost = 1;
+      // PRO tier: Can use all modes
       const creditCheck = await checkCredits(dbUserId);
-      if (!creditCheck.allowed) {
-        return NextResponse.json({ error: "No Pro credits remaining", code: "CREDITS_EXHAUSTED" }, { status: 402 });
+      if (creditCheck.remainingCredits < creditCost) {
+        return NextResponse.json({ 
+          error: `Need ${creditCost} credits but only have ${creditCheck.remainingCredits}. Try a lower tier mode.`, 
+          code: "CREDITS_EXHAUSTED" 
+        }, { status: 402 });
       }
       creditVersion = creditCheck.version;
     } else {
-      // FREE tier - calculate credit cost based on generation mode
-      creditCost = getGenerationCreditCost(selectedGenerationMode);
+      // FREE tier - can only use basic and medium
+      if (selectedGenerationMode === "high") {
+        return NextResponse.json({ 
+          error: "High tier requires Pro subscription. Upgrade to access premium AI.", 
+          code: "UPGRADE_REQUIRED" 
+        }, { status: 403 });
+      }
       
       if (useProTrial) {
         if (user.proTrialUsed) {
           return NextResponse.json(
-            { error: "Pro trial already used. Upgrade to Pro for unlimited access to Gemini 3 Pro.", code: "TRIAL_EXHAUSTED" },
+            { error: "Pro trial already used. Upgrade to Pro for access to High tier.", code: "TRIAL_EXHAUSTED" },
             { status: 402 }
           );
         }
-        isUsingProMode = true;
+        // Pro trial uses high mode
+        selectedGenerationMode = "high";
         consumeTrial = true;
-        creditCost = 1; // Pro trial costs 1 credit
+        creditCost = 1; // Pro trial costs 1 credit only
         const creditCheck = await checkCredits(dbUserId);
         if (!creditCheck.allowed) {
-          return NextResponse.json({ error: "Upgrade to Pro", code: "CREDITS_EXHAUSTED" }, { status: 402 });
+          return NextResponse.json({ error: "No credits remaining", code: "CREDITS_EXHAUSTED" }, { status: 402 });
         }
         creditVersion = creditCheck.version;
       } else {
@@ -196,25 +216,24 @@ export async function POST(req: NextRequest) {
       aiMessages.push({ role: "user", content: prompt });
     }
 
-    // No refinement passes - single generation for all tiers
-
-    // Select model and prompt based on tier and generation mode
+    // Select model and prompt based on generation mode
     let selectedModel;
     let systemPrompt: string;
     let maxOutputTokens: number;
+    const isHighMode = selectedGenerationMode === "high";
 
-    if (isUsingProMode) {
-      // PRO/Trial: Use Gemini 3 Pro
+    if (isHighMode) {
+      // High mode: Use Gemini 3 Pro (PRO only or trial)
       selectedModel = google("gemini-3-pro-preview");
       systemPrompt = DESIGN_SYSTEM_PROMPT + contextPrompt;
       maxOutputTokens = 16000;
     } else if (selectedGenerationMode === "medium") {
-      // FREE tier Medium mode: Use DeepSeek with same prompt as Devstral
+      // Medium mode: Use DeepSeek
       selectedModel = deepseek("deepseek-chat");
       systemPrompt = ""; // Full prompt goes in user message
       maxOutputTokens = 8192; // DeepSeek max is 8192
     } else {
-      // FREE tier Basic mode: Use Devstral with 2-step process
+      // Basic mode: Use Devstral
       selectedModel = mistral("devstral-2512");
       systemPrompt = ""; // Full prompt goes in user message
       maxOutputTokens = 16384;
@@ -223,8 +242,8 @@ export async function POST(req: NextRequest) {
     // Initial generation
     let html = "";
     
-    if (isUsingProMode) {
-      // PRO: Single call with user messages
+    if (isHighMode) {
+      // High mode: Single call with user messages (Gemini)
       const currentResult = await generateText({
         model: selectedModel,
         system: systemPrompt,
@@ -305,7 +324,7 @@ export async function POST(req: NextRequest) {
       finishReason: result.finishReason,
       tokenUsage: typeof result.usage?.totalTokens === "number" ? result.usage.totalTokens : undefined,
       usedProTrial: consumeTrial,
-      generationMode: isUsingProMode ? "pro" : selectedGenerationMode,
+      generationMode: selectedGenerationMode,
       creditCost,
     });
 

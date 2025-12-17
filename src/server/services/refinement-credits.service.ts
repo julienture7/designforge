@@ -120,13 +120,13 @@ export async function decrementRefinementCredits(
 
 /**
  * Initialize PRO tier credits (called when subscription is activated)
- * Pro users get 100 unified credits that can be used for any refinement level
+ * Pro users get 300 credits that can be used for any generation mode
  */
 export async function initializeProCredits(userId: string): Promise<void> {
   await db.user.update({
     where: { id: userId },
     data: {
-      credits: 100, // 100 unified Pro credits
+      credits: 300, // 300 Pro credits
     },
   });
 }

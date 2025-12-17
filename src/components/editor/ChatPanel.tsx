@@ -93,8 +93,8 @@ export function ChatPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
-  const [generationMode, setGenerationMode] = useState<"basic" | "medium">("basic"); // FREE tier mode
-  const generationModeRef = useRef<"basic" | "medium">("basic");
+  const [generationMode, setGenerationMode] = useState<"basic" | "medium" | "high">("basic");
+  const generationModeRef = useRef<"basic" | "medium" | "high">("basic");
   const [hasGenerated, setHasGenerated] = useState(() => !!currentHtml || initialHistory.length > 0); // Track if first generation happened
   
   // Sync refs with state
@@ -186,7 +186,7 @@ export function ChatPanel({
             projectId: effectiveProjectId,
             currentHtml: currentHtmlSnapshot,
             prompt: trimmed,
-            generationMode: !isPro ? generationModeRef.current : undefined,
+            generationMode: generationModeRef.current,
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -714,15 +714,59 @@ export function ChatPanel({
             </div>
           )}
 
-          {/* Pro mode indicator */}
+          {/* PRO Quality Mode Selector - all 3 tiers */}
           {isPro && !hasGenerated && (
-            <div className="pro-mode-indicator">
-              <div className="pro-mode-indicator-content">
-                <svg className="pro-mode-indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-                <span className="pro-mode-indicator-text">Pro Mode Active</span>
-                <span className="pro-mode-indicator-badge">Premium AI</span>
+            <div className="pro-trial-selector">
+              <div className="refinement-selector">
+                <div className="refinement-selector-header">
+                  <svg className="refinement-selector-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  <span>Quality Mode</span>
+                  <span className="pro-trial-badge" style={{ marginLeft: 'auto' }}>PRO</span>
+                </div>
+                
+                <div className="refinement-options">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGenerationMode("basic");
+                      generationModeRef.current = "basic";
+                    }}
+                    disabled={isLoading}
+                    className={`refinement-option ${generationMode === "basic" ? "refinement-option--selected refinement-option--blue" : ""}`}
+                    title="Basic mode - Fast generation (2 credits)"
+                  >
+                    <span className="refinement-option-label">Basic</span>
+                    <span className="refinement-option-credits">2×</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGenerationMode("medium");
+                      generationModeRef.current = "medium";
+                    }}
+                    disabled={isLoading}
+                    className={`refinement-option ${generationMode === "medium" ? "refinement-option--selected refinement-option--purple" : ""}`}
+                    title="Medium mode - Higher quality (4 credits)"
+                  >
+                    <span className="refinement-option-label">Medium</span>
+                    <span className="refinement-option-credits">4×</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGenerationMode("high");
+                      generationModeRef.current = "high";
+                    }}
+                    disabled={isLoading}
+                    className={`refinement-option ${generationMode === "high" ? "refinement-option--selected refinement-option--gold" : ""}`}
+                    title="High mode - Premium AI, award-winning designs (10 credits)"
+                  >
+                    <span className="refinement-option-label">High</span>
+                    <span className="refinement-option-credits">10×</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}

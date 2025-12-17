@@ -78,9 +78,12 @@ export async function checkCredits(dbUserId: string): Promise<CreditCheckResult>
 }
 
 /**
- * Generation mode for FREE tier users
+ * Generation mode for all users
+ * - basic: Devstral (2 credits) - FREE & PRO
+ * - medium: DeepSeek (4 credits) - FREE & PRO
+ * - high: Gemini 3 Pro (10 credits) - PRO only
  */
-export type GenerationMode = "basic" | "medium";
+export type GenerationMode = "basic" | "medium" | "high";
 
 /**
  * Get the credit cost for a generation mode
@@ -91,6 +94,8 @@ export function getGenerationCreditCost(mode: GenerationMode): number {
       return 2; // Devstral
     case "medium":
       return 4; // DeepSeek
+    case "high":
+      return 10; // Gemini 3 Pro (PRO only)
     default:
       return 2;
   }

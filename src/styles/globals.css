@@ -1035,6 +1035,13 @@ button:disabled {
   color: #6d28d9;
 }
 
+.refinement-option--selected.refinement-option--gold {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #b45309;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+}
+
 .refinement-option-label {
   font-weight: 600;
   line-height: 1;
