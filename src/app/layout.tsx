@@ -4,6 +4,7 @@ import { type Metadata } from "next";
 import Script from "next/script";
 import { Geist } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Suspense } from "react";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ToastProvider } from "~/contexts/ToastContext";
@@ -69,7 +70,11 @@ export default function RootLayout({
           <TRPCReactProvider>
             <ToastProvider>
               {children}
-              {env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID && <GoogleAnalytics />}
+              {env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID && (
+                <Suspense fallback={null}>
+                  <GoogleAnalytics />
+                </Suspense>
+              )}
             </ToastProvider>
           </TRPCReactProvider>
         </body>
