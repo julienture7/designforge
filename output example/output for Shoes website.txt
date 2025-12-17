@@ -1,0 +1,317 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STRIDE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    display: ['Clash Display', 'sans-serif'],
+                    body: ['General Sans', 'sans-serif']
+                },
+                colors: {
+                    'brand-dark': '#0A2463',
+                    'brand-light': '#E8DCC6',
+                    'brand-primary': '#7A7A7A',
+                    'brand-accent': '#0A2463'
+                },
+                animation: {
+                    'float': 'float 6s ease-in-out infinite',
+                    'marquee': 'marquee 25s linear infinite',
+                    'pulse-glow': 'pulse-glow 2s ease-in-out infinite'
+                },
+                keyframes: {
+                    float: {
+                        '0%, 100%': { transform: 'translateY(0)' },
+                        '50%': { transform: 'translateY(-20px)' }
+                    },
+                    marquee: {
+                        '0%': { transform: 'translateX(0%)' },
+                        '100%': { transform: 'translateX(-100%)' }
+                    },
+                    'pulse-glow': {
+                        '0%, 100%': { opacity: '0.4' },
+                        '50%': { opacity: '1' }
+                    }
+                }
+            }
+        }
+    }
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@200,400,500,600,700&f[]=general-sans@200,300,400,500,600,700&display=swap" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0A2463; }
+        ::-webkit-scrollbar-thumb { background: #E8DCC6; border-radius: 10px; }
+        ::selection { background: #E8DCC6; color: #0A2463; }
+        .glass-panel { background: rgba(255,255,255,0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2); }
+        .text-outline { -webkit-text-stroke: 1px rgba(255,255,255,0.3); color: transparent; }
+        .text-outline-dark { -webkit-text-stroke: 1px rgba(0,0,0,0.2); color: transparent; }
+        .gradient-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.6; z-index: -1; }
+        .grain::before { content: ""; position: fixed; inset: 0; background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOCIgbnVtT2N0YXZlcz0iNCIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNub2lzZSkiIG9wYWNpdHk9IjAuMDMiLz48L3N2Zz4='); opacity: 0.03; pointer-events: none; z-index: 1000; }
+        .reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+        .img-zoom-container { overflow: hidden; }
+        .img-zoom { transition: transform 0.7s ease; }
+        .group:hover .img-zoom { transform: scale(1.1); }
+        .glow-primary { box-shadow: 0 0 40px rgba(var(--glow-color), 0.3); }
+        .border-gradient { border: 1px solid; border-image: linear-gradient(135deg, var(--brand-primary) 0%, transparent 100%) 1; }
+        .bento-card { background: linear-gradient(135deg, rgba(var(--brand-primary-rgb), 0.03) 0%, rgba(10, 36, 99, 0.8) 100%); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); transition: all 0.3s ease; }
+        .bento-card:hover { border-color: rgba(var(--brand-primary-rgb), 0.4); box-shadow: 0 0 40px rgba(var(--brand-primary-rgb), 0.15); }
+        #cursor-dot { position: fixed; width: 6px; height: 6px; background: var(--cursor-color, #fff); border-radius: 50%; z-index: 9999; pointer-events: none; mix-blend-mode: difference; }
+        #cursor-outline { position: fixed; width: 30px; height: 30px; border: 1px solid var(--cursor-color, #fff); border-radius: 50%; z-index: 9998; pointer-events: none; mix-blend-mode: difference; }
+    </style>
+</head>
+<body class="bg-brand-light text-brand-dark">
+    <div id="cursor-dot"></div>
+    <div id="cursor-outline"></div>
+
+    <nav class="fixed w-full z-50 px-6 py-6 flex justify-between items-center">
+        <a href="#" class="font-display font-bold text-2xl">STRIDE</a>
+        <div class="hidden md:flex gap-8 text-sm uppercase tracking-wider">
+            <a href="#" class="hover:text-brand-primary">Shop</a>
+            <a href="#" class="hover:text-brand-primary">About</a>
+            <a href="#" class="hover:text-brand-primary">Journal</a>
+        </div>
+        <div class="flex items-center gap-6">
+            <a href="#" class="text-brand-primary hover:opacity-80">
+                <i class="ph ph-shopping-cart text-2xl relative">
+                    <span class="absolute -top-2 -right-2 w-5 h-5 bg-brand-primary text-brand-light text-xs font-bold rounded-full flex items-center justify-center">0</span>
+                </i>
+            </a>
+            <button class="md:hidden w-10 h-10 flex flex-col justify-center gap-1.5">
+                <span class="w-6 h-0.5 bg-current"></span>
+                <span class="w-4 h-0.5 bg-current"></span>
+            </button>
+        </div>
+    </nav>
+
+    <header class="relative min-h-screen flex items-center pt-20 bg-white">
+        <div class="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
+            <div class="space-y-8">
+                <h1 class="text-7xl font-display font-bold tracking-tighter">ELEVATE YOUR STEP</h1>
+                <p class="text-brand-primary text-lg max-w-md">Designed for urban explorers, crafted for comfort. Minimalist footwear that moves with you.</p>
+                <button class="bg-brand-dark text-brand-light px-8 py-4 font-bold uppercase tracking-wide hover:bg-brand-accent transition-colors">Shop Collection</button>
+            </div>
+            <div class="relative">
+                <img data-image-resolved="true" loading="lazy" src="/api/proxy/image?query=minimal%20sneaker%20product%20studio%20white%20background%20floating" data-image-query="minimal sneaker product studio white background floating" alt="Stride sneaker" class="animate-float">
+            </div>
+        </div>
+    </header>
+
+    <section class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-sm uppercase tracking-wider text-brand-primary mb-4">ABOUT</div>
+            <h2 class="text-5xl font-display font-medium mb-16">Crafted for Movement</h2>
+            <div class="grid md:grid-cols-2 gap-16 items-center">
+                <div class="space-y-6">
+                    <p class="text-brand-primary leading-relaxed">At STRIDE, we believe in the power of movement. Our minimalist footwear is designed to be an extension of your body, providing comfort without compromising style.</p>
+                    <p class="text-brand-primary leading-relaxed">Each pair is crafted with premium materials and meticulous attention to detail, ensuring durability and elegance for the urban explorer.</p>
+                    <button class="border border-brand-primary text-brand-primary px-8 py-3 font-bold uppercase tracking-wide hover:bg-brand-primary hover:text-white transition-colors">Our Story</button>
+                </div>
+                <div class="relative">
+                    <img data-image-resolved="true" loading="lazy" src="/api/proxy/image?query=sneaker%20materials%20detail%20texture%20studio" data-image-query="sneaker materials detail texture studio" alt="Sneaker materials" class="w-full h-auto">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-sm uppercase tracking-wider text-brand-primary mb-4">COLLECTION</div>
+            <h2 class="text-5xl font-display font-medium mb-16">Explore Our Styles</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="group cursor-pointer">
+                    <div class="relative overflow-hidden bg-gray-100 h-[400px] w-full mb-4 img-zoom-container">
+                        <img data-image-resolved="true" loading="lazy" src="/api/proxy/image?query=minimal%20sneaker%20white%20product%20studio" data-image-query="minimal sneaker white product studio" alt="White sneaker" class="w-full h-full object-cover img-zoom">
+                    </div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-display font-bold text-xl uppercase">Urban White</h4>
+                            <p class="text-brand-primary text-sm mt-1">Classic minimalist design</p>
+                        </div>
+                        <span class="font-mono font-bold text-lg">$199</span>
+                    </div>
+                </div>
+                <div class="group cursor-pointer">
+                    <div class="relative overflow-hidden bg-gray-100 h-[400px] w-full mb-4 img-zoom-container">
+                        <img data-image-resolved="true" loading="lazy" src="/api/proxy/image?query=minimal%20sneaker%20navy%20product%20studio" data-image-query="minimal sneaker navy product studio" alt="Navy sneaker" class="w-full h-full object-cover img-zoom">
+                    </div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-display font-bold text-xl uppercase">Navy Essence</h4>
+                            <p class="text-brand-primary text-sm mt-1">Deep navy premium leather</p>
+                        </div>
+                        <span class="font-mono font-bold text-lg">$219</span>
+                    </div>
+                </div>
+                <div class="group cursor-pointer">
+                    <div class="relative overflow-hidden bg-gray-100 h-[400px] w-full mb-4 img-zoom-container">
+                        <img data-image-resolved="true" loading="lazy" src="/api/proxy/image?query=minimal%20sneaker%20beige%20product%20studio" data-image-query="minimal sneaker beige product studio" alt="Beige sneaker" class="w-full h-full object-cover img-zoom">
+                    </div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-display font-bold text-xl uppercase">Beige Horizon</h4>
+                            <p class="text-brand-primary text-sm mt-1">Soft beige suede finish</p>
+                        </div>
+                        <span class="font-mono font-bold text-lg">$209</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-24 bg-brand-dark text-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-sm uppercase tracking-wider text-brand-light mb-4">FEATURES</div>
+            <h2 class="text-5xl font-display font-medium mb-16">Engineered for Comfort</h2>
+            <div class="grid md:grid-cols-3 gap-12">
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-6 bg-white/10 rounded-full flex items-center justify-center">
+                        <i class="ph-fill ph-sneaker text-3xl text-brand-light"></i>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold mb-4">Lightweight Design</h3>
+                    <p class="text-brand-light leading-relaxed">Ultra-light materials that reduce fatigue during long walks.</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-6 bg-white/10 rounded-full flex items-center justify-center">
+                        <i class="ph-fill ph-drop text-3xl text-brand-light"></i>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold mb-4">Breathable Mesh</h3>
+                    <p class="text-brand-light leading-relaxed">Advanced mesh technology for optimal airflow and comfort.</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-6 bg-white/10 rounded-full flex items-center justify-center">
+                        <i class="ph-fill ph-shield-check text-3xl text-brand-light"></i>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold mb-4">Durable Construction</h3>
+                    <p class="text-brand-light leading-relaxed">Reinforced stitching and premium materials for long-lasting wear.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-sm uppercase tracking-wider text-brand-primary mb-4">JOURNAL</div>
+            <h2 class="text-5xl font-display font-medium mb-16">Stories in Motion</h2>
+            <div class="grid md:grid-cols-2 gap-12">
+                <div class="group cursor-pointer">
+                    <div class="relative overflow-hidden h-[300px] w-full mb-4 img-zoom-container">
+                        <img data-image-resolved="true" loading="lazy" src="/api/proxy/image?query=urban%20lifestyle%20sneaker%20street%20photography" data-image-query="urban lifestyle sneaker street photography" alt="Urban lifestyle" class="w-full h-full object-cover img-zoom">
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wider text-brand-primary mb-2">URBAN EXPLORATION</div>
+                        <h3 class="font-display text-2xl font-bold mb-2">The Art of City Walking</h3>
+                        <p class="text-brand-primary text-sm">Discover how our footwear enhances your urban experience.</p>
+                    </div>
+                </div>
+                <div class="group cursor-pointer">
+                    <div class="relative overflow-hidden h-[300px] w-full mb-4 img-zoom-container">
+                        <img data-image-resolved="true" loading="lazy" src="/api/proxy/image?query=sneaker%20craftsmanship%20materials%20detail" data-image-query="sneaker craftsmanship materials detail" alt="Craftsmanship" class="w-full h-full object-cover img-zoom">
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wider text-brand-primary mb-2">CRAFTSMANSHIP</div>
+                        <h3 class="font-display text-2xl font-bold mb-2">Behind the Design</h3>
+                        <p class="text-brand-primary text-sm">Learn about the materials and process behind STRIDE.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-32 bg-brand-light">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <h2 class="font-display font-black text-6xl md:text-8xl uppercase leading-[0.85] tracking-tighter mb-8">STEP INTO<br>COMFORT</h2>
+            <p class="font-body text-xl md:text-2xl max-w-2xl mx-auto leading-tight mb-12 text-brand-primary">Experience the perfect blend of style and functionality.</p>
+            <a href="#" class="inline-block bg-brand-dark text-brand-light font-display font-bold uppercase text-lg px-12 py-5 hover:scale-105 transition-transform">Shop Now</a>
+        </div>
+    </section>
+
+    <footer class="bg-brand-dark text-white py-20">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-12 mb-16">
+                <div>
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-3 h-3 bg-brand-light rounded-full"></div>
+                        <span class="font-display font-bold text-2xl">STRIDE</span>
+                    </div>
+                    <p class="text-brand-light text-sm">Minimalist footwear for the urban explorer. Designed for comfort, crafted for movement.</p>
+                </div>
+                <div>
+                    <h4 class="font-display font-bold uppercase text-sm mb-6 text-brand-light">Shop</h4>
+                    <ul class="space-y-3 text-sm text-brand-light">
+                        <li><a href="#" class="hover:text-white">Men's Collection</a></li>
+                        <li><a href="#" class="hover:text-white">Women's Collection</a></li>
+                        <li><a href="#" class="hover:text-white">Accessories</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-display font-bold uppercase text-sm mb-6 text-brand-light">Support</h4>
+                    <ul class="space-y-3 text-sm text-brand-light">
+                        <li><a href="#" class="hover:text-white">Shipping & Returns</a></li>
+                        <li><a href="#" class="hover:text-white">Size Guide</a></li>
+                        <li><a href="#" class="hover:text-white">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-display font-bold uppercase text-sm mb-6 text-brand-light">Social</h4>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-brand-light hover:text-white">
+                            <i class="ph-fill ph-instagram-logo text-2xl"></i>
+                        </a>
+                        <a href="#" class="text-brand-light hover:text-white">
+                            <i class="ph-fill ph-facebook-logo text-2xl"></i>
+                        </a>
+                        <a href="#" class="text-brand-light hover:text-white">
+                            <i class="ph-fill ph-twitter-logo text-2xl"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between text-xs text-brand-light">
+                <p>© 2024 STRIDE. All rights reserved.</p>
+                <div class="flex gap-6 mt-4 md:mt-0">
+                    <a href="#" class="hover:text-white">Privacy Policy</a>
+                    <a href="#" class="hover:text-white">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const cursorDot = document.querySelector("#cursor-dot");
+        const cursorOutline = document.querySelector("#cursor-outline");
+        if(cursorDot && cursorOutline) {
+            window.addEventListener("mousemove", e => {
+                cursorDot.style.left = e.clientX + 'px';
+                cursorDot.style.top = e.clientY + 'px';
+                cursorOutline.animate({
+                    left: e.clientX + 'px',
+                    top: e.clientY + 'px'
+                }, {
+                    duration: 500,
+                    fill: "forwards"
+                });
+            });
+        }
+        const observer = new IntersectionObserver(entries => entries.forEach(e => e.isIntersecting && e.target.classList.add('active')), {
+            threshold: 0.1
+        });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        document.querySelectorAll('a[href^="#"]').forEach(a => a.onclick = e => {
+            e.preventDefault();
+            document.querySelector(a.getAttribute('href'))?.scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    </script>
+</body>
+</html>
+```

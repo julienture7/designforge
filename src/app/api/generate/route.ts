@@ -259,6 +259,16 @@ export async function POST(req: NextRequest) {
       html = htmlResult.text;
     }
     
+    // Clean up markdown code blocks if present (AI sometimes wraps output in ```html ... ```)
+    html = html.replace(/^```html\s*/i, "").replace(/```\s*$/, "").trim();
+    // Ensure it starts with <!DOCTYPE html>
+    if (!html.toLowerCase().startsWith("<!doctype")) {
+      const doctypeIndex = html.toLowerCase().indexOf("<!doctype");
+      if (doctypeIndex > 0) {
+        html = html.substring(doctypeIndex);
+      }
+    }
+    
     let currentResult: { text: string; finishReason: string; usage: { totalTokens?: number } } = { 
       text: html, 
       finishReason: "stop", 
