@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
       // FREE tier Medium mode: Use DeepSeek with same prompt as Devstral
       selectedModel = deepseek("deepseek-chat");
       systemPrompt = ""; // Full prompt goes in user message
-      maxOutputTokens = 16384;
+      maxOutputTokens = 8192; // DeepSeek max is 8192
     } else {
       // FREE tier Basic mode: Use Devstral with 2-step process
       selectedModel = mistral("devstral-2512");
