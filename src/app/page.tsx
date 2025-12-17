@@ -153,6 +153,9 @@ export default function Home() {
           <Link href="/pricing" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors duration-200 link-underline">
             Pricing
           </Link>
+          <Link href="/contact" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors duration-200 link-underline">
+            Contact
+          </Link>
 
           <SignedIn>
             <Link href="/dashboard" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors duration-200 link-underline">
