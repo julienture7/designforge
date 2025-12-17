@@ -216,20 +216,19 @@ export async function POST(req: NextRequest) {
       systemPrompt = DESIGN_SYSTEM_PROMPT + contextPrompt;
       maxOutputTokens = 16000;
     } else {
-      // FREE tier: Use Devstral with the full prompt from file
+      // FREE tier: Use Devstral - full prompt goes in user message, not system
       selectedModel = mistral("devstral-2512");
       const userBrief = prompt || (aiMessages.length > 0 ? aiMessages[aiMessages.length - 1]?.content : "") || "";
-      // Load the full prompt from Devstral prompt.txt and replace {brief}
-      systemPrompt = getDevstralSystemPrompt(userBrief) + contextPrompt;
+      systemPrompt = ""; // No system prompt for Devstral
       maxOutputTokens = 4096;
     }
 
     // Initial generation
     let html = "";
-    // For FREE tier (Devstral), the brief is in the system prompt, but we still need a user message
+    // For FREE tier (Devstral), send the full prompt with brief as user message
     const messagesForGeneration = isUsingProMode 
       ? aiMessages 
-      : [{ role: "user" as const, content: "Generate the website now." }];
+      : [{ role: "user" as const, content: getDevstralSystemPrompt(prompt || "") + contextPrompt }];
     
     let currentResult = await generateText({
       model: selectedModel,
