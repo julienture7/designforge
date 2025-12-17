@@ -39,6 +39,7 @@ import {
 } from "~/server/services/refinement-credits.service";
 import { injectUnsplashImages } from "~/server/lib/html-processor";
 import { getDevstralSystemPrompt } from "~/server/lib/devstral-prompt";
+import { getBriefGeneratorPrompt } from "~/server/lib/brief-generator";
 
 // Vercel timeout: 300s (Hobby), 900s (Pro/Enterprise)
 export const maxDuration = 300;
@@ -216,28 +217,53 @@ export async function POST(req: NextRequest) {
       systemPrompt = DESIGN_SYSTEM_PROMPT + contextPrompt;
       maxOutputTokens = 16000;
     } else {
-      // FREE tier: Use Devstral - full prompt goes in user message, not system
+      // FREE tier: Use Devstral with 2-step process
       selectedModel = mistral("devstral-2512");
-      const userBrief = prompt || (aiMessages.length > 0 ? aiMessages[aiMessages.length - 1]?.content : "") || "";
       systemPrompt = ""; // No system prompt for Devstral
-      maxOutputTokens = 4096;
+      maxOutputTokens = 16384;
     }
 
     // Initial generation
     let html = "";
-    // For FREE tier (Devstral), send the full prompt with brief as user message
-    const messagesForGeneration = isUsingProMode 
-      ? aiMessages 
-      : [{ role: "user" as const, content: getDevstralSystemPrompt(prompt || "") + contextPrompt }];
     
-    let currentResult = await generateText({
-      model: selectedModel,
-      system: systemPrompt,
-      messages: messagesForGeneration,
-      temperature: 1.0,
-      maxOutputTokens,
-    });
-    html = currentResult.text;
+    if (isUsingProMode) {
+      // PRO: Single call with user messages
+      const currentResult = await generateText({
+        model: selectedModel,
+        system: systemPrompt,
+        messages: aiMessages,
+        temperature: 1.0,
+        maxOutputTokens,
+      });
+      html = currentResult.text;
+    } else {
+      // FREE tier: 2-step process
+      // Step 1: Generate detailed brief from user's simple prompt
+      const userRequest = prompt || "";
+      const briefResult = await generateText({
+        model: selectedModel,
+        messages: [{ role: "user" as const, content: getBriefGeneratorPrompt(userRequest) }],
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      });
+      const generatedBrief = briefResult.text;
+      
+      // Step 2: Generate HTML using the detailed brief
+      const fullPrompt = getDevstralSystemPrompt(generatedBrief) + contextPrompt;
+      const htmlResult = await generateText({
+        model: selectedModel,
+        messages: [{ role: "user" as const, content: fullPrompt }],
+        temperature: 1.0,
+        maxOutputTokens,
+      });
+      html = htmlResult.text;
+    }
+    
+    let currentResult: { text: string; finishReason: string; usage: { totalTokens?: number } } = { 
+      text: html, 
+      finishReason: "stop", 
+      usage: { totalTokens: 0 } 
+    };
 
     // Apply refinement passes if user has a refinement tier (PRO only)
     if (refinementPasses > 0) {
