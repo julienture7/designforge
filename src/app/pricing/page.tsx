@@ -129,14 +129,14 @@ export default function PricingPage() {
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Basic mode: Devstral (2 credits)
+                Basic mode (2 credits)
                 <span className="text-xs text-gray-400 ml-1">~10 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Medium mode: DeepSeek (4 credits)
+                Medium mode (4 credits)
                 <span className="text-xs text-gray-400 ml-1">~5 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
@@ -149,7 +149,7 @@ export default function PricingPage() {
                 <svg className="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                <span className="text-gray-400">No High mode (Gemini 3 Pro)</span>
+                <span className="text-gray-400">No High mode</span>
               </li>
             </ul>
             <SignedOut>
@@ -198,21 +198,21 @@ export default function PricingPage() {
                 <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">Basic mode: Devstral</span>
+                <span className="font-medium">Basic mode</span>
                 <span className="text-xs text-gray-400 ml-1">(2 credits) ~150 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">Medium mode: DeepSeek</span>
+                <span className="font-medium">Medium mode</span>
                 <span className="text-xs text-gray-400 ml-1">(4 credits) ~75 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">High mode: Gemini 3 Pro</span>
+                <span className="font-medium">High mode</span>
                 <span className="text-xs text-gray-400 ml-1">(10 credits) ~30 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
