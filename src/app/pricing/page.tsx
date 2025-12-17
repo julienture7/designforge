@@ -126,21 +126,21 @@ export default function PricingPage() {
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">20 credits (one-time on registration)</span>
+                <span className="font-medium">40 credits (one-time on registration)</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Basic mode (2 credits)
-                <span className="text-xs text-gray-400 ml-1">~10 generations</span>
+                <span className="text-xs text-gray-400 ml-1">~20 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Medium mode (4 credits)
-                <span className="text-xs text-gray-400 ml-1">~5 generations</span>
+                <span className="text-xs text-gray-400 ml-1">~10 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

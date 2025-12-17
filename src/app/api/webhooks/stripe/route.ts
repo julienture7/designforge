@@ -236,7 +236,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
 
   // Reset credits based on tier
   if (tier === "FREE") {
-    updateData.credits = 20;
+    updateData.credits = 40;
   } else if (tier === "PRO") {
     // Pro users get 100 unified credits (initialized via initializeProCredits on subscription creation)
     // Monthly credit resets for PRO tier should be handled via:
@@ -262,7 +262,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
  * Handle customer.subscription.deleted event
  * 
  * Uses stripeCustomerId to look up user (handles email changes in Stripe).
- * Downgrades user to FREE tier with 20 credits.
+ * Downgrades user to FREE tier with 40 credits.
  * 
  * Requirements: 7.3, 7.9
  */
@@ -292,7 +292,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
       tier: "FREE",
       subscriptionId: null,
       subscriptionStatus: "CANCELED",
-      credits: 5, // Reset credits for FREE tier
+      credits: 40, // Reset credits for FREE tier
     },
   });
 
