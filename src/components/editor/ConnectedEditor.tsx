@@ -446,46 +446,37 @@ export function ConnectedEditor({
 
       {/* Full-page preview modal */}
       {showFullPreview && processedHtml && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/95 flex flex-col"
-          onClick={(e) => {
-            // Close on backdrop click
-            if (e.target === e.currentTarget) {
-              setShowFullPreview(false);
-            }
-          }}
-        >
-          {/* Header with back button */}
-          <div className="flex items-center justify-between px-4 py-3 bg-black/50 border-b border-white/10">
+        <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+          {/* Header with back button - always visible */}
+          <div className="relative z-10 flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-700 shrink-0">
+            <button
+              onClick={() => setShowFullPreview(false)}
+              className="flex items-center gap-2 text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 px-4 py-2 rounded-lg active:scale-95 font-medium"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span>Back to Editor</span>
+            </button>
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowFullPreview(false)}
-                className="flex items-center gap-2 text-white/80 hover:text-white transition-colors duration-200 px-3 py-1.5 rounded-lg hover:bg-white/10 active:scale-95"
-                title="Back to editor"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                <span className="text-sm font-medium">Back to Editor</span>
-              </button>
               {!isPro && (
                 <a 
                   href="/pricing" 
-                  className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:from-indigo-600 hover:to-purple-600 transition-all duration-200"
+                  className="text-sm px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:from-indigo-600 hover:to-purple-600 transition-all duration-200"
                 >
                   Upgrade for HTML export
                 </a>
               )}
+              <button
+                onClick={() => setShowFullPreview(false)}
+                className="text-gray-400 hover:text-white transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800 active:scale-95"
+                title="Close preview"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <button
-              onClick={() => setShowFullPreview(false)}
-              className="text-white/60 hover:text-white transition-colors duration-200 p-2 rounded-lg hover:bg-white/10 active:scale-95"
-              title="Close preview"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
 
           {/* Full-page iframe preview - protected for free users */}
