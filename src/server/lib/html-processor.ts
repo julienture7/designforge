@@ -669,10 +669,8 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
       continue;
     }
     
-    // Replace with proxy API URL instead of fetching actual image URL
-    const proxyUrl = baseUrl 
-      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
-      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
+    // Always use relative URL - the iframe's <base> tag will resolve it correctly
+    const proxyUrl = `/api/proxy/image?query=${encodeURIComponent(query)}`;
     
     // Replace ALL occurrences of this source URL with the proxy URL
     processedHtml = processedHtml.split(sourceUrl).join(proxyUrl);
@@ -735,11 +733,8 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
       query = 'modern design';
     }
 
-    // Use proxy API URL instead of fetching the actual image URL
-    // The proxy will handle fetching and redirecting to the actual image
-    const proxyUrl = baseUrl 
-      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
-      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
+    // Always use relative URL - the iframe's <base> tag will resolve it correctly
+    const proxyUrl = `/api/proxy/image?query=${encodeURIComponent(query)}`;
 
     // Replace the src attribute with proxy URL
     let newImgTag = imgTag;
@@ -793,10 +788,8 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
       query = 'abstract modern design';
     }
 
-    // Use proxy API URL instead of fetching the actual image URL
-    const proxyUrl = baseUrl 
-      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
-      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
+    // Always use relative URL - the iframe's <base> tag will resolve it correctly
+    const proxyUrl = `/api/proxy/image?query=${encodeURIComponent(query)}`;
 
     // Skip if already resolved (prevent re-injection)
     if (element.includes('data-bg-resolved="true"')) continue;
@@ -844,9 +837,8 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
                 extractQueryFromContext(processedHtml, match.index ?? 0) || 
                 'abstract modern design';
     
-    const proxyUrl = baseUrl 
-      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
-      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
+    // Always use relative URL - the iframe's <base> tag will resolve it correctly
+    const proxyUrl = `/api/proxy/image?query=${encodeURIComponent(query)}`;
     
     const newBgImage = bgImageUrl.replace(/url\(['"]?[^'")]+['"]?\)/i, `url('${proxyUrl}')`);
     processedHtml = processedHtml.replace(bgImageUrl, newBgImage);
@@ -867,9 +859,8 @@ export async function injectUnsplashImages(html: string, baseUrl?: string): Prom
                 extractQueryFromContext(processedHtml, match.index ?? 0) || 
                 'modern design';
     
-    const proxyUrl = baseUrl 
-      ? `${baseUrl}/api/proxy/image?query=${encodeURIComponent(query)}`
-      : `/api/proxy/image?query=${encodeURIComponent(query)}`;
+    // Always use relative URL - the iframe's <base> tag will resolve it correctly
+    const proxyUrl = `/api/proxy/image?query=${encodeURIComponent(query)}`;
     
     const newSrcAttr = srcAttr.replace(/https?:\/\/[^"']*(?:source|images)\.unsplash\.com[^"']*/i, proxyUrl);
     processedHtml = processedHtml.replace(srcAttr, newSrcAttr);
