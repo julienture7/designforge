@@ -15,8 +15,11 @@ export const env = createEnv({
       .enum(["development", "test", "production"])
       .default("development"),
     
-    // DeepSeek AI API (OpenAI-compatible) - Used for FREE tier
+    // DeepSeek AI API (OpenAI-compatible) - Used for FREE tier editing
     DEEPSEEK_API_KEY: z.string().min(1, "DEEPSEEK_API_KEY is required"),
+    
+    // Mistral API - Used for FREE tier initial generation (Devstral)
+    MISTRAL_API_KEY: z.string().min(1, "MISTRAL_API_KEY is required"),
     
     // Gemini API - Used for PRO tier (Gemini 3 Pro Preview)
     GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
@@ -69,6 +72,7 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
     DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+    MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     UNSPLASH_ACCESS_KEY: process.env.UNSPLASH_ACCESS_KEY,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,

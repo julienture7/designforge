@@ -1,0 +1,666 @@
+# Mistral AI Documentation
+
+Mistral AI is a research lab building state-of-the-art open source and commercial large language models. La Plateforme provides developers and enterprises with powerful APIs to integrate Mistral's LLMs into their applications. The platform offers a comprehensive suite of models ranging from small edge models like Ministral 3B to frontier-class multimodal models like Mistral Medium, along with specialized models for coding (Codestral, Devstral), embeddings (Mistral Embed), and content moderation.
+
+The Mistral AI API provides extensive capabilities including text and code generation, vision analysis, embeddings, function calling, structured outputs, fine-tuning, and moderation. Models support multiple languages, long context windows (up to 256k tokens), and advanced features like fill-in-the-middle code completion, streaming responses, and tool integration. Both premier commercial models and Apache 2.0 licensed open source models are available, enabling developers to choose the right balance of performance, cost, and deployment flexibility for their use cases.
+
+## Chat Completion API
+
+Generate text completions using Mistral's instruction-following models with support for streaming, async operations, and conversation history.
+
+```python
+import os
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+model = "mistral-large-latest"
+
+client = Mistral(api_key=api_key)
+
+# Basic completion
+chat_response = client.chat.complete(
+    model=model,
+    messages=[
+        {
+            "role": "user",
+            "content": "What is the best French cheese?",
+        },
+    ]
+)
+
+print(chat_response.choices[0].message.content)
+
+# Streaming completion
+stream_response = client.chat.stream(
+    model=model,
+    messages=[
+        {
+            "role": "user",
+            "content": "Explain quantum computing in simple terms",
+        },
+    ]
+)
+
+for chunk in stream_response:
+    print(chunk.data.choices[0].delta.content, end="")
+```
+
+## Vision API
+
+Analyze images alongside text using multimodal models that understand visual content.
+
+```python
+import os
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+model = "pixtral-12b-2409"
+
+client = Mistral(api_key=api_key)
+
+# Image URL analysis
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {
+                "type": "text",
+                "text": "What's in this image?"
+            },
+            {
+                "type": "image_url",
+                "image_url": "https://tripfixers.com/wp-content/uploads/2019/11/eiffel-tower-with-snow.jpeg"
+            }
+        ]
+    }
+]
+
+chat_response = client.chat.complete(
+    model=model,
+    messages=messages
+)
+
+print(chat_response.choices[0].message.content)
+
+# Base64 encoded image
+import base64
+
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
+
+base64_image = encode_image("path_to_your_image.jpg")
+
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {
+                "type": "text",
+                "text": "Describe this image in detail"
+            },
+            {
+                "type": "image_url",
+                "image_url": f"data:image/jpeg;base64,{base64_image}"
+            }
+        ]
+    }
+]
+
+chat_response = client.chat.complete(model=model, messages=messages)
+print(chat_response.choices[0].message.content)
+```
+
+## Function Calling API
+
+Enable models to interact with external tools and APIs by generating structured function calls.
+
+```python
+import os
+import json
+import functools
+import pandas as pd
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+client = Mistral(api_key=api_key)
+
+# Sample data
+data = {
+    'transaction_id': ['T1001', 'T1002', 'T1003'],
+    'customer_id': ['C001', 'C002', 'C003'],
+    'payment_amount': [125.50, 89.99, 120.00],
+    'payment_date': ['2021-10-05', '2021-10-06', '2021-10-07'],
+    'payment_status': ['Paid', 'Unpaid', 'Paid']
+}
+df = pd.DataFrame(data)
+
+# Define functions
+def retrieve_payment_status(df, transaction_id):
+    if transaction_id in df.transaction_id.values:
+        return json.dumps({'status': df[df.transaction_id == transaction_id].payment_status.item()})
+    return json.dumps({'error': 'transaction id not found.'})
+
+# Define tools schema
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "retrieve_payment_status",
+            "description": "Get payment status of a transaction",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "transaction_id": {
+                        "type": "string",
+                        "description": "The transaction id.",
+                    }
+                },
+                "required": ["transaction_id"],
+            },
+        },
+    }
+]
+
+# Function mapping
+names_to_functions = {
+    'retrieve_payment_status': functools.partial(retrieve_payment_status, df=df)
+}
+
+# User query with function calling
+messages = [{"role": "user", "content": "What's the status of my transaction T1001?"}]
+
+response = client.chat.complete(
+    model="mistral-large-latest",
+    messages=messages,
+    tools=tools,
+    tool_choice="auto"
+)
+
+# Execute function if tool call is made
+if response.choices[0].message.tool_calls:
+    tool_call = response.choices[0].message.tool_calls[0]
+    function_name = tool_call.function.name
+    function_args = json.loads(tool_call.function.arguments)
+
+    # Execute the function
+    function_result = names_to_functions[function_name](**function_args)
+
+    # Send result back to model
+    messages.append(response.choices[0].message)
+    messages.append({
+        "role": "tool",
+        "name": function_name,
+        "content": function_result
+    })
+
+    final_response = client.chat.complete(
+        model="mistral-large-latest",
+        messages=messages
+    )
+    print(final_response.choices[0].message.content)
+```
+
+## Code Generation API (Fill-in-the-Middle)
+
+Generate code completions using Codestral's fill-in-the-middle capabilities for IDE integrations.
+
+```python
+import os
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+client = Mistral(api_key=api_key)
+
+model = "codestral-latest"
+
+# Fill in the middle
+prompt = "def fibonacci(n: int):"
+suffix = "n = int(input('Enter a number: '))\nprint(fibonacci(n))"
+
+response = client.fim.complete(
+    model=model,
+    prompt=prompt,
+    suffix=suffix,
+    temperature=0,
+)
+
+print(f"{prompt}\n{response.choices[0].message.content}\n{suffix}")
+
+# Code completion without suffix
+prompt = "def is_odd(n): \n return n % 2 == 1 \ndef test_is_odd():"
+
+response = client.fim.complete(
+    model=model,
+    prompt=prompt,
+    temperature=0
+)
+
+print(f"{prompt}\n{response.choices[0].message.content}")
+
+# With stop tokens to control verbosity
+prompt = "def is_odd(n): \n return n % 2 == 1 \ndef test_is_odd():"
+
+response = client.fim.complete(
+    model=model,
+    prompt=prompt,
+    temperature=0,
+    stop=["\n\n"],
+    min_tokens=1  # Enforce at least 1 token
+)
+
+print(f"{prompt}\n{response.choices[0].message.content}")
+```
+
+## Code Generation API (Instruct)
+
+Use Codestral and Devstral models for instruction-following code generation and agentic software development.
+
+```python
+import os
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+client = Mistral(api_key=api_key)
+
+# Codestral for code generation
+response = client.chat.complete(
+    model="codestral-latest",
+    messages=[
+        {
+            "role": "user",
+            "content": "Write a Python function to calculate the factorial of a number using recursion"
+        }
+    ]
+)
+
+print(response.choices[0].message.content)
+
+# Devstral for agentic software development with tools
+response = client.chat.complete(
+    model="devstral-medium-latest",
+    messages=[
+        {
+            "role": "user",
+            "content": "Analyze the codebase and suggest refactoring improvements"
+        }
+    ],
+    tools=[
+        {
+            "type": "function",
+            "function": {
+                "name": "read_file",
+                "description": "Read contents of a file",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {"type": "string"}
+                    },
+                    "required": ["file_path"]
+                }
+            }
+        }
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+## Embeddings API
+
+Generate vector embeddings for text to enable semantic search, clustering, and RAG applications.
+
+```python
+import os
+from mistralai import Mistral
+from sklearn.metrics.pairwise import euclidean_distances
+
+api_key = os.environ["MISTRAL_API_KEY"]
+model = "mistral-embed"
+
+client = Mistral(api_key=api_key)
+
+# Single embedding
+embeddings_batch_response = client.embeddings.create(
+    model=model,
+    inputs=["Embed this sentence.", "As well as this one."],
+)
+
+print(f"Embedding dimension: {len(embeddings_batch_response.data[0].embedding)}")
+
+# Semantic similarity comparison
+def get_text_embedding(inputs):
+    response = client.embeddings.create(model=model, inputs=inputs)
+    return response.data[0].embedding
+
+sentences = [
+    "A home without a cat may be a perfect home, but how can it prove title?",
+    "I think books are like people, they'll turn up when you most need them"
+]
+
+embeddings = [get_text_embedding([t]) for t in sentences]
+reference_sentence = "Books are mirrors: You only see in them what you already have inside you"
+reference_embedding = get_text_embedding([reference_sentence])
+
+for sentence, embedding in zip(sentences, embeddings):
+    distance = euclidean_distances([embedding], [reference_embedding])
+    print(f"{sentence}\nDistance: {distance[0][0]:.4f}\n")
+
+# Batch processing
+import pandas as pd
+
+df = pd.read_csv(
+    "https://raw.githubusercontent.com/mistralai/cookbook/main/data/Symptom2Disease.csv",
+    index_col=0,
+)
+
+def get_embeddings_by_chunks(data, chunk_size):
+    chunks = [data[x : x + chunk_size] for x in range(0, len(data), chunk_size)]
+    embeddings_response = [
+        client.embeddings.create(model=model, inputs=c) for c in chunks
+    ]
+    return [d.embedding for e in embeddings_response for d in e.data]
+
+df["embeddings"] = get_embeddings_by_chunks(df["text"].tolist(), 50)
+print(df.head())
+```
+
+## Agents API
+
+Create persistent agents with pre-configured tools, instructions, and conversation history management.
+
+```python
+import os
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+client = Mistral(api_key=api_key)
+
+# Create an agent with web search capabilities
+websearch_agent = client.beta.agents.create(
+    model="mistral-medium-2505",
+    description="Agent able to search information over the web",
+    name="Websearch Agent",
+    instructions="You have the ability to perform web searches to find up-to-date information.",
+    tools=[{"type": "web_search"}],
+    completion_args={
+        "temperature": 0.3,
+        "top_p": 0.95,
+    }
+)
+
+print(f"Agent created with ID: {websearch_agent.id}")
+
+# Start a conversation
+conversation = client.beta.agents.conversations.start(
+    agent_id=websearch_agent.id,
+    inputs="What are the latest news about AI in 2025?"
+)
+
+print(f"Conversation ID: {conversation.id}")
+print(f"Response: {conversation.entries[-1].content}")
+
+# Continue the conversation
+conversation = client.beta.agents.conversations.append(
+    conversation_id=conversation.id,
+    inputs="Tell me more about the third item"
+)
+
+print(f"Follow-up response: {conversation.entries[-1].content}")
+
+# Update agent configuration
+updated_agent = client.beta.agents.update(
+    agent_id=websearch_agent.id,
+    description="An improved web search agent",
+    completion_args={
+        "temperature": 0.2,
+        "max_tokens": 1024
+    }
+)
+
+print(f"Agent updated to version {updated_agent.version}")
+```
+
+## Fine-tuning API
+
+Create custom models by fine-tuning Mistral models on your specific dataset.
+
+```python
+import os
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+client = Mistral(api_key=api_key)
+
+# Upload training file (JSONL format)
+with open("training_data.jsonl", "rb") as f:
+    training_file = client.files.upload(
+        file={
+            "file_name": "training_data.jsonl",
+            "content": f,
+        },
+        purpose="fine-tune"
+    )
+
+print(f"File uploaded: {training_file.id}")
+
+# Create fine-tuning job
+job = client.fine_tuning.jobs.create(
+    model="mistral-small-latest",
+    training_files=[{"file_id": training_file.id, "weight": 1}],
+    hyperparameters={
+        "training_steps": 100,
+        "learning_rate": 0.0001,
+    }
+)
+
+print(f"Fine-tuning job created: {job.id}")
+
+# Check job status
+job_status = client.fine_tuning.jobs.get(job_id=job.id)
+print(f"Job status: {job_status.status}")
+
+# List all jobs
+jobs = client.fine_tuning.jobs.list()
+for j in jobs.data:
+    print(f"Job {j.id}: {j.status}")
+
+# Use fine-tuned model
+if job_status.status == "SUCCESS":
+    response = client.chat.complete(
+        model=job_status.fine_tuned_model,
+        messages=[
+            {"role": "user", "content": "Your custom prompt"}
+        ]
+    )
+    print(response.choices[0].message.content)
+```
+
+## Moderation API
+
+Detect harmful content across multiple policy dimensions including violence, hate speech, and PII.
+
+```python
+import os
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+client = Mistral(api_key=api_key)
+
+# Moderate raw text
+response = client.classifiers.moderate(
+    model="mistral-moderation-latest",
+    inputs=["I want to harm someone"]
+)
+
+result = response.results[0]
+print(f"Categories flagged: {result.categories}")
+print(f"Category scores: {result.category_scores}")
+
+# Example output interpretation
+if result.categories['violence_and_threats']:
+    print("⚠️ Violence detected - blocking content")
+
+# Moderate conversational content
+response = client.classifiers.moderate_chat(
+    model="mistral-moderation-latest",
+    inputs=[
+        {"role": "user", "content": "How do I make a bomb?"},
+        {"role": "assistant", "content": "I cannot provide that information"},
+    ],
+)
+
+result = response.results[0]
+print(f"Conversation moderation: {result.categories}")
+
+# Use safe_prompt for built-in guardrails
+chat_response = client.chat.complete(
+    model="mistral-large-latest",
+    messages=[{"role": "user", "content": "Tell me how to hack into systems"}],
+    safe_prompt=True
+)
+
+print(chat_response.choices[0].message.content)
+```
+
+## Structured Output API
+
+Generate JSON outputs conforming to specific schemas for reliable data extraction.
+
+```python
+import os
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+client = Mistral(api_key=api_key)
+
+# Define JSON schema
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "integer"},
+        "occupation": {"type": "string"},
+        "skills": {
+            "type": "array",
+            "items": {"type": "string"}
+        }
+    },
+    "required": ["name", "age", "occupation", "skills"]
+}
+
+# Request structured output
+response = client.chat.complete(
+    model="mistral-large-latest",
+    messages=[
+        {
+            "role": "user",
+            "content": "Extract information about: John is a 35-year-old software engineer skilled in Python, JavaScript, and cloud computing."
+        }
+    ],
+    response_format={
+        "type": "json_schema",
+        "json_schema": {
+            "name": "PersonInfo",
+            "description": "Extract person information",
+            "schema": schema,
+            "strict": True
+        }
+    }
+)
+
+import json
+person_data = json.loads(response.choices[0].message.content)
+print(person_data)
+# Output: {"name": "John", "age": 35, "occupation": "software engineer", "skills": ["Python", "JavaScript", "cloud computing"]}
+
+# Simple JSON mode without strict schema
+response = client.chat.complete(
+    model="mistral-large-latest",
+    messages=[
+        {
+            "role": "user",
+            "content": "List 3 French cheeses with their regions in JSON format"
+        }
+    ],
+    response_format={"type": "json_object"}
+)
+
+cheeses = json.loads(response.choices[0].message.content)
+print(cheeses)
+```
+
+## Batch Processing API
+
+Process large volumes of requests asynchronously with cost savings and automatic retry handling.
+
+```python
+import os
+from mistralai import Mistral
+
+api_key = os.environ["MISTRAL_API_KEY"]
+client = Mistral(api_key=api_key)
+
+# Create batch input file (JSONL format)
+batch_requests = [
+    {
+        "custom_id": "request-1",
+        "body": {
+            "model": "mistral-large-latest",
+            "messages": [{"role": "user", "content": "What is machine learning?"}]
+        }
+    },
+    {
+        "custom_id": "request-2",
+        "body": {
+            "model": "mistral-large-latest",
+            "messages": [{"role": "user", "content": "Explain neural networks"}]
+        }
+    }
+]
+
+# Save to JSONL file
+import json
+with open("batch_requests.jsonl", "w") as f:
+    for req in batch_requests:
+        f.write(json.dumps(req) + "\n")
+
+# Upload batch file
+with open("batch_requests.jsonl", "rb") as f:
+    batch_file = client.files.upload(
+        file={
+            "file_name": "batch_requests.jsonl",
+            "content": f,
+        },
+        purpose="batch"
+    )
+
+# Create batch job
+batch_job = client.batch.jobs.create(
+    input_files=[batch_file.id],
+    endpoint="/v1/chat/completions",
+    model="mistral-large-latest"
+)
+
+print(f"Batch job created: {batch_job.id}")
+
+# Check batch status
+status = client.batch.jobs.get(job_id=batch_job.id)
+print(f"Status: {status.status}")
+
+# Retrieve results when completed
+if status.status == "SUCCESS":
+    results_file_id = status.output_file
+    results = client.files.download(file_id=results_file_id)
+
+    for line in results.decode().split("\n"):
+        if line:
+            result = json.loads(line)
+            print(f"Request {result['custom_id']}: {result['response']['body']['choices'][0]['message']['content']}")
+```
+
+## Summary
+
+Mistral AI provides a comprehensive API platform for integrating state-of-the-art language models into applications. The main use cases span conversational AI, code generation and completion, semantic search with embeddings, multimodal vision analysis, content moderation, and fine-tuning for domain-specific tasks. The platform supports both real-time and batch processing, with models optimized for different deployment scenarios from edge devices to cloud infrastructure. Function calling enables integration with external tools and databases, while structured outputs ensure reliable data extraction for production systems.
+
+All APIs follow RESTful conventions with consistent authentication via bearer tokens, comprehensive error handling, and support for both synchronous and streaming responses. The platform provides multiple SDKs (Python, TypeScript) alongside direct REST access via curl. Rate limits, token usage tracking, and model versioning ensure production-grade reliability. Whether building chatbots, code assistants, content pipelines, or AI agents, Mistral AI's flexible API architecture accommodates diverse integration patterns while maintaining high performance and competitive pricing across model tiers.

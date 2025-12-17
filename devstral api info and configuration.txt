@@ -1,0 +1,5 @@
+devstral-2512
+temperature 1
+max token output 4096
+api key : g2C3NhLVLI9DFJ4nrgstLJFToX1zxrBp
+

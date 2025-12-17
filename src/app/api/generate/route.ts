@@ -5,21 +5,20 @@
  * Returns the full HTML in one response so the client can swap the preview atomically.
  * 
  * PRO users and trial users use Gemini 3 Pro Preview.
- * FREE users use DeepSeek Chat.
+ * FREE users use Devstral (Mistral) for initial generation.
  */
 
-import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createMistral } from "@ai-sdk/mistral";
 import { generateText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
 import { db } from "~/server/db";
 
-// Create DeepSeek client with beta endpoint (FREE tier)
-const deepseek = createDeepSeek({
-  apiKey: env.DEEPSEEK_API_KEY,
-  baseURL: "https://api.deepseek.com/beta",
+// Create Mistral client for Devstral (FREE tier initial generation)
+const mistral = createMistral({
+  apiKey: env.MISTRAL_API_KEY,
 });
 
 // Create Google Generative AI client (PRO tier - Gemini 3 Pro Preview)
@@ -39,82 +38,50 @@ import {
   type RefinementLevel,
 } from "~/server/services/refinement-credits.service";
 import { injectUnsplashImages } from "~/server/lib/html-processor";
+import { getDevstralSystemPrompt } from "~/server/lib/devstral-prompt";
 
 // Vercel timeout: 300s (Hobby), 900s (Pro/Enterprise)
-// For Ultimate refinement, we optimize to stay under 300s
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
+
+// PRO tier prompt (Gemini)
 const DESIGN_SYSTEM_PROMPT = `You are OmniFlow, an Elite Product Architect and Senior Frontend Engineer. You do not build "websites"; you engineer Digital Experiences that sit at the intersection of Brutalism, Swiss Design, and High-Fashion Editorial.
 
 OBJECTIVE:
 Take a user's prompt (vague or specific) and autonomously construct a single-file, launch-ready HTML interface. Your goal is to generate a result that generates "Visual Tension" and would be nominated for "Awwwards Site of the Day."
 
 CONTEXTUAL ADAPTATION:
-While maintaining the bold aesthetic, ensure the design feels appropriate for its domain. A restaurant should feel like a credible restaurant, a SaaS product should feel like a professional tool, a portfolio should feel like an artist's showcase. The aesthetic enhances the content, never overshadows its purpose.
+While maintaining the bold aesthetic, ensure the design feels appropriate for its domain. A restaurant should feel like a credible restaurant, a SaaS product should feel like a professional tool, a portfolio should feel like an artist's showcase.
 
-THE "ANTI-BOREDOM" DIRECTIVE (STRICT RESTRICTIONS):
-- NO GENERIC RADIUS/SHADOWS: Do not use default Tailwind shadows or rounded-lg. Use sharp edges (rounded-none) or extreme curvature (rounded-full).
-- NO "BOOTSTRAP BLUE": Banish standard corporate colors. Use Electric Acid Green, International Orange, Deep Slate, or Monochromatic Luxury (Sand/Charcoal).
-- NO LOREM IPSUM: You are a copywriter. Write arrogant, punchy, high-conversion marketing copy.
-- NO STATIC LAYOUTS: A page without motion is dead. You must include scroll-triggered animations.
+THE "ANTI-BOREDOM" DIRECTIVE:
+- NO GENERIC RADIUS/SHADOWS: Use sharp edges (rounded-none) or extreme curvature (rounded-full).
+- NO "BOOTSTRAP BLUE": Use Electric Acid Green, International Orange, Deep Slate, or Monochromatic Luxury.
+- NO LOREM IPSUM: Write arrogant, punchy, high-conversion marketing copy.
+- NO STATIC LAYOUTS: Include scroll-triggered animations.
 
-1. VISUAL PHYSICS & DESIGN SYSTEM
-You must treat the browser viewport as a canvas for composition, not just a document.
+VISUAL PHYSICS & DESIGN SYSTEM:
+- Fluid Typography: Use Tailwind arbitrary values for massive scale contrast.
+- Font Pairing: Mix Technical/Mono font with Emotive/Display font via Google Fonts CDN.
+- Grid Visibility: Use 1px borders, subtle grid lines, crosshairs, and technical data markers.
 
-- Fluid Typography: Use Tailwind arbitrary values to create massive scale contrast.
-  Rule: If the body text is text-sm, the headline must be text-[5rem] or larger.
+ARCHITECTURAL AUTONOMY:
+- Restaurant: Hero -> Menu -> Philosophy -> Reservation Interface -> Footer
+- SaaS: Value Prop Hero -> Social Proof -> Feature Grid -> Pricing -> CTA
 
-- Font Pairing Logic: You must use Google Fonts via CDN.
-  The Pair: Always mix a Technical/Mono font (e.g., Space Grotesk, JetBrains Mono, DM Mono) with an Emotive/Display font (e.g., Syne, Playfair Display, Clash Display, Unbounded).
+TECHNICAL CONSTRAINTS:
+- Output: Single HTML file starting with <!DOCTYPE html>
+- CSS: Tailwind CSS via CDN with arbitrary values
+- Icons: Lucide icons via CDN
 
-- Grid Visibility: Do not hide the structure. Expose user interface elements. Use 1px borders, subtle grid lines, crosshairs, and technical data markers (e.g., // 01 INITIALIZING, [FIG. A]).
+IMAGES (CRITICAL):
+Use data-image-query and data-bg-query attributes for ALL images:
+<img data-image-query="modern architecture minimalist" alt="Modern building" class="w-full h-full object-cover">
+<div data-bg-query="dark moody interior lighting" class="bg-cover bg-center">...</div>
 
-- Aesthetic DNA: Choose one path based on the user request:
-  - Path A: Neo-Brutalism (High contrast, strokes, raw aesthetic).
-  - Path B: Dark Mode Future (Glows, glassmorphism, gradients).
-  - Path C: Editorial Luxury (Massive whitespace, serif fonts, overlapping images).
+NEVER use source.unsplash.com URLs or any other image service.
 
-2. ARCHITECTURAL AUTONOMY
-Do not wait for a sitemap. You must infer the Business Model.
-- If the user asks for a "Sushi Restaurant": You build -> Hero (Video/Img) -> Omakase Menu -> The Chef's Philosophy -> Reservation Interface -> Footer.
-- If the user asks for a "SaaS landing page": You build -> Value Prop (Hero) -> Social Proof (Logos) -> Feature Grid (Bento Box style) -> Pricing -> CTA.
-
-3. TECHNICAL CONSTRAINTS & STACK
-- Output: Single HTML file. Start with <!DOCTYPE html>.
-- CSS Framework: Tailwind CSS (via CDN). Use arbitrary values extensively (e.g., top-[15%], tracking-[-0.05em]) to break out of the standard grid.
-- Icons: Lucide icons via CDN: <i data-lucide="icon-name"></i>. Include the Lucide script in head.
-
-- Images (CRITICAL - ALWAYS INCLUDE IMAGES):
-  You MUST include images for EVERY visual element. ALL images MUST use the image API via data attributes:
-  
-  REQUIRED METHOD - Use data-image-query and data-bg-query attributes for ALL images:
-  <img data-image-query="modern architecture minimalist" alt="Modern building" class="w-full h-full object-cover">
-  <div data-bg-query="dark moody interior lighting" class="bg-cover bg-center">...</div>
-  
-  CRITICAL RULES (STRICTLY ENFORCED):
-  - EVERY img tag MUST have a data-image-query attribute (NO src attribute with URLs, NO source.unsplash.com URLs)
-  - EVERY background div MUST have a data-bg-query attribute (NO background-image style with URLs)
-  - Include AT LEAST 10-15 images across the page (hero, sections, cards, testimonials, footer, backgrounds)
-  - Use SPECIFIC, MOOD-BASED keywords: cinematic, editorial, brutalist, neon, minimal, luxury, dark, moody, grain, fog, macro, texture
-  - ALWAYS include descriptive alt text that matches the query
-  - NEVER use source.unsplash.com URLs, placeholder.com, picsum, or any other image service
-  - NEVER use src attributes with URLs or background-image styles with URLs
-  - ALL images are processed server-side via the image API - just use data-image-query or data-bg-query attributes
-
-- JavaScript: You MUST write embedded Vanilla JS (inside <script> tags) to handle:
-  - Scroll Animations: Elements must fade up, slide, or reveal using IntersectionObserver.
-  - Mobile Navigation: A high-fidelity overlay menu (not a default select dropdown).
-
-4. COPYWRITING PROTOCOL
-- Tone: Intelligent, concise, slightly arrogant. Sounds like a Nike ad written by a Systems Architect.
-- Structure: Short headlines. Punchy fragments. No long paragraphs.
-- Example: Instead of "We offer great services," write: "SYSTEM OPTIMIZED. SCALABILITY DEPLOYED."
-
-EXECUTION ORDER:
-1. Vibe Check (Internal Monologue): Analyze the request. Determine the Aesthetic DNA (Palette, Fonts, Texture).
-2. The Code: Output the HTML.
-3. The Footer: (In the code) Ensure the footer is massive and structural.
+JavaScript: Include IntersectionObserver for scroll animations and mobile navigation overlay.
 
 OUTPUT ONLY THE HTML. No markdown code blocks. No explanations. Start directly with <!DOCTYPE html>.`;
 
@@ -153,11 +120,10 @@ export async function POST(req: NextRequest) {
     let creditVersion: number | undefined;
     let refinementCreditVersion: number | undefined;
     let selectedRefinementLevel: RefinementLevel | null = null;
-    let isUsingProMode = false; // Track if we should use Gemini 3 Pro
-    let consumeTrial = false; // Track if we should consume the trial
+    let isUsingProMode = false;
+    let consumeTrial = false;
 
     if (userTier === "PRO") {
-      // PRO tier: Always use Gemini 3 Pro, check refinement credits
       isUsingProMode = true;
       if (!refinementLevel || !["NORMAL", "REFINED"].includes(refinementLevel)) {
         return NextResponse.json(
@@ -172,33 +138,25 @@ export async function POST(req: NextRequest) {
         const message = refinementCheck.remainingCredits === 0 
           ? "No Pro credits remaining" 
           : `Need ${cost} credits but only have ${refinementCheck.remainingCredits}`;
-        return NextResponse.json(
-          { error: message, code: "CREDITS_EXHAUSTED" },
-          { status: 402 }
-        );
+        return NextResponse.json({ error: message, code: "CREDITS_EXHAUSTED" }, { status: 402 });
       }
       refinementCreditVersion = refinementCheck.version;
     } else {
-      // FREE tier: Check if user wants to use Pro trial
       if (useProTrial) {
-        // Check if trial is available
         if (user.proTrialUsed) {
           return NextResponse.json(
             { error: "Pro trial already used. Upgrade to Pro for unlimited access to Gemini 3 Pro.", code: "TRIAL_EXHAUSTED" },
             { status: 402 }
           );
         }
-        // User is using their free trial - will use Gemini 3 Pro
         isUsingProMode = true;
         consumeTrial = true;
-        // Still need to check regular credits for free tier
         const creditCheck = await checkCredits(dbUserId);
         if (!creditCheck.allowed) {
           return NextResponse.json({ error: "Upgrade to Pro", code: "CREDITS_EXHAUSTED" }, { status: 402 });
         }
         creditVersion = creditCheck.version;
       } else {
-        // Normal FREE tier: Use DeepSeek, check regular credits
         const creditCheck = await checkCredits(dbUserId);
         if (!creditCheck.allowed) {
           return NextResponse.json({ error: "Upgrade to Pro", code: "CREDITS_EXHAUSTED" }, { status: 402 });
@@ -206,6 +164,7 @@ export async function POST(req: NextRequest) {
         creditVersion = creditCheck.version;
       }
     }
+
 
     // Lock (use Clerk ID for uniqueness)
     lockAcquired = await acquireGenerationLock(clerkId);
@@ -221,16 +180,12 @@ export async function POST(req: NextRequest) {
 
     // Build messages array for the AI
     const aiMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
-    
-    // Add conversation history
     for (const msg of messages) {
       aiMessages.push({
         role: msg.role === "assistant" ? "assistant" : "user",
         content: msg.content,
       });
     }
-    
-    // Add the new prompt if provided
     if (prompt) {
       aiMessages.push({ role: "user", content: prompt });
     }
@@ -238,34 +193,43 @@ export async function POST(req: NextRequest) {
     // Get refinement passes based on selected level (PRO) or tier (FREE)
     let refinementPasses = 0;
     if (userTier === "PRO" && selectedRefinementLevel) {
-      // Map refinement level to number of passes
       switch (selectedRefinementLevel) {
         case "NORMAL":
-          refinementPasses = 0; // No refinement, just Gemini 3 Pro
+          refinementPasses = 0;
           break;
         case "REFINED":
-          refinementPasses = 1; // 1 refinement pass (costs 5 credits)
+          refinementPasses = 1;
           break;
       }
     } else {
       refinementPasses = getRefinementPasses(userTier);
     }
 
-    // Select model based on tier (PRO/Trial uses Gemini 3 Pro, FREE uses DeepSeek)
-    // For Gemini 3 Pro, configure thinking level to "low" for faster, lower-cost generations
-    const selectedModel = isUsingProMode
-      ? google("gemini-3-pro-preview")
-      : deepseek("deepseek-chat");
-    
-    // For Gemini, we use different output token limits
-    const maxOutputTokens = isUsingProMode ? 16000 : 8000;
+    // Select model and prompt based on tier
+    let selectedModel;
+    let systemPrompt: string;
+    let maxOutputTokens: number;
+
+    if (isUsingProMode) {
+      // PRO/Trial: Use Gemini 3 Pro
+      selectedModel = google("gemini-3-pro-preview");
+      systemPrompt = DESIGN_SYSTEM_PROMPT + contextPrompt;
+      maxOutputTokens = 16000;
+    } else {
+      // FREE tier: Use Devstral with the full prompt from file
+      selectedModel = mistral("devstral-2512");
+      const userBrief = prompt || (aiMessages.length > 0 ? aiMessages[aiMessages.length - 1]?.content : "") || "";
+      // Load the full prompt from Devstral prompt.txt and replace {brief}
+      systemPrompt = getDevstralSystemPrompt(userBrief) + contextPrompt;
+      maxOutputTokens = 4096;
+    }
 
     // Initial generation
     let html = "";
     let currentResult = await generateText({
       model: selectedModel,
-      system: DESIGN_SYSTEM_PROMPT + contextPrompt,
-      messages: aiMessages,
+      system: systemPrompt,
+      messages: isUsingProMode ? aiMessages : [],
       temperature: 1.0,
       maxOutputTokens,
     });
@@ -276,22 +240,16 @@ export async function POST(req: NextRequest) {
       const REFINEMENT_PROMPT = `You are an Elite Design Quality Assurance Engineer. Your task is to review and refine the generated HTML design.
 
 CRITICAL REFINEMENT OBJECTIVES:
-1. **Code Quality**: Ensure semantic HTML, proper accessibility attributes, and clean structure
-2. **Visual Polish**: Enhance spacing, typography hierarchy, and visual rhythm
-3. **Performance**: Optimize animations, ensure efficient CSS, and verify image placeholders
-4. **User Experience**: Improve interactivity, ensure mobile responsiveness, and enhance micro-interactions
-5. **Design Consistency**: Verify color palette consistency, font pairing harmony, and visual alignment
+1. Code Quality: Ensure semantic HTML, proper accessibility attributes, and clean structure
+2. Visual Polish: Enhance spacing, typography hierarchy, and visual rhythm
+3. Performance: Optimize animations, ensure efficient CSS, and verify image placeholders
+4. User Experience: Improve interactivity, ensure mobile responsiveness, and enhance micro-interactions
+5. Design Consistency: Verify color palette consistency, font pairing harmony, and visual alignment
 
 REFINEMENT PROCESS:
-- Analyze the current HTML for areas of improvement
-- Make targeted enhancements without changing the core design concept
 - Preserve all data-image-query and data-bg-query attributes
-- If you find any images with src URLs (especially source.unsplash.com), replace them with data-image-query attributes
-- If you find any background-image styles with URLs, replace them with data-bg-query attributes
-- ALL images MUST use data-image-query or data-bg-query attributes (NO URLs in src or background-image)
-- Ensure all Lucide icons are properly referenced
-- Verify scroll animations are smooth and performant
-- Check that the design maintains its aesthetic DNA while improving execution
+- If you find any images with src URLs, replace them with data-image-query attributes
+- ALL images MUST use data-image-query or data-bg-query attributes (NO URLs)
 
 OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start directly with <!DOCTYPE html>.`;
 
@@ -299,11 +257,10 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
         const refinementMessages: Array<{ role: "user" | "assistant"; content: string }> = [
           {
             role: "user",
-            content: `Refinement Pass ${pass} of ${refinementPasses}:\n\nReview and refine this HTML design. Focus on code quality, visual polish, performance optimization, and user experience improvements:\n\n${html}`,
+            content: `Refinement Pass ${pass} of ${refinementPasses}:\n\nReview and refine this HTML design:\n\n${html}`,
           },
         ];
 
-        // Use the same model for refinement (Gemini for PRO, DeepSeek for FREE)
         currentResult = await generateText({
           model: selectedModel,
           system: REFINEMENT_PROMPT,
@@ -315,8 +272,7 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
       }
     }
 
-    // Inject real Unsplash images (replace source.unsplash.com URLs with API URLs)
-    // Use our proxy API endpoint which handles caching, rate limiting, and retries
+    // Inject real Unsplash images
     const baseUrl = new URL(req.url).origin;
     const htmlWithImages = await injectUnsplashImages(html, baseUrl);
 
@@ -326,17 +282,14 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
       usage: currentResult.usage,
     };
 
-    // Charge credits + release lock only after a successful generation.
+    // Charge credits + release lock only after a successful generation
     if (dbUserId && clerkId) {
       if (userTier === "PRO" && selectedRefinementLevel && typeof refinementCreditVersion === "number") {
-        await decrementRefinementCredits(dbUserId, refinementCreditVersion, selectedRefinementLevel).catch(
-          console.error
-        );
+        await decrementRefinementCredits(dbUserId, refinementCreditVersion, selectedRefinementLevel).catch(console.error);
       } else if (typeof creditVersion === "number") {
         await decrementCredits(dbUserId, creditVersion).catch(console.error);
       }
       
-      // Mark trial as used if user consumed their free Pro trial
       if (consumeTrial) {
         await db.user.update({
           where: { id: dbUserId },
@@ -352,7 +305,7 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
       html: result.text,
       finishReason: result.finishReason,
       tokenUsage: typeof result.usage?.totalTokens === "number" ? result.usage.totalTokens : undefined,
-      usedProTrial: consumeTrial, // Let the client know if trial was consumed
+      usedProTrial: consumeTrial,
     });
 
   } catch (error) {

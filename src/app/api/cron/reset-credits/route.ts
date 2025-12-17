@@ -1,7 +1,7 @@
 /**
  * Credit Reset Cron Job API Route
  * 
- * Resets all FREE tier users' credits to 5 at UTC midnight.
+ * Resets all FREE tier users' credits to 20 at UTC midnight.
  * 
  * Requirements: 6.4
  * 
@@ -68,7 +68,7 @@ function verifyCronSecret(req: NextRequest): boolean {
 /**
  * GET /api/cron/reset-credits
  * 
- * Resets all FREE tier users' credits to 5.
+ * Resets all FREE tier users' credits to 20.
  * Called by Vercel Cron at UTC midnight.
  * 
  * Requirements: 6.4
@@ -88,11 +88,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    // Reset all FREE tier users' credits to 5
+    // Reset all FREE tier users' credits to 20
     // Requirements: 6.4
     const result = await db.user.updateMany({
       where: { tier: "FREE" },
-      data: { credits: 5 },
+      data: { credits: 20 },
     });
 
     logCronEvent("credits_reset_completed", {
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       success: true,
       data: {
         usersUpdated: result.count,
-        resetTo: 5,
+        resetTo: 20,
       },
     });
   } catch (error) {
