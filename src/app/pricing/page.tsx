@@ -123,7 +123,21 @@ export default function PricingPage() {
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                5 generations per day
+                <span className="font-medium">20 credits (one-time on registration)</span>
+              </li>
+              <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
+                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Basic mode: Devstral (2 credits)
+                <span className="text-xs text-gray-400 ml-1">~10 generations</span>
+              </li>
+              <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
+                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Medium mode: DeepSeek (4 credits)
+                <span className="text-xs text-gray-400 ml-1">~5 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -135,7 +149,7 @@ export default function PricingPage() {
                 <svg className="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                <span className="text-gray-400">No AI refinement</span>
+                <span className="text-gray-400">No High mode (Gemini 3 Pro)</span>
               </li>
             </ul>
             <SignedOut>
@@ -162,12 +176,18 @@ export default function PricingPage() {
               Most Popular
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Pro</h3>
-            <p className="mt-2 text-gray-500 text-sm">Choose your refinement level</p>
+            <p className="mt-2 text-gray-500 text-sm">Access to all AI models including premium</p>
             <p className="mt-6">
               <span className="text-4xl font-bold text-gray-900 transition-transform duration-200 inline-block group-hover:scale-105">€19.99</span>
               <span className="text-gray-500">/month</span>
             </p>
             <ul className="mt-8 space-y-3 text-sm text-gray-600">
+              <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
+                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-medium">300 credits (one-time on subscription)</span>
+              </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -178,22 +198,22 @@ export default function PricingPage() {
                 <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">100 Refined generations</span>
-                <span className="text-xs text-gray-400 ml-1">(1 AI pass)</span>
+                <span className="font-medium">Basic mode: Devstral</span>
+                <span className="text-xs text-gray-400 ml-1">(2 credits) ~150 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">50 Enhanced generations</span>
-                <span className="text-xs text-gray-400 ml-1">(2 AI passes)</span>
+                <span className="font-medium">Medium mode: DeepSeek</span>
+                <span className="text-xs text-gray-400 ml-1">(4 credits) ~75 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">25 Ultimate generations</span>
-                <span className="text-xs text-gray-400 ml-1">(3 AI passes)</span>
+                <span className="font-medium">High mode: Gemini 3 Pro</span>
+                <span className="text-xs text-gray-400 ml-1">(10 credits) ~30 generations</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
                 <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
