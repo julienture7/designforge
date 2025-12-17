@@ -125,6 +125,8 @@ interface UseAutoSaveReturn {
   }) => void;
   /** Create project immediately when generation starts (with GENERATING status) */
   createProjectForGeneration: () => Promise<string | null>;
+  /** Reset project status to READY on generation failure */
+  resetProjectStatus: () => Promise<void>;
   /** Retry pending save from localStorage */
   retryPendingSave: () => void;
   /** Clear pending save from localStorage */
@@ -454,6 +456,24 @@ export function useAutoSave({
   }, [createProjectForGeneration, generationCompleteMutation, currentProjectId, onSaveError, saveToLocalStorage]);
 
   /**
+   * Reset project status to READY on generation failure
+   * This prevents the "Generating..." indicator from being stuck
+   */
+  const resetProjectStatus = useCallback(async () => {
+    const projectIdToReset = currentProjectIdRef.current;
+    if (!projectIdToReset) return;
+
+    try {
+      await updateMutation.mutateAsync({
+        id: projectIdToReset,
+        status: "READY",
+      });
+    } catch (error) {
+      console.error("Failed to reset project status:", error);
+    }
+  }, [updateMutation]);
+
+  /**
    * Retry pending save from localStorage
    */
   const retryPendingSave = useCallback(() => {
@@ -486,6 +506,7 @@ export function useAutoSave({
     save,
     onGenerationComplete,
     createProjectForGeneration, // Call this when generation starts
+    resetProjectStatus, // Call this when generation fails
     retryPendingSave,
     clearPendingSave,
     currentProjectId,

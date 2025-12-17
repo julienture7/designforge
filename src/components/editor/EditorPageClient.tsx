@@ -45,6 +45,7 @@ export function EditorPageClient({
     save,
     onGenerationComplete: autoSaveOnGenerationComplete,
     createProjectForGeneration,
+    resetProjectStatus,
     retryPendingSave,
     currentProjectId,
   } = useAutoSave({
@@ -87,6 +88,11 @@ export function EditorPageClient({
 
   const handleError = useCallback((code: string, message: string) => {
     console.error("Editor error:", { code, message });
+    
+    // Reset project status to READY on generation failure
+    // This prevents the "Generating..." indicator from being stuck in dashboard
+    void resetProjectStatus();
+    
     const { title, details } = formatApiError(code, message);
     const action = createErrorAction(code, {
       onRetry: () => toast.info("Please try your request again"),
@@ -94,7 +100,7 @@ export function EditorPageClient({
       onSignIn: () => { window.location.href = "/sign-in"; },
     });
     toast.error(title, details, action);
-  }, [toast]);
+  }, [toast, resetProjectStatus]);
 
   const handleExport = useCallback(() => {
     const html = latestHtmlRef.current?.trim();
