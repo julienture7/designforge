@@ -455,10 +455,19 @@ export function ConnectedEditor({
             }
           }}
         >
-          {/* Header with close button */}
+          {/* Header with back button */}
           <div className="flex items-center justify-between px-4 py-3 bg-black/50 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <span className="text-sm text-white/80 font-medium">Full Page Preview</span>
+              <button
+                onClick={() => setShowFullPreview(false)}
+                className="flex items-center gap-2 text-white/80 hover:text-white transition-colors duration-200 px-3 py-1.5 rounded-lg hover:bg-white/10 active:scale-95"
+                title="Back to editor"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span className="text-sm font-medium">Back to Editor</span>
+              </button>
               {!isPro && (
                 <a 
                   href="/pricing" 
