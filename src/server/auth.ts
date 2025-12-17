@@ -78,7 +78,7 @@ export async function getOrCreateUser(): Promise<AppUser | null> {
         email,
         name,
         tier: "FREE",
-        credits: 5,
+        credits: 20,
         proTrialUsed: false,
         version: 0,
       },

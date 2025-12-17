@@ -78,6 +78,46 @@ export async function checkCredits(dbUserId: string): Promise<CreditCheckResult>
 }
 
 /**
+ * Generation mode for FREE tier users
+ */
+export type GenerationMode = "basic" | "medium";
+
+/**
+ * Get the credit cost for a generation mode
+ */
+export function getGenerationCreditCost(mode: GenerationMode): number {
+  switch (mode) {
+    case "basic":
+      return 2; // Devstral
+    case "medium":
+      return 4; // DeepSeek
+    default:
+      return 2;
+  }
+}
+
+/**
+ * Get the credit cost for editing (always 1)
+ */
+export function getEditCreditCost(): number {
+  return 1;
+}
+
+/**
+ * Check if user has enough credits for a specific operation
+ */
+export async function checkCreditsForOperation(
+  dbUserId: string,
+  creditCost: number
+): Promise<CreditCheckResult & { hasSufficientCredits: boolean }> {
+  const result = await checkCredits(dbUserId);
+  return {
+    ...result,
+    hasSufficientCredits: result.tier === "PRO" || result.remainingCredits >= creditCost,
+  };
+}
+
+/**
  * Decrement a user's credits using Optimistic Concurrency Control (OCC)
  * 
  * Uses Prisma transaction with version check to prevent race conditions where
@@ -89,13 +129,15 @@ export async function checkCredits(dbUserId: string): Promise<CreditCheckResult>
  * 
  * @param userId - The user ID to decrement credits for
  * @param currentVersion - The version number read when checking credits
+ * @param amount - Number of credits to decrement (default: 1)
  * @returns CreditDecrementResult indicating success/failure
  * 
  * Requirements: 6.2, 6.8
  */
 export async function decrementCredits(
   userId: string,
-  currentVersion: number
+  currentVersion: number,
+  amount: number = 1
 ): Promise<CreditDecrementResult> {
   // Use Prisma transaction with updateMany and version check for OCC pattern
   // This ensures atomic check-and-update with proper isolation
@@ -104,11 +146,11 @@ export async function decrementCredits(
     const updateResult = await tx.user.updateMany({
       where: {
         id: userId,
-        credits: { gt: 0 },
+        credits: { gte: amount },
         version: currentVersion, // OCC check
       },
       data: {
-        credits: { decrement: 1 },
+        credits: { decrement: amount },
         version: { increment: 1 },
       },
     });

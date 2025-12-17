@@ -4,21 +4,30 @@
  * AI generation (non-streaming).
  * Returns the full HTML in one response so the client can swap the preview atomically.
  * 
- * PRO users and trial users use Gemini 3 Pro Preview.
- * FREE users use Devstral (Mistral) for initial generation.
+ * FREE users can choose:
+ * - Basic mode: Devstral (2 credits)
+ * - Medium mode: DeepSeek (4 credits)
+ * 
+ * PRO users use Gemini 3 Pro Preview.
  */
 
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createMistral } from "@ai-sdk/mistral";
+import { createDeepSeek } from "@ai-sdk/deepseek";
 import { generateText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
 import { db } from "~/server/db";
 
-// Create Mistral client for Devstral (FREE tier initial generation)
+// Create Mistral client for Devstral (FREE tier - Basic mode)
 const mistral = createMistral({
   apiKey: env.MISTRAL_API_KEY,
+});
+
+// Create DeepSeek client (FREE tier - Medium mode)
+const deepseek = createDeepSeek({
+  apiKey: env.DEEPSEEK_API_KEY,
 });
 
 // Create Google Generative AI client (PRO tier - Gemini 3 Pro Preview)
@@ -28,7 +37,7 @@ const google = createGoogleGenerativeAI({
 
 import { getOrCreateUser } from "~/server/auth";
 import { acquireGenerationLock, releaseGenerationLock } from "~/server/lib/redis";
-import { checkCredits, decrementCredits } from "~/server/services/credit.service";
+import { checkCredits, decrementCredits, getGenerationCreditCost, type GenerationMode } from "~/server/services/credit.service";
 import { checkRateLimit, createRateLimitResponse } from "~/server/lib/rate-limiter";
 import { getRefinementPasses, type Tier } from "~/server/lib/tier-utils";
 import {
@@ -114,7 +123,11 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json();
-    const { messages = [], currentHtml, prompt, refinementLevel, useProTrial = false } = body;
+    const { messages = [], currentHtml, prompt, refinementLevel, useProTrial = false, generationMode = "basic" } = body;
+
+    // Validate generation mode for FREE tier
+    const validModes: GenerationMode[] = ["basic", "medium"];
+    const selectedGenerationMode: GenerationMode = validModes.includes(generationMode) ? generationMode : "basic";
 
     // Credit Check based on tier
     const userTier = (user.tier as Tier) || "FREE";
@@ -123,6 +136,7 @@ export async function POST(req: NextRequest) {
     let selectedRefinementLevel: RefinementLevel | null = null;
     let isUsingProMode = false;
     let consumeTrial = false;
+    let creditCost = 1; // Default
 
     if (userTier === "PRO") {
       isUsingProMode = true;
@@ -143,6 +157,9 @@ export async function POST(req: NextRequest) {
       }
       refinementCreditVersion = refinementCheck.version;
     } else {
+      // FREE tier - calculate credit cost based on generation mode
+      creditCost = getGenerationCreditCost(selectedGenerationMode);
+      
       if (useProTrial) {
         if (user.proTrialUsed) {
           return NextResponse.json(
@@ -152,15 +169,20 @@ export async function POST(req: NextRequest) {
         }
         isUsingProMode = true;
         consumeTrial = true;
+        creditCost = 1; // Pro trial costs 1 credit
         const creditCheck = await checkCredits(dbUserId);
         if (!creditCheck.allowed) {
           return NextResponse.json({ error: "Upgrade to Pro", code: "CREDITS_EXHAUSTED" }, { status: 402 });
         }
         creditVersion = creditCheck.version;
       } else {
+        // Check if user has enough credits for the selected mode
         const creditCheck = await checkCredits(dbUserId);
-        if (!creditCheck.allowed) {
-          return NextResponse.json({ error: "Upgrade to Pro", code: "CREDITS_EXHAUSTED" }, { status: 402 });
+        if (creditCheck.remainingCredits < creditCost) {
+          return NextResponse.json({ 
+            error: `Need ${creditCost} credits but only have ${creditCheck.remainingCredits}. Try Basic mode (2 credits) or upgrade to Pro.`, 
+            code: "CREDITS_EXHAUSTED" 
+          }, { status: 402 });
         }
         creditVersion = creditCheck.version;
       }
@@ -206,7 +228,7 @@ export async function POST(req: NextRequest) {
       refinementPasses = getRefinementPasses(userTier);
     }
 
-    // Select model and prompt based on tier
+    // Select model and prompt based on tier and generation mode
     let selectedModel;
     let systemPrompt: string;
     let maxOutputTokens: number;
@@ -216,10 +238,15 @@ export async function POST(req: NextRequest) {
       selectedModel = google("gemini-3-pro-preview");
       systemPrompt = DESIGN_SYSTEM_PROMPT + contextPrompt;
       maxOutputTokens = 16000;
+    } else if (selectedGenerationMode === "medium") {
+      // FREE tier Medium mode: Use DeepSeek with same prompt as Devstral
+      selectedModel = deepseek("deepseek-chat");
+      systemPrompt = ""; // Full prompt goes in user message
+      maxOutputTokens = 16384;
     } else {
-      // FREE tier: Use Devstral with 2-step process
+      // FREE tier Basic mode: Use Devstral with 2-step process
       selectedModel = mistral("devstral-2512");
-      systemPrompt = ""; // No system prompt for Devstral
+      systemPrompt = ""; // Full prompt goes in user message
       maxOutputTokens = 16384;
     }
 
@@ -327,7 +354,8 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
       if (userTier === "PRO" && selectedRefinementLevel && typeof refinementCreditVersion === "number") {
         await decrementRefinementCredits(dbUserId, refinementCreditVersion, selectedRefinementLevel).catch(console.error);
       } else if (typeof creditVersion === "number") {
-        await decrementCredits(dbUserId, creditVersion).catch(console.error);
+        // Decrement credits based on generation mode (basic=2, medium=4, trial=1)
+        await decrementCredits(dbUserId, creditVersion, creditCost).catch(console.error);
       }
       
       if (consumeTrial) {
@@ -346,6 +374,8 @@ OUTPUT ONLY THE REFINED HTML. No markdown code blocks. No explanations. Start di
       finishReason: result.finishReason,
       tokenUsage: typeof result.usage?.totalTokens === "number" ? result.usage.totalTokens : undefined,
       usedProTrial: consumeTrial,
+      generationMode: isUsingProMode ? "pro" : selectedGenerationMode,
+      creditCost,
     });
 
   } catch (error) {

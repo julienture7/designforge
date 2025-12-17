@@ -41,7 +41,7 @@ model User {
     email              String              @unique
     name               String?
     tier               Tier                @default(FREE)
-    credits            Int                 @default(5) // FREE tier: daily credits (5/day) | PRO tier: unified credits for Normal/Refined
+    credits            Int                 @default(20) // FREE tier: daily credits (20/day) | PRO tier: unified credits for Normal/Refined
     proTrialUsed       Boolean             @default(false) // Track if user has used their free Pro trial
     version            Int                 @default(0) // Optimistic Concurrency Control
     stripeCustomerId   String?             @unique // Stripe customer ID for webhook mapping
