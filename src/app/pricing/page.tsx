@@ -40,14 +40,14 @@ export default function PricingPage() {
       }
     },
     onError: (error) => {
-      toast.error("Couldn’t open billing portal", error.message);
+      toast.error("Couldn't open billing portal", error.message);
     },
   });
 
   const handleUpgrade = () => {
     const priceId = stripePriceId;
     if (!priceId) {
-      toast.error("Billing isn’t configured", "Missing NEXT_PUBLIC_STRIPE_PRICE_ID");
+      toast.error("Billing isn't configured", "Missing NEXT_PUBLIC_STRIPE_PRICE_ID");
       return;
     }
 
@@ -106,50 +106,99 @@ export default function PricingPage() {
         </div>
       </nav>
 
-      <main className="mx-auto max-w-5xl px-4 py-16">
+      <main className="mx-auto max-w-6xl px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="animate-fade-in-up text-4xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h1>
-          <p className="animate-fade-in-up text-lg text-gray-500" style={{ animationDelay: '0.1s' }}>Choose the plan that works for you</p>
+          <p className="animate-fade-in-up text-lg text-gray-500" style={{ animationDelay: '0.1s' }}>Start free, upgrade when you need more</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-          {/* Free Tier */}
-          <div className="animate-fade-in-scale rounded-2xl border border-gray-200 p-8 transition-all duration-300 hover:shadow-lg hover:border-gray-300 hover:-translate-y-1" style={{ animationDelay: '0.15s' }}>
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {/* Guest Tier - No account needed */}
+          <div className="animate-fade-in-scale rounded-2xl border border-gray-200 p-6 transition-all duration-300 hover:shadow-lg hover:border-gray-300 hover:-translate-y-1 bg-gradient-to-b from-gray-50 to-white" style={{ animationDelay: '0.1s' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900">Guest</h3>
+              <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">No signup</span>
+            </div>
+            <p className="text-gray-500 text-sm">Try it instantly</p>
+            <p className="mt-4">
+              <span className="text-3xl font-bold text-gray-900">Free</span>
+              <span className="text-gray-500"> forever</span>
+            </p>
+            <ul className="mt-6 space-y-2.5 text-sm text-gray-600">
+              <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span><strong>Unlimited</strong> Basic mode generations</span>
+              </li>
+              <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span><strong>Free</strong> editing with AI</span>
+              </li>
+              <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Download HTML files</span>
+              </li>
+              <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Temporary saves (24h)</span>
+              </li>
+              <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
+                <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="text-gray-400">No Medium/High mode</span>
+              </li>
+            </ul>
+            <Link
+              href="/editor/new"
+              className="mt-6 block w-full rounded-xl border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm active:scale-[0.98] transition-all duration-200"
+            >
+              Start Creating
+            </Link>
+          </div>
+
+          {/* Free Tier - Account required */}
+          <div className="animate-fade-in-scale rounded-2xl border border-gray-200 p-6 transition-all duration-300 hover:shadow-lg hover:border-gray-300 hover:-translate-y-1" style={{ animationDelay: '0.15s' }}>
             <h3 className="text-lg font-semibold text-gray-900">Free</h3>
-            <p className="mt-2 text-gray-500 text-sm">Perfect for trying out</p>
-            <p className="mt-6">
-              <span className="text-4xl font-bold text-gray-900">€0</span>
+            <p className="mt-1 text-gray-500 text-sm">Save projects & unlock Medium mode</p>
+            <p className="mt-4">
+              <span className="text-3xl font-bold text-gray-900">€0</span>
               <span className="text-gray-500">/month</span>
             </p>
-            <ul className="mt-8 space-y-3 text-sm text-gray-600">
+            <ul className="mt-6 space-y-2.5 text-sm text-gray-600">
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">40 credits (one-time on registration)</span>
+                <span><strong>40 credits</strong> on registration</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Basic mode (2 credits)
-                <span className="text-xs text-gray-400 ml-1">~20 generations</span>
+                <span><strong>Unlimited</strong> Basic mode (free)</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Medium mode (4 credits)
-                <span className="text-xs text-gray-400 ml-1">~10 generations</span>
+                <span><strong>Medium mode</strong> (4 credits) ~10 gens</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Public projects only
+                <span>Permanent project saves</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 <span className="text-gray-400">No High mode</span>
@@ -158,79 +207,70 @@ export default function PricingPage() {
             <SignedOut>
               <Link
                 href="/sign-up"
-                className="mt-8 block w-full rounded-xl border border-gray-200 py-3 text-center text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm active:scale-[0.98] transition-all duration-200"
+                className="mt-6 block w-full rounded-xl border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm active:scale-[0.98] transition-all duration-200"
               >
-                Get Started
+                Create Free Account
               </Link>
             </SignedOut>
             <SignedIn>
               <Link
                 href="/dashboard"
-                className="mt-8 block w-full rounded-xl border border-gray-200 py-3 text-center text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm active:scale-[0.98] transition-all duration-200"
+                className="mt-6 block w-full rounded-xl border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm active:scale-[0.98] transition-all duration-200"
               >
-                Continue to Dashboard
+                Go to Dashboard
               </Link>
             </SignedIn>
           </div>
 
           {/* Pro Tier */}
-          <div className="animate-fade-in-scale rounded-2xl border-2 border-gray-900 p-8 relative transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group" style={{ animationDelay: '0.2s' }}>
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-3 py-1 rounded-full text-xs font-semibold animate-bounce-subtle">
-              Most Popular
+          <div className="animate-fade-in-scale rounded-2xl border-2 border-gray-900 p-6 relative transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group" style={{ animationDelay: '0.2s' }}>
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+              Best Value
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Pro</h3>
-            <p className="mt-2 text-gray-500 text-sm">Access to all AI models including premium</p>
-            <p className="mt-6">
-              <span className="text-4xl font-bold text-gray-900 transition-transform duration-200 inline-block group-hover:scale-105">€19.99</span>
+            <p className="mt-1 text-gray-500 text-sm">Premium AI & unlimited features</p>
+            <p className="mt-4">
+              <span className="text-3xl font-bold text-gray-900 transition-transform duration-200 inline-block group-hover:scale-105">€19.99</span>
               <span className="text-gray-500">/month</span>
             </p>
-            <ul className="mt-8 space-y-3 text-sm text-gray-600">
+            <ul className="mt-6 space-y-2.5 text-sm text-gray-600">
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">300 credits (one-time on subscription)</span>
+                <span><strong>300 credits</strong> on subscription</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Private projects
+                <span><strong>Unlimited</strong> Basic mode (free)</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">Basic mode</span>
-                <span className="text-xs text-gray-400 ml-1">(2 credits) ~150 generations</span>
+                <span><strong>Medium mode</strong> (4 credits) ~75 gens</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-purple-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">Medium mode</span>
-                <span className="text-xs text-gray-400 ml-1">(4 credits) ~75 generations</span>
+                <span><strong>High mode</strong> (10 credits) ~30 gens</span>
               </li>
               <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">High mode</span>
-                <span className="text-xs text-gray-400 ml-1">(10 credits) ~30 generations</span>
-              </li>
-              <li className="flex items-center gap-2 transition-transform duration-200 hover:translate-x-1">
-                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Priority support
+                <span>Private projects & priority support</span>
               </li>
             </ul>
             <SignedOut>
               <Link
                 href="/sign-up?redirect_url=/pricing"
-                className="mt-8 block w-full rounded-xl bg-gray-900 py-3 text-center text-sm font-semibold text-white hover:bg-gray-800 hover:shadow-lg active:scale-[0.98] transition-all duration-200"
+                className="mt-6 block w-full rounded-xl bg-gray-900 py-2.5 text-center text-sm font-semibold text-white hover:bg-gray-800 hover:shadow-lg active:scale-[0.98] transition-all duration-200"
               >
-                Sign up to upgrade
+                Get Started
               </Link>
             </SignedOut>
             <SignedIn>
@@ -238,7 +278,7 @@ export default function PricingPage() {
                 <button
                   onClick={() => portal.mutate({ returnUrl: `${window.location.origin}/dashboard` })}
                   disabled={portal.isPending}
-                  className="mt-8 block w-full rounded-xl border border-gray-200 bg-white py-3 text-center text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
+                  className="mt-6 block w-full rounded-xl border border-gray-200 bg-white py-2.5 text-center text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
                 >
                   {portal.isPending ? "Opening…" : "Manage Billing"}
                 </button>
@@ -246,12 +286,31 @@ export default function PricingPage() {
                 <button
                   onClick={handleUpgrade}
                   disabled={createCheckout.isPending || !stripePriceId}
-                  className="mt-8 block w-full rounded-xl bg-gray-900 py-3 text-center text-sm font-semibold text-white hover:bg-gray-800 hover:shadow-lg active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
+                  className="mt-6 block w-full rounded-xl bg-gray-900 py-2.5 text-center text-sm font-semibold text-white hover:bg-gray-800 hover:shadow-lg active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
                 >
                   {createCheckout.isPending ? "Loading..." : "Upgrade to Pro"}
                 </button>
               )}
             </SignedIn>
+          </div>
+        </div>
+
+        {/* FAQ Section */}
+        <div className="mt-20 max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">Frequently Asked Questions</h2>
+          <div className="space-y-6">
+            <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+              <h3 className="font-semibold text-gray-900">Do I need an account to use DesignForge?</h3>
+              <p className="mt-2 text-gray-600 text-sm">No! You can start generating websites immediately without signing up. Basic mode is completely free and unlimited. Create an account when you want to save projects permanently or access Medium mode.</p>
+            </div>
+            <div className="animate-fade-in-up" style={{ animationDelay: '0.35s' }}>
+              <h3 className="font-semibold text-gray-900">What's the difference between Basic, Medium, and High mode?</h3>
+              <p className="mt-2 text-gray-600 text-sm">Basic mode uses fast AI for quick generations. Medium mode uses more advanced AI for better quality. High mode (Pro only) uses premium AI models to create award-winning, highly polished designs.</p>
+            </div>
+            <div className="animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+              <h3 className="font-semibold text-gray-900">What happens to my design if I don't sign up?</h3>
+              <p className="mt-2 text-gray-600 text-sm">Designs are temporarily saved for 24 hours. You can download the HTML anytime. If you sign up within 24 hours, your design is automatically saved to your account.</p>
+            </div>
           </div>
         </div>
       </main>

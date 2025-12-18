@@ -109,6 +109,8 @@ interface ConnectedEditorProps {
   initialHistory?: ConversationMessage[];
   /** Initial HTML content */
   initialHtml?: string;
+  /** Whether the user is anonymous (not signed in) */
+  isAnonymous?: boolean;
   /** Callback when HTML content changes (for auto-save) */
   onHtmlChange?: (html: string, conversationHistory: ConversationMessage[]) => void;
   /** Callback when generation starts (to create project with GENERATING status) */
@@ -140,6 +142,7 @@ export function ConnectedEditor({
   projectId,
   initialHistory = [],
   initialHtml = "",
+  isAnonymous = false,
   onHtmlChange,
   onGenerationStart,
   onGenerationComplete,
@@ -149,10 +152,10 @@ export function ConnectedEditor({
   
   // Get user tier to check if Pro features should be available
   const subscriptionStatus = api.subscription.getStatus.useQuery(undefined, {
-    enabled: isSignedIn,
+    enabled: isSignedIn === true && !isAnonymous,
   });
   const userTier = subscriptionStatus.data?.tier ?? "FREE";
-  const isPro = userTier === "PRO";
+  const isPro = userTier === "PRO" && !isAnonymous;
   
   // Current HTML content (raw, unprocessed)
   const [rawHtml, setRawHtml] = useState<string>(initialHtml);
@@ -347,6 +350,7 @@ export function ConnectedEditor({
       projectId={projectId}
       initialHistory={initialHistory}
       currentHtml={rawHtml}
+      isAnonymous={isAnonymous}
       onHtmlGenerated={handleHtmlGenerated}
       onLoadingChange={(loading) => {
         setIsBuilding(loading);

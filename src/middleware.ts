@@ -3,6 +3,12 @@
  * 
  * Handles authentication using Clerk and protects routes.
  * Public routes are accessible without authentication.
+ * 
+ * Anonymous users can access:
+ * - /editor/new - for anonymous generation (basic mode only)
+ * - /api/generate - handles auth internally, allows anonymous basic generation
+ * - /api/edit - handles auth internally, allows anonymous editing
+ * - /api/anonymous-project - for temporary 24h project storage
  */
 
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
@@ -18,9 +24,14 @@ const isPublicRoute = createRouteMatcher([
   "/auth/signup(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/contact(.*)",
+  "/editor/new",  // Anonymous generation - basic mode only
   "/api/cron(.*)",
   "/api/webhooks(.*)",
   "/api/proxy(.*)",
+  "/api/generate",  // Handles auth internally - allows anonymous basic
+  "/api/edit",      // Handles auth internally - allows anonymous editing
+  "/api/anonymous-project(.*)",  // Temp project storage for anonymous users
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

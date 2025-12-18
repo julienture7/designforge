@@ -1,3 +1,15 @@
+/**
+ * POST /api/edit
+ * 
+ * AI-powered editing (streaming).
+ * Applies search/replace operations to modify existing HTML.
+ * 
+ * EDITING IS FREE FOR EVERYONE:
+ * - Anonymous users: Free editing (IP rate-limited)
+ * - Registered users: Free editing (no credits consumed)
+ * - PRO users: Free editing
+ */
+
 import { streamText } from "ai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { type NextRequest, NextResponse } from "next/server";
@@ -16,16 +28,12 @@ import {
   applyEditBlocks,
   buildEditSystemPrompt,
   buildEditUserPrompt,
-  type ReplaceOperation,
 } from "~/server/lib/edit-engine";
 import {
   acquireGenerationLock,
   releaseGenerationLock,
+  redis,
 } from "~/server/lib/redis";
-import {
-  checkCredits,
-  decrementCredits,
-} from "~/server/services/credit.service";
 import {
   checkRateLimit,
   createRateLimitResponse,
@@ -75,11 +83,29 @@ function encodeSSE(event: StreamEvent): string {
 
 const encoder = new TextEncoder();
 
+/**
+ * Acquire an edit lock for anonymous users based on IP
+ */
+async function acquireAnonymousEditLock(ip: string): Promise<boolean> {
+  const lockKey = `lock:anonymous:edit:${ip}`;
+  const result = await redis.set(lockKey, "1", { nx: true, ex: 180 }); // 3 min timeout
+  return result === "OK";
+}
+
+/**
+ * Release edit lock for anonymous users
+ */
+async function releaseAnonymousEditLock(ip: string): Promise<void> {
+  const lockKey = `lock:anonymous:edit:${ip}`;
+  await redis.del(lockKey);
+}
+
 export async function POST(req: NextRequest) {
   const correlationId = generateCorrelationId();
   let clerkId: string | null = null;
-  let dbUserId: string | null = null;
   let lockAcquired = false;
+  let isAnonymous = false;
+  let clientIp: string | null = null;
 
   try {
     const { userId } = await auth();
@@ -88,27 +114,11 @@ export async function POST(req: NextRequest) {
       return createRateLimitResponse(rateLimitResult);
     }
 
-    if (!userId) {
-      return createErrorResponse(
-        "UNAUTHORIZED",
-        "Please sign in to continue",
-        401,
-        correlationId
-      );
-    }
-    clerkId = userId;
+    // Determine if anonymous
+    isAnonymous = !userId;
+    clientIp = getClientIp(req);
 
-    const user = await getOrCreateUser();
-    if (!user) {
-      return createErrorResponse(
-        "UNAUTHORIZED",
-        "User not found",
-        404,
-        correlationId
-      );
-    }
-    dbUserId = user.id;
-
+    // Parse request body
     let body: {
       currentHtml: string;
       editInstruction: string;
@@ -135,35 +145,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const creditCheck = await checkCredits(dbUserId);
-    const userTier = creditCheck.tier;
+    // Acquire lock based on user type
+    if (isAnonymous) {
+      // Anonymous user - use IP-based lock
+      lockAcquired = await acquireAnonymousEditLock(clientIp);
+      if (!lockAcquired) {
+        return createErrorResponse(
+          "GENERATION_IN_PROGRESS",
+          "Please wait for your current edit to complete",
+          409,
+          correlationId
+        );
+      }
+    } else {
+      // Authenticated user - use Clerk ID lock
+      clerkId = userId;
+      
+      // Verify user exists (but don't check credits - editing is free)
+      const user = await getOrCreateUser();
+      if (!user) {
+        return createErrorResponse(
+          "UNAUTHORIZED",
+          "User not found",
+          404,
+          correlationId
+        );
+      }
 
-    if (userTier === "PRO" && creditCheck.remainingCredits < 1) {
-      return createErrorResponse(
-        "CREDITS_EXHAUSTED",
-        "Not enough Pro credits.",
-        402,
-        correlationId
-      );
-    }
-    if (userTier !== "PRO" && !creditCheck.allowed) {
-      return createErrorResponse(
-        "CREDITS_EXHAUSTED",
-        "You've used all your free generations today.",
-        402,
-        correlationId
-      );
-    }
-    const creditVersion = creditCheck.version;
-
-    lockAcquired = await acquireGenerationLock(clerkId);
-    if (!lockAcquired) {
-      return createErrorResponse(
-        "GENERATION_IN_PROGRESS",
-        "Please wait for your current operation to complete",
-        409,
-        correlationId
-      );
+      lockAcquired = await acquireGenerationLock(clerkId);
+      if (!lockAcquired) {
+        return createErrorResponse(
+          "GENERATION_IN_PROGRESS",
+          "Please wait for your current operation to complete",
+          409,
+          correlationId
+        );
+      }
     }
 
     // All requests to /api/edit are treated as edits (never new designs)
@@ -189,6 +206,7 @@ export async function POST(req: NextRequest) {
           console.log({
             event: "edit_start",
             correlationId,
+            isAnonymous,
             htmlLength: currentHtml.length,
             instructionLength: editInstruction.length,
           });
@@ -297,6 +315,7 @@ export async function POST(req: NextRequest) {
           console.log({
             event: "edit_complete",
             correlationId,
+            isAnonymous,
             durationMs: duration,
           });
 
@@ -335,35 +354,11 @@ export async function POST(req: NextRequest) {
             )
           );
         } finally {
-          // Decrement credits
-          if (dbUserId) {
-            try {
-              if (userTier === "PRO") {
-                const { db } = await import("~/server/db");
-                await db.user.updateMany({
-                  where: {
-                    id: dbUserId,
-                    version: creditVersion,
-                    credits: { gte: 1 },
-                  },
-                  data: {
-                    credits: { decrement: 1 },
-                    version: { increment: 1 },
-                  },
-                });
-              } else {
-                await decrementCredits(dbUserId, creditVersion);
-              }
-            } catch (e) {
-              console.error({
-                event: "credit_decrement_failed",
-                dbUserId,
-                error: e,
-              });
-            }
-          }
-
-          if (clerkId && lockAcquired) {
+          // Release locks - NO credit decrement (editing is free)
+          if (isAnonymous && clientIp && lockAcquired) {
+            await releaseAnonymousEditLock(clientIp);
+            lockAcquired = false;
+          } else if (clerkId && lockAcquired) {
             await releaseGenerationLock(clerkId);
             lockAcquired = false;
           }
@@ -371,7 +366,9 @@ export async function POST(req: NextRequest) {
         }
       },
       cancel() {
-        if (clerkId && lockAcquired) {
+        if (isAnonymous && clientIp && lockAcquired) {
+          releaseAnonymousEditLock(clientIp).catch(console.error);
+        } else if (clerkId && lockAcquired) {
           releaseGenerationLock(clerkId).catch(console.error);
         }
       },
@@ -394,7 +391,10 @@ export async function POST(req: NextRequest) {
       correlationId
     );
   } finally {
-    if (clerkId && lockAcquired) {
+    // Cleanup locks on error
+    if (isAnonymous && clientIp && lockAcquired) {
+      await releaseAnonymousEditLock(clientIp);
+    } else if (clerkId && lockAcquired) {
       await releaseGenerationLock(clerkId);
     }
   }

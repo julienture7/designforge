@@ -4,12 +4,15 @@
  * AI generation (non-streaming).
  * Returns the full HTML in one response so the client can swap the preview atomically.
  * 
- * FREE users can choose:
- * - Basic mode: Devstral (2 credits)
+ * ANONYMOUS users can use:
+ * - Basic mode: Devstral (FREE, unlimited, IP rate-limited)
+ * 
+ * FREE users (registered) can choose:
+ * - Basic mode: Devstral (FREE, no credits)
  * - Medium mode: DeepSeek (4 credits)
  * 
  * PRO users can choose:
- * - Basic mode: Devstral (2 credits)
+ * - Basic mode: Devstral (FREE, no credits)
  * - Medium mode: DeepSeek (4 credits)
  * - High mode: Gemini 3 Pro (10 credits)
  */
@@ -23,12 +26,12 @@ import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
 import { db } from "~/server/db";
 
-// Create Mistral client for Devstral (FREE tier - Basic mode)
+// Create Mistral client for Devstral (Basic mode - FREE for all)
 const mistral = createMistral({
   apiKey: env.MISTRAL_API_KEY,
 });
 
-// Create DeepSeek client (FREE tier - Medium mode)
+// Create DeepSeek client (Medium mode - requires account)
 const deepseek = createDeepSeek({
   apiKey: env.DEEPSEEK_API_KEY,
 });
@@ -39,9 +42,9 @@ const google = createGoogleGenerativeAI({
 });
 
 import { getOrCreateUser } from "~/server/auth";
-import { acquireGenerationLock, releaseGenerationLock } from "~/server/lib/redis";
+import { acquireGenerationLock, releaseGenerationLock, redis } from "~/server/lib/redis";
 import { checkCredits, decrementCredits, getGenerationCreditCost, type GenerationMode } from "~/server/services/credit.service";
-import { checkRateLimit, createRateLimitResponse } from "~/server/lib/rate-limiter";
+import { checkRateLimit, createRateLimitResponse, getClientIp } from "~/server/lib/rate-limiter";
 import { type Tier } from "~/server/lib/tier-utils";
 import { injectUnsplashImages } from "~/server/lib/html-processor";
 import { getDevstralSystemPrompt } from "~/server/lib/devstral-prompt";
@@ -92,23 +95,87 @@ JavaScript: Include IntersectionObserver for scroll animations and mobile naviga
 
 OUTPUT ONLY THE HTML. No markdown code blocks. No explanations. Start directly with <!DOCTYPE html>.`;
 
+/**
+ * Acquire a generation lock for anonymous users based on IP
+ */
+async function acquireAnonymousLock(ip: string): Promise<boolean> {
+  const lockKey = `lock:anonymous:${ip}`;
+  const result = await redis.set(lockKey, "1", { nx: true, ex: 300 }); // 5 min timeout
+  return result === "OK";
+}
+
+/**
+ * Release generation lock for anonymous users
+ */
+async function releaseAnonymousLock(ip: string): Promise<void> {
+  const lockKey = `lock:anonymous:${ip}`;
+  await redis.del(lockKey);
+}
+
 export async function POST(req: NextRequest) {
   let clerkId: string | null = null;
   let dbUserId: string | null = null;
   let lockAcquired = false;
+  let isAnonymous = false;
+  let clientIp: string | null = null;
 
   try {
     const { userId } = await auth();
 
-    // Rate Limiting
+    // Rate Limiting (applies to both authenticated and anonymous)
     const rateLimitResult = await checkRateLimit(req, true);
     if (!rateLimitResult.success) {
       return createRateLimitResponse(rateLimitResult);
     }
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 });
+    // Parse request body first to check generation mode
+    const body = await req.json();
+    const { messages = [], currentHtml, prompt, useProTrial = false, generationMode = "basic" } = body;
+
+    // Determine if this is an anonymous request
+    isAnonymous = !userId;
+    clientIp = getClientIp(req);
+
+    // ANONYMOUS USER FLOW
+    if (isAnonymous) {
+      // Anonymous users can ONLY use basic mode
+      if (generationMode !== "basic") {
+        return NextResponse.json({ 
+          error: "Sign up to access Medium and High modes. Basic mode is free!", 
+          code: "SIGNUP_REQUIRED" 
+        }, { status: 403 });
+      }
+
+      // Use IP-based lock for anonymous users
+      lockAcquired = await acquireAnonymousLock(clientIp);
+      if (!lockAcquired) {
+        return NextResponse.json({ 
+          error: "Generation in progress. Please wait.", 
+          code: "GENERATION_IN_PROGRESS" 
+        }, { status: 409 });
+      }
+
+      // Generate with basic mode (Devstral) - no credits needed
+      const html = await generateBasicMode(prompt, currentHtml, messages);
+      
+      // Inject images
+      const baseUrl = new URL(req.url).origin;
+      const htmlWithImages = await injectUnsplashImages(html, baseUrl);
+
+      // Release lock
+      await releaseAnonymousLock(clientIp);
+      lockAcquired = false;
+
+      return NextResponse.json({
+        html: htmlWithImages,
+        finishReason: "stop",
+        generationMode: "basic",
+        creditCost: 0,
+        isAnonymous: true,
+      });
     }
+
+    // AUTHENTICATED USER FLOW
     clerkId = userId;
 
     // Get or create user in database
@@ -118,18 +185,14 @@ export async function POST(req: NextRequest) {
     }
     dbUserId = user.id;
 
-    // Parse request body
-    const body = await req.json();
-    const { messages = [], currentHtml, prompt, useProTrial = false, generationMode = "basic" } = body;
-
     // Credit Check based on tier
     const userTier = (user.tier as Tier) || "FREE";
     let creditVersion: number | undefined;
     let consumeTrial = false;
 
     // Validate generation mode based on tier
-    // FREE: basic, medium only
-    // PRO: basic, medium, high
+    // FREE: basic (free), medium (4 credits)
+    // PRO: basic (free), medium (4 credits), high (10 credits)
     const freeValidModes: GenerationMode[] = ["basic", "medium"];
     const proValidModes: GenerationMode[] = ["basic", "medium", "high"];
     
@@ -141,18 +204,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate credit cost based on mode
-    let creditCost = getGenerationCreditCost(selectedGenerationMode);
+    // Basic mode is FREE for all authenticated users
+    let creditCost = selectedGenerationMode === "basic" ? 0 : getGenerationCreditCost(selectedGenerationMode);
 
     if (userTier === "PRO") {
       // PRO tier: Can use all modes
-      const creditCheck = await checkCredits(dbUserId);
-      if (creditCheck.remainingCredits < creditCost) {
-        return NextResponse.json({ 
-          error: `Need ${creditCost} credits but only have ${creditCheck.remainingCredits}. Try a lower tier mode.`, 
-          code: "CREDITS_EXHAUSTED" 
-        }, { status: 402 });
+      if (creditCost > 0) {
+        const creditCheck = await checkCredits(dbUserId);
+        if (creditCheck.remainingCredits < creditCost) {
+          return NextResponse.json({ 
+            error: `Need ${creditCost} credits but only have ${creditCheck.remainingCredits}. Try Basic mode (free) or a lower tier.`, 
+            code: "CREDITS_EXHAUSTED" 
+          }, { status: 402 });
+        }
+        creditVersion = creditCheck.version;
       }
-      creditVersion = creditCheck.version;
     } else {
       // FREE tier - can only use basic and medium
       if (selectedGenerationMode === "high") {
@@ -178,19 +244,18 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "No credits remaining", code: "CREDITS_EXHAUSTED" }, { status: 402 });
         }
         creditVersion = creditCheck.version;
-      } else {
-        // Check if user has enough credits for the selected mode
+      } else if (creditCost > 0) {
+        // Check if user has enough credits for medium mode
         const creditCheck = await checkCredits(dbUserId);
         if (creditCheck.remainingCredits < creditCost) {
           return NextResponse.json({ 
-            error: `Need ${creditCost} credits but only have ${creditCheck.remainingCredits}. Try Basic mode (2 credits) or upgrade to Pro.`, 
+            error: `Need ${creditCost} credits but only have ${creditCheck.remainingCredits}. Try Basic mode (free) or upgrade to Pro.`, 
             code: "CREDITS_EXHAUSTED" 
           }, { status: 402 });
         }
         creditVersion = creditCheck.version;
       }
     }
-
 
     // Lock (use Clerk ID for uniqueness)
     lockAcquired = await acquireGenerationLock(clerkId);
@@ -253,7 +318,7 @@ export async function POST(req: NextRequest) {
       });
       html = currentResult.text;
     } else {
-      // FREE tier: 2-step process
+      // Basic/Medium: 2-step process
       // Step 1: Generate detailed brief from user's simple prompt
       const userRequest = prompt || "";
       const briefResult = await generateText({
@@ -303,7 +368,7 @@ export async function POST(req: NextRequest) {
 
     // Charge credits + release lock only after a successful generation
     if (dbUserId && clerkId) {
-      if (typeof creditVersion === "number") {
+      if (typeof creditVersion === "number" && creditCost > 0) {
         // Decrement credits based on tier and mode
         await decrementCredits(dbUserId, creditVersion, creditCost).catch(console.error);
       }
@@ -330,9 +395,60 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error("Generation error:", error);
+    // Release locks on error
     if (clerkId && lockAcquired) {
       await releaseGenerationLock(clerkId);
     }
+    if (isAnonymous && clientIp && lockAcquired) {
+      await releaseAnonymousLock(clientIp);
+    }
     return NextResponse.json({ error: "Internal Error", code: "INTERNAL_ERROR" }, { status: 500 });
   }
+}
+
+/**
+ * Generate HTML using basic mode (Devstral)
+ * Used for both anonymous and authenticated users
+ */
+async function generateBasicMode(
+  prompt: string,
+  currentHtml: string | undefined,
+  messages: Array<{ role: string; content: string }>
+): Promise<string> {
+  let contextPrompt = "";
+  if (currentHtml) {
+    contextPrompt = `\n\nCURRENT HTML (modify this based on user request):\n${currentHtml}\n\n`;
+  }
+
+  // Step 1: Generate detailed brief from user's simple prompt
+  const userRequest = prompt || "";
+  const briefResult = await generateText({
+    model: mistral("devstral-2512"),
+    messages: [{ role: "user" as const, content: getBriefGeneratorPrompt(userRequest) }],
+    temperature: 0.7,
+    maxOutputTokens: 1024,
+  });
+  const generatedBrief = briefResult.text;
+  
+  // Step 2: Generate HTML using the detailed brief
+  const fullPrompt = getDevstralSystemPrompt(generatedBrief) + contextPrompt;
+  const htmlResult = await generateText({
+    model: mistral("devstral-2512"),
+    messages: [{ role: "user" as const, content: fullPrompt }],
+    temperature: 1.0,
+    maxOutputTokens: 16384,
+  });
+  let html = htmlResult.text;
+  
+  // Clean up markdown code blocks if present
+  html = html.replace(/^```html\s*/i, "").replace(/```\s*$/, "").trim();
+  // Ensure it starts with <!DOCTYPE html>
+  if (!html.toLowerCase().startsWith("<!doctype")) {
+    const doctypeIndex = html.toLowerCase().indexOf("<!doctype");
+    if (doctypeIndex > 0) {
+      html = html.substring(doctypeIndex);
+    }
+  }
+
+  return html;
 }

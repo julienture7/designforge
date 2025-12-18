@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SignedIn, SignedOut, UserButton, useAuth, useClerk } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton, useAuth } from "@clerk/nextjs";
 
 const EXAMPLE_PROMPTS = [
   "A modern SaaS landing page with pricing",
@@ -17,7 +17,6 @@ const EXAMPLE_PROMPTS = [
 export default function Home() {
   const router = useRouter();
   const { isSignedIn, isLoaded } = useAuth();
-  const clerk = useClerk();
 
   const [prompt, setPrompt] = useState("");
   const [placeholderText, setPlaceholderText] = useState("");
@@ -65,17 +64,12 @@ export default function Home() {
   }, [prompt, isTyping]);
 
   // Clear stale pending URL when landing on home page
-  // This prevents old queries from auto-loading when user returns to home
   useEffect(() => {
     if (!isLoaded) return;
     
-    // If user is signed in and intentionally on home page (not mid-auth),
-    // clear any stale pending URLs after a short delay
-    // The delay allows the auth redirect flow to complete first
     if (isSignedIn && window.location.pathname === "/") {
       const timeout = setTimeout(() => {
         try {
-          // Only clear if we're still on home page (user didn't navigate away)
           if (window.location.pathname === "/") {
             window.sessionStorage.removeItem("aidesigner_pending_editor_url");
           }
@@ -88,44 +82,16 @@ export default function Home() {
   }, [isLoaded, isSignedIn]);
 
   const startDesign = () => {
-    if (!isLoaded) return;
-
     const trimmed = prompt.trim();
     if (!trimmed) {
       inputRef.current?.focus();
       return;
     }
 
+    // Navigate directly to editor for ALL users (signed in or anonymous)
+    // Basic mode is free for everyone - no sign-in required!
     const editorUrl = `/editor/new?prompt=${encodeURIComponent(trimmed)}`;
-    // Use absolute URL for Clerk redirects to ensure query parameters are preserved
-    const absoluteEditorUrl = typeof window !== 'undefined' 
-      ? `${window.location.origin}${editorUrl}`
-      : editorUrl;
-
-    // If already signed in, go directly to editor
-    if (isSignedIn) {
-      router.push(editorUrl);
-      return;
-    }
-
-    // Preserve the user's prompt through auth (sessionStorage survives Clerk redirect)
-    try {
-      window.sessionStorage.setItem("aidesigner_pending_editor_url", editorUrl);
-    } catch {
-      // Ignore storage errors
-    }
-
-    // Open Clerk modal for sign-in
-    if (clerk.loaded && clerk.openSignIn) {
-      clerk.openSignIn({
-        redirectUrl: absoluteEditorUrl,
-        afterSignInUrl: absoluteEditorUrl,
-        afterSignUpUrl: absoluteEditorUrl,
-      });
-    } else {
-      // Fallback: redirect to sign-in page with redirect URL
-      router.push(`/sign-in?redirect_url=${encodeURIComponent(absoluteEditorUrl)}`);
-    }
+    router.push(editorUrl);
   };
 
   return (
@@ -196,7 +162,7 @@ export default function Home() {
             </span>
           </h1>
           <p className="animate-fade-in-up text-gray-500 text-sm sm:text-base md:text-lg mb-6 md:mb-8 font-normal tracking-wide text-center max-w-xl mx-auto px-4" style={{ animationDelay: '0.1s' }}>
-            AI-powered website generation. Describe what you want, get a production-ready design instantly.
+            AI-powered website generation. No account needed - start creating instantly.
           </p>
         </div>
 
@@ -222,8 +188,7 @@ export default function Home() {
 
               <button
                 type="submit"
-                disabled={!isLoaded}
-                className={`prompt-button group ${isLoaded && prompt.trim() ? "prompt-button--active" : ""}`}
+                className={`prompt-button group ${prompt.trim() ? "prompt-button--active" : ""}`}
               >
                 <span className="prompt-button-text">
                   Generate
@@ -240,6 +205,11 @@ export default function Home() {
               </button>
             </div>
           </form>
+          
+          {/* Free tier indicator */}
+          <p className="text-center text-xs text-gray-400 mt-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            Free to use • No sign-up required • Sign in for more features
+          </p>
         </div>
 
         {/* Examples - Simplified */}

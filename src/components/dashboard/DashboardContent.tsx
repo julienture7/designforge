@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { ProjectGrid } from "./ProjectGrid";
 import { DashboardErrorBoundary } from "./DashboardErrorBoundary";
 import { api } from "~/trpc/react";
 import { useToastContext } from "~/contexts/ToastContext";
+import { getSessionId, clearSession } from "~/lib/utils/anonymous-session";
 
 interface DashboardContentProps {
   userName: string | null | undefined;
@@ -28,6 +29,10 @@ export function DashboardContent({
   const displayName = userName || userEmail || "User";
   const [query, setQuery] = useState("");
   const toast = useToastContext();
+  const hasMigratedRef = useRef(false);
+  
+  // Get utils to invalidate project list after migration
+  const utils = api.useUtils();
 
   const portal = api.subscription.createPortalSession.useMutation({
     onSuccess: (data) => {
@@ -36,9 +41,50 @@ export function DashboardContent({
       }
     },
     onError: (error) => {
-      toast.error("Couldn’t open billing portal", error.message);
+      toast.error("Couldn't open billing portal", error.message);
     },
   });
+
+  // Migrate anonymous project on first load
+  useEffect(() => {
+    if (hasMigratedRef.current) return;
+    
+    const migrateAnonymousProject = async () => {
+      const sessionId = getSessionId();
+      if (!sessionId) return;
+
+      hasMigratedRef.current = true;
+
+      try {
+        const response = await fetch("/api/anonymous-project/migrate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          toast.success(
+            "Project imported!",
+            "Your design has been saved to your account."
+          );
+          // Clear the anonymous session
+          clearSession();
+          // Invalidate the project list to show the new project
+          void utils.project.list.invalidate();
+        } else {
+          // Silently fail - the project might have expired
+          clearSession();
+        }
+      } catch (error) {
+        // Silently fail - don't disrupt dashboard load
+        console.error("Failed to migrate anonymous project:", error);
+        clearSession();
+      }
+    };
+
+    void migrateAnonymousProject();
+  }, [toast, utils.project.list]);
 
   return (
     <DashboardErrorBoundary>

@@ -4,11 +4,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { ConversationMessage } from "@/types/editor";
 import { useAuth } from "@clerk/nextjs";
 import { api } from "~/trpc/react";
+import Link from "next/link";
 
 interface ChatPanelProps {
   projectId?: string;
   initialHistory?: ConversationMessage[];
   currentHtml?: string;
+  isAnonymous?: boolean; // New prop to indicate anonymous user
   onHtmlGenerated?: (html: string) => void;
   onLoadingChange?: (isLoading: boolean) => void;
   onGenerationStart?: () => Promise<string | null>; // Called before generation starts, returns project ID
@@ -70,6 +72,7 @@ export function ChatPanel({
   projectId,
   initialHistory = [],
   currentHtml = "",
+  isAnonymous = false,
   onHtmlGenerated,
   onLoadingChange,
   onGenerationStart,
@@ -93,10 +96,11 @@ export function ChatPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
-  // PRO users default to "high" mode, FREE users default to "basic"
+  // Anonymous users can only use basic mode
+  // Registered FREE users default to basic, PRO to high
   const [generationMode, setGenerationMode] = useState<"basic" | "medium" | "high">("basic");
   const generationModeRef = useRef<"basic" | "medium" | "high">("basic");
-  const [hasGenerated, setHasGenerated] = useState(() => !!currentHtml || initialHistory.length > 0); // Track if first generation happened
+  const [hasGenerated, setHasGenerated] = useState(() => !!currentHtml || initialHistory.length > 0);
   
   // Sync refs with state
   useEffect(() => {
@@ -105,10 +109,10 @@ export function ChatPanel({
   
   const { isSignedIn } = useAuth();
   const subscriptionStatus = api.subscription.getStatus.useQuery(undefined, {
-    enabled: isSignedIn,
+    enabled: isSignedIn === true && !isAnonymous,
   });
   const userTier = subscriptionStatus.data?.tier ?? "FREE";
-  const isPro = userTier === "PRO";
+  const isPro = userTier === "PRO" && !isAnonymous;
   
   // Set default mode to "high" for PRO users when subscription loads
   useEffect(() => {
@@ -175,8 +179,9 @@ export function ChatPanel({
       
       // For first generation, create project immediately with GENERATING status
       // This ensures the project is visible in dashboard during generation
+      // Skip for anonymous users - they don't create DB projects
       let effectiveProjectId = projectId;
-      if (isFirstGeneration && onGenerationStart) {
+      if (isFirstGeneration && onGenerationStart && !isAnonymous) {
         const newProjectId = await onGenerationStart();
         if (newProjectId) {
           effectiveProjectId = newProjectId;
@@ -362,12 +367,14 @@ export function ChatPanel({
     currentHtml,
     isLoading,
     isPro,
+    isAnonymous,
     hasGenerated,
     onLoadingChange,
     onError,
     onGenerationComplete,
     onHtmlGenerated,
     projectId,
+    onGenerationStart,
   ]);
 
   // Keep ref updated with latest submitPrompt function
@@ -537,6 +544,11 @@ export function ChatPanel({
           {messages.length === 0 && !isLoading && (
             <div className="chat-empty-state">
               <p>Describe what you want to build and I'll generate it for you.</p>
+              {isAnonymous && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Free to use • No account needed
+                </p>
+              )}
             </div>
           )}
 
@@ -614,8 +626,27 @@ export function ChatPanel({
         </div>
       </div>
 
-      {/* Upgrade CTA for free users - shown after first generation */}
-      {!isPro && hasGenerated && (
+      {/* Sign up CTA for anonymous users - shown after first generation */}
+      {isAnonymous && hasGenerated && (
+        <div className="upgrade-cta mx-2 mb-2">
+          <div className="upgrade-cta__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </div>
+          <div className="upgrade-cta__text">
+            <div className="upgrade-cta__title">Save your design</div>
+            <div className="upgrade-cta__desc">Sign up to save permanently & unlock Medium mode</div>
+          </div>
+          <Link href="/sign-up" className="upgrade-cta__btn">
+            Sign Up Free
+          </Link>
+        </div>
+      )}
+
+      {/* Upgrade CTA for registered free users - shown after first generation */}
+      {!isAnonymous && !isPro && hasGenerated && (
         <div className="upgrade-cta mx-2 mb-2">
           <div className="upgrade-cta__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -626,9 +657,9 @@ export function ChatPanel({
             <div className="upgrade-cta__title">Want stunning designs?</div>
             <div className="upgrade-cta__desc">Pro AI generates award-winning websites</div>
           </div>
-          <a href="/pricing" className="upgrade-cta__btn">
+          <Link href="/pricing" className="upgrade-cta__btn">
             Upgrade
-          </a>
+          </Link>
         </div>
       )}
 
@@ -645,8 +676,79 @@ export function ChatPanel({
             rows={1}
             className="chat-textarea"
           />
-          {/* Generation Mode Selector for FREE users */}
-          {!isPro && !hasGenerated && (
+          
+          {/* ANONYMOUS USER: Basic mode only with sign-up prompt */}
+          {isAnonymous && !hasGenerated && (
+            <div className="pro-trial-selector">
+              <div className="refinement-selector">
+                <div className="refinement-selector-header">
+                  <svg className="refinement-selector-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                  <span>Quality Mode</span>
+                  <span className="text-xs text-green-600 font-medium ml-auto">FREE</span>
+                </div>
+                
+                <div className="refinement-options">
+                  <button
+                    type="button"
+                    disabled={true}
+                    className="refinement-option refinement-option--selected refinement-option--blue"
+                    title="Basic mode - Fast AI generation (Free)"
+                  >
+                    <span className="refinement-option-label">Basic</span>
+                    <span className="refinement-option-credits">Free</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={true}
+                    className="refinement-option opacity-50 cursor-not-allowed"
+                    title="Sign up to access Medium mode"
+                  >
+                    <span className="refinement-option-label">Medium</span>
+                    <span className="text-xs">🔒</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Sign up prompt */}
+              <div className="pro-trial-info animate-fade-in" style={{ marginTop: '8px' }}>
+                <div className="pro-trial-info-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  <span>Want more?</span>
+                </div>
+                <ul className="pro-trial-benefits">
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span><strong>Medium mode</strong> - Better quality (sign up free)</span>
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span><strong>Save projects</strong> - Access from anywhere</span>
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span><strong>Pro mode</strong> - Award-winning designs</span>
+                  </li>
+                </ul>
+                <Link href="/sign-up" className="pro-trial-upgrade-link-btn">Create Free Account →</Link>
+              </div>
+            </div>
+          )}
+
+          {/* REGISTERED FREE USER: Basic + Medium modes */}
+          {!isAnonymous && !isPro && !hasGenerated && (
             <div className="pro-trial-selector">
               {/* Quality Mode Toggle */}
               <div className="refinement-selector">
@@ -668,10 +770,10 @@ export function ChatPanel({
                     }}
                     disabled={isLoading}
                     className={`refinement-option ${generationMode === "basic" ? "refinement-option--selected refinement-option--blue" : ""}`}
-                    title="Basic mode - Fast generation (2 credits)"
+                    title="Basic mode - Fast generation (Free)"
                   >
                     <span className="refinement-option-label">Basic</span>
-                    <span className="refinement-option-credits">2×</span>
+                    <span className="refinement-option-credits">Free</span>
                   </button>
                   <button
                     type="button"
@@ -718,12 +820,12 @@ export function ChatPanel({
                     <span><strong>Private projects</strong> - Keep designs secure</span>
                   </li>
                 </ul>
-                <a href="/pricing" className="pro-trial-upgrade-link-btn">Upgrade to Pro →</a>
+                <Link href="/pricing" className="pro-trial-upgrade-link-btn">Upgrade to Pro →</Link>
               </div>
             </div>
           )}
 
-          {/* PRO Quality Mode Selector - all 3 tiers */}
+          {/* PRO USER: All modes including High */}
           {isPro && !hasGenerated && (
             <div className="pro-trial-selector">
               <div className="refinement-selector">
@@ -744,10 +846,10 @@ export function ChatPanel({
                     }}
                     disabled={isLoading}
                     className={`refinement-option ${generationMode === "basic" ? "refinement-option--selected refinement-option--blue" : ""}`}
-                    title="Basic mode - Fast generation (2 credits)"
+                    title="Basic mode - Fast generation (Free)"
                   >
                     <span className="refinement-option-label">Basic</span>
-                    <span className="refinement-option-credits">2×</span>
+                    <span className="refinement-option-credits">Free</span>
                   </button>
                   <button
                     type="button"
