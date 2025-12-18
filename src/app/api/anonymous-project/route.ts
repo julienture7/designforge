@@ -3,13 +3,14 @@
  * 
  * Handles temporary storage for anonymous users' projects.
  * Projects are stored in Redis with 24-hour TTL.
+ * Supports MULTIPLE projects per session (up to 5).
  * 
- * When users sign up, their anonymous project can be migrated
+ * When users sign up, their anonymous projects can be migrated
  * to their permanent account.
  * 
- * POST: Save/update a temporary project
- * GET: Retrieve a temporary project by session ID
- * DELETE: Remove a temporary project
+ * POST: Save a new temporary project (or update existing by projectId)
+ * GET: Retrieve all temporary projects for a session
+ * DELETE: Remove a specific project or all projects
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -19,30 +20,48 @@ import { checkRateLimit, createRateLimitResponse, getClientIp } from "~/server/l
 // 24 hours in seconds
 const ANONYMOUS_PROJECT_TTL = 24 * 60 * 60;
 
-// Max storage size (500KB) to prevent abuse
+// Max storage size per project (500KB) to prevent abuse
 const MAX_PROJECT_SIZE = 500 * 1024;
 
+// Max projects per session
+const MAX_PROJECTS_PER_SESSION = 5;
+
 interface AnonymousProject {
-  sessionId: string;
+  projectId: string;
   html: string;
   prompt: string;
   conversationHistory: Array<{ role: string; content: string }>;
   createdAt: string;
   updatedAt: string;
+}
+
+interface AnonymousProjectStore {
+  sessionId: string;
+  projects: AnonymousProject[];
   ip: string;
+  updatedAt: string;
 }
 
 /**
- * Get Redis key for anonymous project
+ * Get Redis key for anonymous projects store
  */
 function getProjectKey(sessionId: string): string {
-  return `anonymous:project:${sessionId}`;
+  return `anonymous:projects:${sessionId}`;
+}
+
+/**
+ * Generate a unique project ID
+ */
+function generateProjectId(): string {
+  return `proj_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 /**
  * POST /api/anonymous-project
  * 
- * Save or update a temporary anonymous project
+ * Save a new temporary anonymous project or update existing one.
+ * If projectId is provided, updates that project. Otherwise creates new.
+ * Supports up to MAX_PROJECTS_PER_SESSION projects per session.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -53,7 +72,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { sessionId, html, prompt, conversationHistory = [] } = body;
+    const { sessionId, projectId, html, prompt, conversationHistory = [] } = body;
 
     // Validate required fields
     if (!sessionId || typeof sessionId !== "string") {
@@ -82,32 +101,77 @@ export async function POST(req: NextRequest) {
     const clientIp = getClientIp(req);
     const now = new Date().toISOString();
 
-    // Check if project already exists
-    const existingProject = await redis.get<AnonymousProject>(getProjectKey(sessionId));
+    // Get existing store or create new
+    const existingData = await redis.get<string>(getProjectKey(sessionId));
+    let store: AnonymousProjectStore;
+    
+    if (existingData) {
+      store = typeof existingData === "string" ? JSON.parse(existingData) : existingData;
+    } else {
+      store = {
+        sessionId,
+        projects: [],
+        ip: clientIp,
+        updatedAt: now,
+      };
+    }
 
-    const project: AnonymousProject = {
-      sessionId,
-      html,
-      prompt: prompt || "",
-      conversationHistory,
-      createdAt: existingProject?.createdAt || now,
-      updatedAt: now,
-      ip: clientIp,
-    };
+    // Check if updating existing project or creating new
+    const existingProjectIndex = projectId 
+      ? store.projects.findIndex(p => p.projectId === projectId)
+      : -1;
+
+    if (existingProjectIndex >= 0) {
+      // Update existing project
+      store.projects[existingProjectIndex] = {
+        ...store.projects[existingProjectIndex],
+        html,
+        prompt: prompt || store.projects[existingProjectIndex]?.prompt || "",
+        conversationHistory,
+        updatedAt: now,
+      } as AnonymousProject;
+    } else {
+      // Create new project
+      // Check limit
+      if (store.projects.length >= MAX_PROJECTS_PER_SESSION) {
+        // Remove oldest project to make room
+        store.projects.shift();
+      }
+
+      const newProject: AnonymousProject = {
+        projectId: generateProjectId(),
+        html,
+        prompt: prompt || "",
+        conversationHistory,
+        createdAt: now,
+        updatedAt: now,
+      };
+      store.projects.push(newProject);
+    }
+
+    store.updatedAt = now;
+    store.ip = clientIp;
 
     // Save to Redis with 24h TTL
-    await redis.set(getProjectKey(sessionId), JSON.stringify(project), {
+    await redis.set(getProjectKey(sessionId), JSON.stringify(store), {
       ex: ANONYMOUS_PROJECT_TTL,
     });
 
     // Calculate remaining TTL
     const expiresAt = new Date(Date.now() + ANONYMOUS_PROJECT_TTL * 1000).toISOString();
 
+    // Return the project ID (either existing or new)
+    const savedProjectId = existingProjectIndex >= 0 
+      ? projectId 
+      : store.projects[store.projects.length - 1]?.projectId;
+
     return NextResponse.json({
       success: true,
       sessionId,
+      projectId: savedProjectId,
+      projectCount: store.projects.length,
       expiresAt,
-      message: "Project saved temporarily. Sign up within 24 hours to save permanently.",
+      message: `Project saved temporarily (${store.projects.length}/${MAX_PROJECTS_PER_SESSION}). Sign up within 24 hours to save permanently.`,
     });
   } catch (error) {
     console.error("Anonymous project save error:", error);
@@ -119,9 +183,10 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * GET /api/anonymous-project?sessionId=xxx
+ * GET /api/anonymous-project?sessionId=xxx[&projectId=xxx]
  * 
- * Retrieve a temporary anonymous project
+ * Retrieve all temporary anonymous projects for a session,
+ * or a specific project if projectId is provided.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -132,6 +197,7 @@ export async function GET(req: NextRequest) {
     }
 
     const sessionId = req.nextUrl.searchParams.get("sessionId");
+    const projectId = req.nextUrl.searchParams.get("projectId");
 
     if (!sessionId) {
       return NextResponse.json(
@@ -141,19 +207,19 @@ export async function GET(req: NextRequest) {
     }
 
     // Get from Redis
-    const projectData = await redis.get<string>(getProjectKey(sessionId));
+    const storeData = await redis.get<string>(getProjectKey(sessionId));
 
-    if (!projectData) {
+    if (!storeData) {
       return NextResponse.json(
-        { error: "Project not found or expired", code: "NOT_FOUND" },
+        { error: "No projects found or expired", code: "NOT_FOUND" },
         { status: 404 }
       );
     }
 
-    // Parse the project data
-    const project: AnonymousProject = typeof projectData === "string" 
-      ? JSON.parse(projectData) 
-      : projectData;
+    // Parse the store data
+    const store: AnonymousProjectStore = typeof storeData === "string" 
+      ? JSON.parse(storeData) 
+      : storeData;
 
     // Get remaining TTL
     const ttl = await redis.ttl(getProjectKey(sessionId));
@@ -161,31 +227,62 @@ export async function GET(req: NextRequest) {
       ? new Date(Date.now() + ttl * 1000).toISOString() 
       : null;
 
+    // If projectId specified, return single project
+    if (projectId) {
+      const project = store.projects.find(p => p.projectId === projectId);
+      if (!project) {
+        return NextResponse.json(
+          { error: "Project not found", code: "NOT_FOUND" },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({
+        success: true,
+        project: {
+          projectId: project.projectId,
+          html: project.html,
+          prompt: project.prompt,
+          conversationHistory: project.conversationHistory,
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+        },
+        expiresAt,
+      });
+    }
+
+    // Return all projects (sorted by updatedAt, newest first)
+    const sortedProjects = [...store.projects].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+
     return NextResponse.json({
       success: true,
-      project: {
-        sessionId: project.sessionId,
-        html: project.html,
-        prompt: project.prompt,
-        conversationHistory: project.conversationHistory,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-      },
+      projects: sortedProjects.map(p => ({
+        projectId: p.projectId,
+        html: p.html,
+        prompt: p.prompt,
+        conversationHistory: p.conversationHistory,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      })),
+      projectCount: store.projects.length,
       expiresAt,
     });
   } catch (error) {
     console.error("Anonymous project fetch error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch project", code: "INTERNAL_ERROR" },
+      { error: "Failed to fetch projects", code: "INTERNAL_ERROR" },
       { status: 500 }
     );
   }
 }
 
 /**
- * DELETE /api/anonymous-project?sessionId=xxx
+ * DELETE /api/anonymous-project?sessionId=xxx[&projectId=xxx]
  * 
- * Delete a temporary anonymous project
+ * Delete a specific project or all projects for a session.
+ * If projectId is provided, deletes only that project.
+ * Otherwise deletes all projects for the session.
  */
 export async function DELETE(req: NextRequest) {
   try {
@@ -196,6 +293,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const sessionId = req.nextUrl.searchParams.get("sessionId");
+    const projectId = req.nextUrl.searchParams.get("projectId");
 
     if (!sessionId) {
       return NextResponse.json(
@@ -204,12 +302,54 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Delete from Redis
-    await redis.del(getProjectKey(sessionId));
+    // If no projectId, delete entire store
+    if (!projectId) {
+      await redis.del(getProjectKey(sessionId));
+      return NextResponse.json({
+        success: true,
+        message: "All projects deleted",
+      });
+    }
+
+    // Delete specific project
+    const storeData = await redis.get<string>(getProjectKey(sessionId));
+    if (!storeData) {
+      return NextResponse.json(
+        { error: "No projects found", code: "NOT_FOUND" },
+        { status: 404 }
+      );
+    }
+
+    const store: AnonymousProjectStore = typeof storeData === "string" 
+      ? JSON.parse(storeData) 
+      : storeData;
+
+    const projectIndex = store.projects.findIndex(p => p.projectId === projectId);
+    if (projectIndex === -1) {
+      return NextResponse.json(
+        { error: "Project not found", code: "NOT_FOUND" },
+        { status: 404 }
+      );
+    }
+
+    // Remove the project
+    store.projects.splice(projectIndex, 1);
+    store.updatedAt = new Date().toISOString();
+
+    // If no projects left, delete the store
+    if (store.projects.length === 0) {
+      await redis.del(getProjectKey(sessionId));
+    } else {
+      // Save updated store
+      await redis.set(getProjectKey(sessionId), JSON.stringify(store), {
+        ex: ANONYMOUS_PROJECT_TTL,
+      });
+    }
 
     return NextResponse.json({
       success: true,
       message: "Project deleted",
+      remainingCount: store.projects.length,
     });
   } catch (error) {
     console.error("Anonymous project delete error:", error);

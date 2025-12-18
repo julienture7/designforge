@@ -159,18 +159,21 @@ export function clearLocalProject(): void {
 
 /**
  * Save anonymous project to Redis via API
+ * Supports multiple projects per session (up to 5)
+ * If projectId is provided, updates that project. Otherwise creates new.
  */
 export async function saveAnonymousProject(
   html: string,
   prompt: string,
-  conversationHistory: Array<{ role: string; content: string }>
-): Promise<{ success: boolean; sessionId?: string; expiresAt?: string; error?: string }> {
+  conversationHistory: Array<{ role: string; content: string }>,
+  projectId?: string
+): Promise<{ success: boolean; sessionId?: string; projectId?: string; expiresAt?: string; error?: string }> {
   const session = getOrCreateSession();
   if (!session) {
     return { success: false, error: "Could not create session" };
   }
 
-  // Also save locally as backup
+  // Also save locally as backup (stores the most recent project)
   saveLocalProject({
     html,
     prompt,
@@ -184,6 +187,7 @@ export async function saveAnonymousProject(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         sessionId: session.id,
+        projectId, // If provided, updates existing project
         html,
         prompt,
         conversationHistory,
@@ -199,6 +203,7 @@ export async function saveAnonymousProject(
     return {
       success: true,
       sessionId: session.id,
+      projectId: data.projectId,
       expiresAt: data.expiresAt,
     };
   } catch (error) {
@@ -207,16 +212,22 @@ export async function saveAnonymousProject(
   }
 }
 
+export interface AnonymousProjectData {
+  projectId: string;
+  html: string;
+  prompt: string;
+  conversationHistory: Array<{ role: string; content: string }>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 /**
- * Load anonymous project from Redis via API
+ * Load a specific anonymous project from Redis via API
+ * If no projectId provided, returns the most recent project (for backward compatibility)
  */
-export async function loadAnonymousProject(): Promise<{
+export async function loadAnonymousProject(projectId?: string): Promise<{
   success: boolean;
-  project?: {
-    html: string;
-    prompt: string;
-    conversationHistory: Array<{ role: string; content: string }>;
-  };
+  project?: AnonymousProjectData;
   expiresAt?: string;
   error?: string;
 }> {
@@ -228,10 +239,102 @@ export async function loadAnonymousProject(): Promise<{
       return {
         success: true,
         project: {
+          projectId: "local",
           html: local.html,
           prompt: local.prompt,
           conversationHistory: local.conversationHistory,
         },
+      };
+    }
+    return { success: false, error: "No session found" };
+  }
+
+  try {
+    let url = `/api/anonymous-project?sessionId=${encodeURIComponent(sessionId)}`;
+    if (projectId) {
+      url += `&projectId=${encodeURIComponent(projectId)}`;
+    }
+    
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Fallback to local storage
+      const local = getLocalProject();
+      if (local) {
+        return {
+          success: true,
+          project: {
+            projectId: "local",
+            html: local.html,
+            prompt: local.prompt,
+            conversationHistory: local.conversationHistory,
+          },
+        };
+      }
+      return { success: false, error: data.error || "Project not found" };
+    }
+
+    // If single project requested
+    if (projectId || data.project) {
+      return {
+        success: true,
+        project: data.project,
+        expiresAt: data.expiresAt,
+      };
+    }
+
+    // If multiple projects returned, return the most recent one
+    if (data.projects && data.projects.length > 0) {
+      return {
+        success: true,
+        project: data.projects[0], // Already sorted by updatedAt desc
+        expiresAt: data.expiresAt,
+      };
+    }
+
+    return { success: false, error: "No projects found" };
+  } catch (error) {
+    // Fallback to local storage on network error
+    const local = getLocalProject();
+    if (local) {
+      return {
+        success: true,
+        project: {
+          projectId: "local",
+          html: local.html,
+          prompt: local.prompt,
+          conversationHistory: local.conversationHistory,
+        },
+      };
+    }
+    console.error("Failed to load anonymous project:", error);
+    return { success: false, error: "Network error" };
+  }
+}
+
+/**
+ * Load ALL anonymous projects from Redis via API
+ */
+export async function loadAllAnonymousProjects(): Promise<{
+  success: boolean;
+  projects?: AnonymousProjectData[];
+  expiresAt?: string;
+  error?: string;
+}> {
+  const sessionId = getSessionId();
+  if (!sessionId) {
+    // Try local backup - return as single project array
+    const local = getLocalProject();
+    if (local) {
+      return {
+        success: true,
+        projects: [{
+          projectId: "local",
+          html: local.html,
+          prompt: local.prompt,
+          conversationHistory: local.conversationHistory,
+        }],
       };
     }
     return { success: false, error: "No session found" };
@@ -247,19 +350,20 @@ export async function loadAnonymousProject(): Promise<{
       if (local) {
         return {
           success: true,
-          project: {
+          projects: [{
+            projectId: "local",
             html: local.html,
             prompt: local.prompt,
             conversationHistory: local.conversationHistory,
-          },
+          }],
         };
       }
-      return { success: false, error: data.error || "Project not found" };
+      return { success: false, error: data.error || "Projects not found" };
     }
 
     return {
       success: true,
-      project: data.project,
+      projects: data.projects || [],
       expiresAt: data.expiresAt,
     };
   } catch (error) {
@@ -268,14 +372,15 @@ export async function loadAnonymousProject(): Promise<{
     if (local) {
       return {
         success: true,
-        project: {
+        projects: [{
+          projectId: "local",
           html: local.html,
           prompt: local.prompt,
           conversationHistory: local.conversationHistory,
-        },
+        }],
       };
     }
-    console.error("Failed to load anonymous project:", error);
+    console.error("Failed to load anonymous projects:", error);
     return { success: false, error: "Network error" };
   }
 }

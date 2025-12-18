@@ -4,26 +4,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { loadAnonymousProject, getSessionId } from "~/lib/utils/anonymous-session";
-
-interface SavedProject {
-  html: string;
-  prompt: string;
-  conversationHistory: Array<{ role: string; content: string }>;
-}
+import { loadAllAnonymousProjects, getSessionId, type AnonymousProjectData } from "~/lib/utils/anonymous-session";
 
 /**
  * My Design Page - Anonymous User Dashboard
  * 
  * This page allows anonymous users to:
- * - See their temporarily saved design (24h)
- * - Continue editing their design
+ * - See all their temporarily saved designs (24h, up to 5)
+ * - Continue editing any design
  * - Sign up to save permanently
  */
 export default function MyDesignPage() {
   const router = useRouter();
   const { isSignedIn, isLoaded } = useAuth();
-  const [project, setProject] = useState<SavedProject | null>(null);
+  const [projects, setProjects] = useState<AnonymousProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
@@ -35,9 +29,9 @@ export default function MyDesignPage() {
     }
   }, [isLoaded, isSignedIn, router]);
 
-  // Load anonymous project
+  // Load anonymous projects
   useEffect(() => {
-    const loadProject = async () => {
+    const loadProjects = async () => {
       const sessionId = getSessionId();
       if (!sessionId) {
         setLoading(false);
@@ -45,19 +39,19 @@ export default function MyDesignPage() {
       }
 
       try {
-        const result = await loadAnonymousProject();
-        if (result.success && result.project) {
-          setProject(result.project);
+        const result = await loadAllAnonymousProjects();
+        if (result.success && result.projects) {
+          setProjects(result.projects);
           setExpiresAt(result.expiresAt || null);
         }
       } catch (error) {
-        console.error("Failed to load anonymous project:", error);
+        console.error("Failed to load anonymous projects:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    void loadProject();
+    void loadProjects();
   }, []);
 
   // Update time remaining
@@ -83,10 +77,6 @@ export default function MyDesignPage() {
     const interval = setInterval(updateTime, 60000); // Update every minute
     return () => clearInterval(interval);
   }, [expiresAt]);
-
-  // Extract first prompt from conversation
-  const firstPrompt = project?.conversationHistory.find(m => m.role === "user")?.content || project?.prompt || "Untitled Design";
-  const truncatedPrompt = firstPrompt.length > 100 ? firstPrompt.slice(0, 100) + "..." : firstPrompt;
 
   if (!isLoaded || isSignedIn) {
     return null; // Will redirect
@@ -129,62 +119,32 @@ export default function MyDesignPage() {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">My Design</h1>
-          <p className="text-slate-600">Your temporary workspace</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">My Designs</h1>
+          <p className="text-slate-600">Your temporary workspace (up to 5 designs)</p>
+          {timeRemaining && timeRemaining !== "Expired" && (
+            <p className="text-sm text-amber-600 mt-2 flex items-center justify-center gap-1">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              {timeRemaining}
+            </p>
+          )}
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
           </div>
-        ) : project ? (
+        ) : projects.length > 0 ? (
           <div className="space-y-6">
-            {/* Project Card */}
-            <div className="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
-              {/* Preview Thumbnail */}
-              <div className="relative h-48 bg-slate-100 overflow-hidden">
-                <iframe
-                  srcDoc={project.html}
-                  className="absolute inset-0 w-full h-full border-0 pointer-events-none"
-                  style={{ transform: "scale(0.5)", transformOrigin: "top left", width: "200%", height: "200%" }}
-                  title="Design Preview"
-                  sandbox="allow-scripts"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-              </div>
-
-              {/* Project Info */}
-              <div className="p-6">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-slate-900 font-medium line-clamp-2">{truncatedPrompt}</p>
-                    <div className="flex items-center gap-2 mt-2 text-sm text-slate-500">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                      </svg>
-                      <span className={timeRemaining === "Expired" ? "text-red-600" : "text-amber-600"}>
-                        {timeRemaining || "Loading..."}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <Link
-                    href="/editor/new"
-                    className="flex-1 inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-slate-900 text-white font-medium hover:bg-slate-800 transition-colors"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Continue Editing
-                  </Link>
-                </div>
-              </div>
+            {/* Projects Grid */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {projects.map((project) => (
+                <ProjectCard key={project.projectId} project={project} />
+              ))}
             </div>
 
             {/* Save Prompt */}
@@ -199,7 +159,7 @@ export default function MyDesignPage() {
                 <div className="flex-1">
                   <h3 className="font-semibold text-slate-900 mb-1">Save your work permanently</h3>
                   <p className="text-sm text-slate-600 mb-4">
-                    Create a free account to save your design forever, access it from any device, and unlock Medium quality mode.
+                    Create a free account to save all your designs forever, access them from any device, and unlock Medium quality mode.
                   </p>
                   <Link
                     href="/sign-up"
@@ -225,9 +185,9 @@ export default function MyDesignPage() {
                 <line x1="9" y1="21" x2="9" y2="9" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-slate-900 mb-2">No design yet</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">No designs yet</h2>
             <p className="text-slate-600 mb-6 max-w-sm mx-auto">
-              Start creating something amazing! Your design will be saved here temporarily for 24 hours.
+              Start creating something amazing! Your designs will be saved here temporarily for 24 hours.
             </p>
             <Link
               href="/editor/new"
@@ -246,3 +206,63 @@ export default function MyDesignPage() {
   );
 }
 
+/**
+ * Project Card Component
+ */
+function ProjectCard({ project }: { project: AnonymousProjectData }) {
+  // Extract first prompt from conversation
+  const firstPrompt = project.conversationHistory?.find(m => m.role === "user")?.content || project.prompt || "Untitled Design";
+  const truncatedPrompt = firstPrompt.length > 80 ? firstPrompt.slice(0, 80) + "..." : firstPrompt;
+  
+  // Format date
+  const updatedAt = project.updatedAt ? new Date(project.updatedAt) : new Date();
+  const timeAgo = getTimeAgo(updatedAt);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200/60 overflow-hidden hover:shadow-xl transition-shadow duration-200">
+      {/* Preview Thumbnail */}
+      <div className="relative h-40 bg-slate-100 overflow-hidden">
+        <iframe
+          srcDoc={project.html}
+          className="absolute inset-0 w-full h-full border-0 pointer-events-none"
+          style={{ transform: "scale(0.4)", transformOrigin: "top left", width: "250%", height: "250%" }}
+          title="Design Preview"
+          sandbox="allow-scripts"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+      </div>
+
+      {/* Project Info */}
+      <div className="p-4">
+        <p className="text-slate-900 font-medium text-sm line-clamp-2 mb-2">{truncatedPrompt}</p>
+        <p className="text-xs text-slate-500 mb-3">{timeAgo}</p>
+        
+        <Link
+          href={`/editor/new?restore=${project.projectId}`}
+          className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          Continue Editing
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Get human-readable time ago string
+ */
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return date.toLocaleDateString();
+}

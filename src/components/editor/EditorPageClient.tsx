@@ -44,7 +44,10 @@ export function EditorPageClient({
   const toast = useToastContext();
   const { isSignedIn } = useAuth();
 
-  // Load anonymous project on mount - only if no new prompt in URL
+  // Track current project ID for anonymous saves
+  const currentAnonymousProjectIdRef = useRef<string | undefined>(undefined);
+
+  // Load anonymous project on mount - handles restore parameter and new prompts
   useEffect(() => {
     // Skip if already loaded, not anonymous, or not a new project
     if (hasLoadedAnonymousProject.current || !isAnonymous || !isNewProject) {
@@ -52,11 +55,12 @@ export function EditorPageClient({
       return;
     }
 
-    // Check if user is starting a new generation (has prompt in URL)
+    // Check URL parameters
     const url = new URL(window.location.href);
     const hasNewPrompt = url.searchParams.has("prompt");
+    const restoreProjectId = url.searchParams.get("restore");
     
-    // If user has a new prompt, don't restore old project
+    // If user has a new prompt, don't restore old project - start fresh
     if (hasNewPrompt) {
       hasLoadedAnonymousProject.current = true;
       setIsDataLoaded(true);
@@ -67,9 +71,15 @@ export function EditorPageClient({
 
     void (async () => {
       try {
-        const result = await loadAnonymousProject();
+        // Load specific project if restore parameter provided, otherwise load most recent
+        const result = await loadAnonymousProject(restoreProjectId || undefined);
         if (result.success && result.project && result.project.html) {
           setInitialHtml(result.project.html);
+          
+          // Store the project ID for future saves
+          if (result.project.projectId) {
+            currentAnonymousProjectIdRef.current = result.project.projectId;
+          }
           
           // Map conversation history to correct type
           const mappedHistory: ConversationMessage[] = result.project.conversationHistory.map(msg => ({
@@ -92,8 +102,14 @@ export function EditorPageClient({
             setShowSavePrompt(true);
           }
           
+          // Clear the restore parameter from URL to prevent re-loading on refresh
+          if (restoreProjectId) {
+            url.searchParams.delete("restore");
+            window.history.replaceState(null, "", url.toString());
+          }
+          
           // Only show toast if we actually restored something
-          toast.info("Welcome back!", "Your temporary design has been restored.");
+          toast.info("Design restored!", "Continue editing your temporary design.");
         }
       } catch (error) {
         console.error("Failed to load anonymous project:", error);
@@ -153,14 +169,22 @@ export function EditorPageClient({
     
     const currentPrompt = promptRef.current || "Untitled Design";
 
+    // Pass projectId to update existing project instead of creating new one
     const result = await saveAnonymousProject(
       currentHtml,
       currentPrompt,
-      currentHistory
+      currentHistory,
+      currentAnonymousProjectIdRef.current // Pass existing project ID for updates
     );
 
-    if (result.success && result.expiresAt) {
-      setTempSaveExpiry(result.expiresAt);
+    if (result.success) {
+      // Store the project ID for future saves
+      if (result.projectId) {
+        currentAnonymousProjectIdRef.current = result.projectId;
+      }
+      if (result.expiresAt) {
+        setTempSaveExpiry(result.expiresAt);
+      }
       if (!showSavePrompt) {
         setShowSavePrompt(true);
       }
