@@ -11,31 +11,65 @@ import { useToastContext } from "~/contexts/ToastContext";
 import { formatApiError, createErrorAction } from "~/lib/utils/toast";
 import { api } from "~/trpc/react";
 import type { ConversationMessage } from "@/types/editor";
-import { saveAnonymousProject, getOrCreateSession } from "~/lib/utils/anonymous-session";
+import { saveAnonymousProject, getOrCreateSession, loadAnonymousProject } from "~/lib/utils/anonymous-session";
 
-interface EditorPageClientProps {
-  projectId: string;
-  initialHistory: ConversationMessage[];
-  initialHtml: string;
-  isAnonymous?: boolean; // New prop for anonymous users
-}
+// ... (props interface)
 
 export function EditorPageClient({
   projectId,
-  initialHistory,
-  initialHtml,
+  initialHistory: providedInitialHistory,
+  initialHtml: providedInitialHtml,
   isAnonymous = false,
 }: EditorPageClientProps) {
   const isNewProject = projectId === "new";
   const [showHistoryWarning, setShowHistoryWarning] = useState(false);
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [tempSaveExpiry, setTempSaveExpiry] = useState<string | null>(null);
-  const latestHtmlRef = useRef<string>(initialHtml);
-  const latestHistoryRef = useRef<ConversationMessage[]>(initialHistory);
+  
+  // State for content so we can update it after loading anonymous project
+  const [initialHistory, setInitialHistory] = useState<ConversationMessage[]>(providedInitialHistory);
+  const [initialHtml, setInitialHtml] = useState<string>(providedInitialHtml);
+  const [isDataLoaded, setIsDataLoaded] = useState(!isAnonymous || !isNewProject);
+
+  const latestHtmlRef = useRef<string>(providedInitialHtml);
+  const latestHistoryRef = useRef<ConversationMessage[]>(providedInitialHistory);
   const promptRef = useRef<string>("");
 
   const toast = useToastContext();
   const { isSignedIn } = useAuth();
+
+  // Load anonymous project on mount
+  useEffect(() => {
+    if (isAnonymous && isNewProject) {
+      void (async () => {
+        try {
+          const result = await loadAnonymousProject();
+          if (result.success && result.project) {
+            setInitialHtml(result.project.html);
+            setInitialHistory(result.project.conversationHistory);
+            latestHtmlRef.current = result.project.html;
+            latestHistoryRef.current = result.project.conversationHistory;
+            
+            // Extract prompt
+            const firstUserMsg = result.project.conversationHistory.find(m => m.role === "user");
+            if (firstUserMsg) {
+              promptRef.current = firstUserMsg.content;
+            }
+            
+            if (result.expiresAt) {
+              setTempSaveExpiry(result.expiresAt);
+              setShowSavePrompt(true);
+            }
+            toast.info("Welcome back!", "Your temporary design has been restored.");
+          }
+        } catch (error) {
+          console.error("Failed to load anonymous project:", error);
+        } finally {
+          setIsDataLoaded(true);
+        }
+      })();
+    }
+  }, [isAnonymous, isNewProject, toast]);
 
   const publishProject = api.project.update.useMutation();
   
@@ -72,17 +106,33 @@ export function EditorPageClient({
   const saveAnonymousProjectToRedis = useCallback(async () => {
     if (!isAnonymous || !latestHtmlRef.current) return;
 
+    // Use current refs to get latest data
+    const currentHtml = latestHtmlRef.current;
+    const currentHistory = latestHistoryRef.current;
+    
+    // Extract prompt from first user message if not already set
+    if (!promptRef.current) {
+      const firstUserMsg = currentHistory.find(m => m.role === "user");
+      if (firstUserMsg) {
+        promptRef.current = firstUserMsg.content;
+      }
+    }
+    
+    const currentPrompt = promptRef.current || "Untitled Design";
+
     const result = await saveAnonymousProject(
-      latestHtmlRef.current,
-      promptRef.current,
-      latestHistoryRef.current
+      currentHtml,
+      currentPrompt,
+      currentHistory
     );
 
     if (result.success && result.expiresAt) {
       setTempSaveExpiry(result.expiresAt);
-      setShowSavePrompt(true);
+      if (!showSavePrompt) {
+        setShowSavePrompt(true);
+      }
     }
-  }, [isAnonymous]);
+  }, [isAnonymous, showSavePrompt]);
 
   const handleHtmlChange = useCallback((
     html: string,
@@ -339,17 +389,26 @@ export function EditorPageClient({
 
         {/* Editor content */}
         <main className="flex-1 overflow-hidden animate-fade-in">
-          <ConnectedEditor
-            key={projectId} // Only re-mount when navigating to a different project
-            projectId={isAnonymous ? undefined : (currentProjectId ?? (isNewProject ? undefined : projectId))}
-            initialHistory={initialHistory}
-            initialHtml={initialHtml}
-            isAnonymous={isAnonymous}
-            onHtmlChange={handleHtmlChange}
-            onGenerationStart={isAnonymous ? undefined : createProjectForGeneration}
-            onGenerationComplete={handleGenerationComplete}
-            onError={handleError}
-          />
+          {isDataLoaded ? (
+            <ConnectedEditor
+              key={projectId === "new" ? "new-project" : projectId} // Use stable key for new anonymous projects
+              projectId={isAnonymous ? undefined : (currentProjectId ?? (isNewProject ? undefined : projectId))}
+              initialHistory={initialHistory}
+              initialHtml={initialHtml}
+              isAnonymous={isAnonymous}
+              onHtmlChange={handleHtmlChange}
+              onGenerationStart={isAnonymous ? undefined : createProjectForGeneration}
+              onGenerationComplete={handleGenerationComplete}
+              onError={handleError}
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center bg-gray-100">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                <p className="text-sm font-medium text-slate-600">Restoring your session...</p>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </EditorErrorBoundary>

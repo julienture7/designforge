@@ -5,6 +5,7 @@ import type { ConversationMessage } from "@/types/editor";
 import { useAuth } from "@clerk/nextjs";
 import { api } from "~/trpc/react";
 import Link from "next/link";
+import { getSessionId } from "~/lib/utils/anonymous-session";
 
 interface ChatPanelProps {
   projectId?: string;
@@ -177,9 +178,16 @@ export function ChatPanel({
       // Otherwise, use /api/edit for subsequent edits
       const isFirstGeneration = !hasGenerated && !currentHtmlSnapshot;
       
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (isAnonymous) {
+        const sessionId = getSessionId();
+        if (sessionId) {
+          headers["X-Anonymous-Session-Id"] = sessionId;
+        }
+      }
+
       // For first generation, create project immediately with GENERATING status
-      // This ensures the project is visible in dashboard during generation
-      // Skip for anonymous users - they don't create DB projects
+      // ... (rest of the logic)
       let effectiveProjectId = projectId;
       if (isFirstGeneration && onGenerationStart && !isAnonymous) {
         const newProjectId = await onGenerationStart();
@@ -191,7 +199,7 @@ export function ChatPanel({
       if (isFirstGeneration) {
         const response = await fetch("/api/generate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             messages: [...priorMessages, userMessage].map((m) => ({
               role: m.role,
@@ -256,7 +264,7 @@ export function ChatPanel({
         // Subsequent requests: use /api/edit (returns SSE stream)
         const response = await fetch("/api/edit", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             currentHtml: currentHtmlSnapshot || "",
             editInstruction: trimmed,
@@ -540,7 +548,7 @@ export function ChatPanel({
     <div className="chat-panel">
       {/* Messages container */}
       <div className="chat-messages">
-        <div className="chat-messages-inner">
+        <div className="chat-messages-inner pt-4">
           {messages.length === 0 && !isLoading && (
             <div className="chat-empty-state">
               <p>Describe what you want to build and I'll generate it for you.</p>

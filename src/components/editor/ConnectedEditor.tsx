@@ -186,16 +186,18 @@ export function ConnectedEditor({
   /**
    * Handle HTML generated (single-shot; no streaming)
    * Called by ChatPanel when generation completes.
-   * Triggers debounced auto-save
    */
   const handleHtmlGenerated = useCallback((html: string) => {
-    setRawHtml(html);
+    // Only update if it's actually different to avoid triggering unnecessary renders
+    setRawHtml((prev) => {
+      if (prev === html) return prev;
+      return html;
+    });
   }, []);
 
   /**
    * Handle generation complete
    * Called when the AI finishes generating content
-   * Triggers immediate save with generation count increment
    */
   const handleGenerationComplete = useCallback((
     html: string,
@@ -203,8 +205,18 @@ export function ConnectedEditor({
     messages: ConversationMessage[],
     tokenUsage?: number
   ) => {
-    setIsPreviewLoading(true);
-    setRawHtml(html);
+    // We set isPreviewLoading only if the HTML is different from what's currently in rawHtml
+    // OR if rawHtml is empty (first generation).
+    // If rawHtml was already updated by handleHtmlGenerated, SandboxedCanvas won't trigger onRendered.
+    setRawHtml((prev) => {
+      if (prev !== html) {
+        setIsPreviewLoading(true);
+        return html;
+      }
+      // If HTML is same, don't set isPreviewLoading to true as onRendered won't be called
+      return prev;
+    });
+    
     // Update conversation history ref
     conversationHistoryRef.current = messages;
     // Trigger generation complete callback with all data
@@ -296,10 +308,7 @@ export function ConnectedEditor({
     return "";
   }, [isBuilding, isPreviewLoading]);
 
-  // Smooth, phase-based progress approximation:
-  // - While generating: 0% -> ~82%
-  // - While preview loads: ~82% -> ~97%
-  // - On iframe rendered: jump to 100% then hide overlay
+  // Smooth, phase-based progress approximation
   useEffect(() => {
     const show = isBuilding || isPreviewLoading;
     if (!show) {
@@ -309,39 +318,46 @@ export function ConnectedEditor({
       return;
     }
 
+    // Safety timeout: If we're stuck in isPreviewLoading for more than 15 seconds, 
+    // force it to false so the user can at least see the current state.
+    let safetyTimer: NodeJS.Timeout | null = null;
+    if (isPreviewLoading && !isBuilding) {
+      safetyTimer = setTimeout(() => {
+        console.warn("Safety timeout triggered: forcing isPreviewLoading to false");
+        setIsPreviewLoading(false);
+        setProgress(100);
+      }, 15000);
+    }
+
     if (isBuilding && !buildStartRef.current) buildStartRef.current = Date.now();
     if (!isBuilding && isPreviewLoading && !previewStartRef.current) previewStartRef.current = Date.now();
 
     const tick = () => {
+      // ... same as before ...
       setProgress((prev) => {
         const now = Date.now();
-
         if (isBuilding) {
           const start = buildStartRef.current ?? now;
           const elapsed = Math.max(0, now - start);
-          // Ease toward 82% over ~180s (doubled for longer generation times).
-          const target = 82 * (1 - Math.exp(-elapsed / 36000)); // ~82 by ~120-140s
-          const next = Math.max(prev, Math.min(82, target));
-          return Math.round(next);
+          const target = 82 * (1 - Math.exp(-elapsed / 36000));
+          return Math.round(Math.max(prev, Math.min(82, target)));
         }
-
         if (isPreviewLoading) {
           const start = previewStartRef.current ?? now;
           const elapsed = Math.max(0, now - start);
-          // Ease from current to 97% over ~6s, then crawl.
           const base = Math.max(prev, 82);
           const target = base + (97 - base) * (1 - Math.exp(-elapsed / 1200));
           return Math.round(Math.min(97, Math.max(base, target)));
         }
-
         return prev;
       });
     };
 
-    // ~12fps is smooth enough, low overhead.
     const id = window.setInterval(tick, 80);
-    tick();
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+      if (safetyTimer) clearTimeout(safetyTimer);
+    };
   }, [isBuilding, isPreviewLoading]);
 
   // Chat panel for generation with polish refinement
@@ -370,18 +386,18 @@ export function ConnectedEditor({
 
   // Preview panel with viewport controls and sandboxed canvas
   const previewPanel = (
-    <div className="h-full flex flex-col bg-surface">
+    <div className="h-full flex flex-col bg-surface relative">
       {/* Viewport controls header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background z-10">
         <span className="text-sm text-muted">Preview</span>
         <div className="flex items-center gap-2">
+          {/* ... (buttons remain same) ... */}
           <button
             onClick={() => {
               if (!rawHtml) {
                 onError?.("NO_CONTENT", "Generate a design first to view the preview.");
                 return;
               }
-              // Open full-page preview modal (available to all users)
               setShowFullPreview(true);
             }}
             disabled={!rawHtml}
@@ -390,7 +406,7 @@ export function ConnectedEditor({
           >
             <svg className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
             See Preview
           </button>
@@ -425,8 +441,8 @@ export function ConnectedEditor({
       </div>
 
       {/* Preview container with viewport sizing */}
-      <div ref={previewContainerRef} className="flex-1 overflow-auto p-4">
-        <div className="flex items-start justify-center">
+      <div ref={previewContainerRef} className="flex-1 overflow-auto p-4 relative">
+        <div className="flex items-start justify-center min-h-full">
           <div
             style={
               viewportType === "desktop"
@@ -484,60 +500,56 @@ export function ConnectedEditor({
                 )}
               </div>
             )}
-
-            {(isBuilding || isPreviewLoading) && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm">
-                <div className="w-[min(520px,90%)] rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.35)]">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">Building your page</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Compiling layout, styles, and assets — preview will snap in when ready.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="mt-0.5 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-xs font-semibold tabular-nums text-slate-900">{progress}%</span>
-                    </div>
-                  </div>
-
-                  <div className="relative mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div className="absolute inset-0 opacity-50 [background:radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.75),transparent_40%)]" />
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-amber-400 transition-[width] duration-200 ease-out"
-                      style={{ width: `${Math.max(2, Math.min(progress, 100))}%` }}
-                    />
-                    <div className="absolute inset-y-0 left-0 w-[55%] rounded-full opacity-25 bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-amber-400 animate-[oflow_1.1s_ease-in-out_infinite]" />
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex h-4 w-4 items-center justify-center">
-                        <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                      </span>
-                      <span className="font-mono tracking-wide uppercase">
-                        {progressLabel}
-                        <span className="ml-1 inline-block w-6 text-left animate-pulse">...</span>
-                      </span>
-                    </div>
-                    <span className="hidden sm:inline text-slate-500">{progressDetail}</span>
-                  </div>
-
-                  <style>{`
-                    @keyframes oflow {
-                      0% { transform: translateX(-65%); }
-                      55% { transform: translateX(60%); }
-                      100% { transform: translateX(170%); }
-                    }
-                  `}</style>
-                </div>
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Loading Overlay - Now simpler and always centered in the preview area */}
+        {(isBuilding || isPreviewLoading) && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/70 backdrop-blur-sm pointer-events-auto">
+            <div className="w-[min(420px,90%)] rounded-3xl border border-slate-200/60 bg-white/90 p-8 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.25)] animate-fade-in-scale">
+              <div className="flex flex-col items-center text-center gap-6">
+                {/* Progress Ring / Icon */}
+                <div className="relative h-20 w-20 flex items-center justify-center">
+                  <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-indigo-100 border-t-indigo-600" />
+                  <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <svg className="w-6 h-6 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-slate-900">Building your design</h3>
+                  <p className="text-sm text-slate-500 max-w-[280px]">
+                    Our AI is crafting your interface. This typically takes 15-30 seconds.
+                  </p>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full space-y-3">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <span>{progressLabel}</span>
+                    <span className="text-indigo-600 tabular-nums">{progress}%</span>
+                  </div>
+                  <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-600 to-violet-500 transition-[width] duration-500 ease-out"
+                      style={{ width: `${Math.max(5, Math.min(progress, 100))}%` }}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-400 italic">
+                  {progressDetail}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
+
 
   return (
     <>
