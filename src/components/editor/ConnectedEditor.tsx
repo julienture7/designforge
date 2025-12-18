@@ -580,35 +580,32 @@ export function ConnectedEditor({
       {/* Full-page preview modal */}
       {showFullPreview && processedHtml && (
         <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
-          <button
-            onClick={() => setShowFullPreview(false)}
-            className="fixed top-3 right-3 z-20 text-gray-200 hover:text-white bg-gray-900/80 hover:bg-gray-800 transition-colors duration-200 p-3 rounded-xl border border-gray-700 active:scale-95"
-            title="Exit preview"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          <div className="relative z-10 flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-700 shrink-0">
-            <button
-              onClick={() => setShowFullPreview(false)}
-              className="flex items-center gap-2 text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 px-4 py-2 rounded-lg active:scale-95 font-medium"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              <span>Back to Editor</span>
-            </button>
-            <div className="flex items-center gap-3">
+          {/* Prominent Back Button - Always visible at top */}
+          <div className="relative z-20 bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 shrink-0">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
               <button
                 onClick={() => setShowFullPreview(false)}
-                className="text-gray-400 hover:text-white transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800 active:scale-95"
-                title="Close preview"
+                className="flex items-center gap-2.5 text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 px-5 py-2.5 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 min-w-[140px] justify-center"
+                title="Press Escape to go back"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
+                <span>Back to Editor</span>
               </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400 hidden sm:inline">Press <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-gray-300 font-mono text-[10px]">ESC</kbd> to exit</span>
+                <button
+                  onClick={() => setShowFullPreview(false)}
+                  className="text-gray-400 hover:text-white transition-all duration-200 p-2 rounded-lg hover:bg-gray-800 active:scale-95"
+                  title="Close preview"
+                  aria-label="Close preview"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
