@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignedIn, SignedOut, UserButton, useAuth } from "@clerk/nextjs";
+import { loadAllAnonymousProjects, type AnonymousProjectData } from "~/lib/utils/anonymous-session";
 
 const EXAMPLE_PROMPTS = [
   "A modern SaaS landing page with pricing",
@@ -21,9 +22,33 @@ export default function Home() {
   const [prompt, setPrompt] = useState("");
   const [placeholderText, setPlaceholderText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
+  const [savedDesigns, setSavedDesigns] = useState<AnonymousProjectData[]>([]);
+  const [designsLoaded, setDesignsLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const exampleIndexRef = useRef(0);
   const charIndexRef = useRef(0);
+
+  // Load saved anonymous designs for non-signed-in users
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (isSignedIn) {
+      setDesignsLoaded(true);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const result = await loadAllAnonymousProjects();
+        if (result.success && result.projects && result.projects.length > 0) {
+          setSavedDesigns(result.projects);
+        }
+      } catch (error) {
+        console.error("Failed to load saved designs:", error);
+      } finally {
+        setDesignsLoaded(true);
+      }
+    })();
+  }, [isLoaded, isSignedIn]);
 
   // Animated placeholder effect
   useEffect(() => {
@@ -140,6 +165,14 @@ export default function Home() {
           </SignedIn>
 
           <SignedOut>
+            {savedDesigns.length > 0 && (
+              <Link href="/my-design" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors duration-200 link-underline flex items-center gap-1">
+                My Designs
+                <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-xs font-semibold bg-indigo-100 text-indigo-700 rounded-full">
+                  {savedDesigns.length}
+                </span>
+              </Link>
+            )}
             <Link href="/sign-in" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors duration-200 link-underline">
               Log In
             </Link>
@@ -230,7 +263,102 @@ export default function Home() {
             </button>
           ))}
         </div>
+
+        {/* My Designs Section - Only for anonymous users with saved designs */}
+        {!isSignedIn && designsLoaded && savedDesigns.length > 0 && (
+          <div className="w-full max-w-4xl mx-auto mt-12 px-4 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                  <line x1="9" y1="21" x2="9" y2="9" />
+                </svg>
+                My Designs
+                <span className="text-xs font-normal text-gray-400">(temporary)</span>
+              </h2>
+              <Link 
+                href="/my-design" 
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors flex items-center gap-1"
+              >
+                View all
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+            
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {savedDesigns.slice(0, 3).map((design) => (
+                <DesignCard key={design.projectId} design={design} />
+              ))}
+            </div>
+            
+            {/* Sign up prompt */}
+            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium text-gray-900">Designs expire in 24h.</span> Sign up to save permanently.
+                </p>
+              </div>
+              <Link 
+                href="/sign-up" 
+                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors whitespace-nowrap"
+              >
+                Sign up free →
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </main>
+  );
+}
+
+/**
+ * Design Card Component for homepage
+ */
+function DesignCard({ design }: { design: AnonymousProjectData }) {
+  const firstPrompt = design.conversationHistory?.find(m => m.role === "user")?.content || design.prompt || "Untitled Design";
+  const truncatedPrompt = firstPrompt.length > 60 ? firstPrompt.slice(0, 60) + "..." : firstPrompt;
+
+  return (
+    <Link 
+      href={`/editor/new?restore=${design.projectId}`}
+      className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all duration-200"
+    >
+      {/* Preview */}
+      <div className="relative h-28 bg-gray-100 overflow-hidden">
+        <iframe
+          srcDoc={design.html}
+          className="absolute inset-0 w-full h-full border-0 pointer-events-none"
+          style={{ transform: "scale(0.35)", transformOrigin: "top left", width: "286%", height: "286%" }}
+          title="Design Preview"
+          sandbox="allow-scripts"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent group-hover:from-black/20 transition-colors" />
+      </div>
+      
+      {/* Info */}
+      <div className="p-3">
+        <p className="text-sm font-medium text-gray-900 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+          {truncatedPrompt}
+        </p>
+        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          Continue editing
+        </p>
+      </div>
+    </Link>
   );
 }
