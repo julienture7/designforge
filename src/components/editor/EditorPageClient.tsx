@@ -51,12 +51,19 @@ export function EditorPageClient({
           const result = await loadAnonymousProject();
           if (result.success && result.project) {
             setInitialHtml(result.project.html);
-            setInitialHistory(result.project.conversationHistory);
+            
+            // Map conversation history to correct type
+            const mappedHistory: ConversationMessage[] = result.project.conversationHistory.map(msg => ({
+              role: msg.role === "model" ? "model" : "user",
+              content: msg.content,
+            }));
+            
+            setInitialHistory(mappedHistory);
             latestHtmlRef.current = result.project.html;
-            latestHistoryRef.current = result.project.conversationHistory;
+            latestHistoryRef.current = mappedHistory;
             
             // Extract prompt
-            const firstUserMsg = result.project.conversationHistory.find(m => m.role === "user");
+            const firstUserMsg = mappedHistory.find(m => m.role === "user");
             if (firstUserMsg) {
               promptRef.current = firstUserMsg.content;
             }
