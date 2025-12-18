@@ -176,7 +176,8 @@ export async function POST(req: NextRequest) {
     }
 
     // AUTHENTICATED USER FLOW
-    clerkId = userId;
+    // At this point `userId` is guaranteed to be present (anonymous requests returned above)
+    clerkId = userId!;
 
     // Get or create user in database
     const user = await getOrCreateUser();
@@ -258,7 +259,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Lock (use Clerk ID for uniqueness)
-    lockAcquired = await acquireGenerationLock(clerkId);
+    lockAcquired = await acquireGenerationLock(clerkId!);
     if (!lockAcquired) {
       return NextResponse.json({ error: "Generation in progress", code: "GENERATION_IN_PROGRESS" }, { status: 409 });
     }
