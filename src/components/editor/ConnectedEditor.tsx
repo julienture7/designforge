@@ -191,8 +191,8 @@ export function ConnectedEditor({
     console.log("[ConnectedEditor] handleHtmlGenerated called, html length:", html?.length);
     if (html) {
       setRawHtml(html);
-      // Also set preview loading to true so we show the loading state until iframe renders
-      setIsPreviewLoading(true);
+      // Don't set isPreviewLoading here - let handleGenerationComplete handle it
+      // This prevents double-setting and ensures proper state flow
     }
   }, []);
 
@@ -208,9 +208,10 @@ export function ConnectedEditor({
   ) => {
     console.log("[ConnectedEditor] handleGenerationComplete called, html length:", html?.length);
     
-    // Ensure HTML is set (in case handleHtmlGenerated wasn't called)
+    // Ensure HTML is set
     if (html) {
       setRawHtml(html);
+      // Set preview loading - the iframe will signal when it's ready via onRendered
       setIsPreviewLoading(true);
     }
     
@@ -239,6 +240,21 @@ export function ConnectedEditor({
 
   // Process HTML for sandbox rendering
   const processedHtml = rawHtml ? processHtmlForSandbox(rawHtml) : "";
+
+  // Auto-hide loading overlay when HTML is ready and building is done
+  useEffect(() => {
+    if (processedHtml && !isBuilding && isPreviewLoading) {
+      // If we have HTML and building is done, wait a short time then hide overlay
+      // This ensures the iframe has time to start loading
+      const timer = setTimeout(() => {
+        console.log("[ConnectedEditor] Auto-hiding overlay - HTML ready, building done");
+        setIsPreviewLoading(false);
+        setProgress(100);
+      }, 500); // 500ms should be enough for iframe to start loading
+      
+      return () => clearTimeout(timer);
+    }
+  }, [processedHtml, isBuilding, isPreviewLoading]);
 
   // Get viewport styles using the utility function
   const viewportStyles = getViewportStyles(viewportType);
@@ -315,7 +331,7 @@ export function ConnectedEditor({
       return;
     }
 
-    // Safety timeout: If we're stuck in isPreviewLoading for more than 3 seconds, 
+    // Safety timeout: If we're stuck in isPreviewLoading for more than 1 second, 
     // force it to false so the user can see the preview.
     let safetyTimer: NodeJS.Timeout | null = null;
     if (isPreviewLoading && !isBuilding) {
@@ -323,7 +339,7 @@ export function ConnectedEditor({
         console.warn("[ConnectedEditor] Safety timeout: hiding loading overlay");
         setIsPreviewLoading(false);
         setProgress(100);
-      }, 3000);
+      }, 1000);
     }
 
     if (isBuilding && !buildStartRef.current) buildStartRef.current = Date.now();
@@ -371,6 +387,17 @@ export function ConnectedEditor({
           buildStartRef.current = Date.now();
           previewStartRef.current = null;
           setProgress(1);
+        } else {
+          // When building is done, if we have HTML, start preview loading phase
+          // If no HTML yet, don't set preview loading (wait for HTML to arrive)
+          if (rawHtml) {
+            setIsPreviewLoading(true);
+            previewStartRef.current = Date.now();
+          } else {
+            // No HTML yet, but building is done - this shouldn't happen normally
+            // but if it does, don't show preview loading
+            setIsPreviewLoading(false);
+          }
         }
       }}
       onGenerationStart={onGenerationStart}
@@ -451,8 +478,12 @@ export function ConnectedEditor({
                   html={processedHtml}
                   className="h-full w-full"
                   onRendered={() => {
+                    console.log("[ConnectedEditor] SandboxedCanvas onRendered fired");
                     setProgress(100);
-                    window.setTimeout(() => setIsPreviewLoading(false), 120);
+                    window.setTimeout(() => {
+                      console.log("[ConnectedEditor] Hiding preview loading overlay");
+                      setIsPreviewLoading(false);
+                    }, 120);
                   }}
                 />
               ) : (
@@ -477,8 +508,12 @@ export function ConnectedEditor({
                     html={processedHtml}
                     className="h-full w-full"
                     onRendered={() => {
+                      console.log("[ConnectedEditor] SandboxedCanvas onRendered fired");
                       setProgress(100);
-                      window.setTimeout(() => setIsPreviewLoading(false), 120);
+                      window.setTimeout(() => {
+                        console.log("[ConnectedEditor] Hiding preview loading overlay");
+                        setIsPreviewLoading(false);
+                      }, 120);
                     }}
                   />
                 ) : (
@@ -491,52 +526,52 @@ export function ConnectedEditor({
                 )}
               </div>
             )}
+
+            {/* Loading Overlay - Positioned relative to viewport container */}
+            {(isBuilding || isPreviewLoading) && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+                <div className="w-[min(420px,90%)] rounded-3xl border border-slate-200/60 bg-white/95 p-8 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.25)] animate-fade-in-scale">
+                  <div className="flex flex-col items-center text-center gap-6">
+                    {/* Progress Ring / Icon */}
+                    <div className="relative h-20 w-20 flex items-center justify-center">
+                      <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-indigo-100 border-t-indigo-600" />
+                      <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                        <svg className="w-6 h-6 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-bold text-slate-900">Building your design</h3>
+                      <p className="text-sm text-slate-500 max-w-[280px]">
+                        Our AI is crafting your interface. This typically takes 15-30 seconds.
+                      </p>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full space-y-3">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <span>{progressLabel}</span>
+                        <span className="text-indigo-600 tabular-nums">{progress}%</span>
+                      </div>
+                      <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-600 to-violet-500 transition-[width] duration-500 ease-out"
+                          style={{ width: `${Math.max(5, Math.min(progress, 100))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-400 italic">
+                      {progressDetail}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Loading Overlay - Now simpler and always centered in the preview area */}
-        {(isBuilding || isPreviewLoading) && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/70 backdrop-blur-sm pointer-events-auto">
-            <div className="w-[min(420px,90%)] rounded-3xl border border-slate-200/60 bg-white/90 p-8 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.25)] animate-fade-in-scale">
-              <div className="flex flex-col items-center text-center gap-6">
-                {/* Progress Ring / Icon */}
-                <div className="relative h-20 w-20 flex items-center justify-center">
-                  <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-indigo-100 border-t-indigo-600" />
-                  <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
-                    <svg className="w-6 h-6 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-slate-900">Building your design</h3>
-                  <p className="text-sm text-slate-500 max-w-[280px]">
-                    Our AI is crafting your interface. This typically takes 15-30 seconds.
-                  </p>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full space-y-3">
-                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    <span>{progressLabel}</span>
-                    <span className="text-indigo-600 tabular-nums">{progress}%</span>
-                  </div>
-                  <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-600 to-violet-500 transition-[width] duration-500 ease-out"
-                      style={{ width: `${Math.max(5, Math.min(progress, 100))}%` }}
-                    />
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-slate-400 italic">
-                  {progressDetail}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
