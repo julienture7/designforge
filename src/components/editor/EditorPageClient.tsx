@@ -151,9 +151,20 @@ export function EditorPageClient({
     },
   });
 
-  // Auto-save to Redis for anonymous users
+  // Track last save to prevent duplicates
+  const lastSaveRef = useRef<{ html: string; timestamp: number } | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isSavingRef = useRef(false);
+
+  // Auto-save to Redis for anonymous users with debouncing and duplicate prevention
   const saveAnonymousProjectToRedis = useCallback(async () => {
     if (!isAnonymous || !latestHtmlRef.current) return;
+
+    // Clear any pending debounced save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
 
     // Use current refs to get latest data
     const currentHtml = latestHtmlRef.current;
@@ -169,27 +180,58 @@ export function EditorPageClient({
     
     const currentPrompt = promptRef.current || "Untitled Design";
 
-    // Pass projectId to update existing project instead of creating new one
-    const result = await saveAnonymousProject(
-      currentHtml,
-      currentPrompt,
-      currentHistory,
-      currentAnonymousProjectIdRef.current // Pass existing project ID for updates
-    );
+    // Check if this is a duplicate save (same HTML within 2 seconds)
+    const now = Date.now();
+    if (lastSaveRef.current && 
+        lastSaveRef.current.html === currentHtml && 
+        now - lastSaveRef.current.timestamp < 2000) {
+      return; // Skip duplicate save
+    }
 
-    if (result.success) {
-      // Store the project ID for future saves
-      if (result.projectId) {
-        currentAnonymousProjectIdRef.current = result.projectId;
+    // If already saving, debounce this save
+    if (isSavingRef.current) {
+      saveTimeoutRef.current = setTimeout(() => {
+        void saveAnonymousProjectToRedis();
+      }, 500);
+      return;
+    }
+
+    isSavingRef.current = true;
+
+    try {
+      // Pass projectId to update existing project instead of creating new one
+      const result = await saveAnonymousProject(
+        currentHtml,
+        currentPrompt,
+        currentHistory,
+        currentAnonymousProjectIdRef.current // Pass existing project ID for updates
+      );
+
+      if (result.success) {
+        // Store the project ID for future saves
+        if (result.projectId) {
+          currentAnonymousProjectIdRef.current = result.projectId;
+        }
+        if (result.expiresAt) {
+          setTempSaveExpiry(result.expiresAt);
+        }
+        if (!showSavePrompt) {
+          setShowSavePrompt(true);
+        }
+        
+        // Track this save to prevent duplicates
+        lastSaveRef.current = {
+          html: currentHtml,
+          timestamp: now,
+        };
       }
-      if (result.expiresAt) {
-        setTempSaveExpiry(result.expiresAt);
-      }
-      if (!showSavePrompt) {
-        setShowSavePrompt(true);
-      }
+    } finally {
+      isSavingRef.current = false;
     }
   }, [isAnonymous, showSavePrompt]);
+
+  // Track if generation just completed to prevent duplicate saves
+  const generationJustCompletedRef = useRef(false);
 
   const handleHtmlChange = useCallback((
     html: string,
@@ -199,8 +241,19 @@ export function EditorPageClient({
     latestHistoryRef.current = conversationHistory;
     
     if (isAnonymous) {
+      // If generation just completed, skip this save (handleGenerationComplete will save)
+      if (generationJustCompletedRef.current) {
+        generationJustCompletedRef.current = false;
+        return;
+      }
+      // Clear any pending debounced save
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
       // Debounce anonymous saves
-      void saveAnonymousProjectToRedis();
+      saveTimeoutRef.current = setTimeout(() => {
+        void saveAnonymousProjectToRedis();
+      }, 1000); // Debounce HTML changes during streaming
     } else {
       save({
         htmlContent: html,
@@ -226,7 +279,16 @@ export function EditorPageClient({
     }
 
     if (isAnonymous) {
-      // Save to Redis for anonymous users
+      // Clear any pending debounced saves from handleHtmlChange
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      
+      // Set flag to prevent handleHtmlChange from saving immediately after
+      generationJustCompletedRef.current = true;
+      
+      // Save to Redis for anonymous users (this is the final save)
       void saveAnonymousProjectToRedis();
     } else {
       autoSaveOnGenerationComplete({
@@ -236,6 +298,15 @@ export function EditorPageClient({
       });
     }
   }, [autoSaveOnGenerationComplete, isAnonymous, saveAnonymousProjectToRedis]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleError = useCallback((code: string, message: string) => {
     console.error("Editor error:", { code, message });
