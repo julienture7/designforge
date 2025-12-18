@@ -13,7 +13,12 @@ import { api } from "~/trpc/react";
 import type { ConversationMessage } from "@/types/editor";
 import { saveAnonymousProject, getOrCreateSession, loadAnonymousProject } from "~/lib/utils/anonymous-session";
 
-// ... (props interface)
+interface EditorPageClientProps {
+  projectId: string;
+  initialHistory: ConversationMessage[];
+  initialHtml: string;
+  isAnonymous?: boolean; // New prop for anonymous users
+}
 
 export function EditorPageClient({
   projectId,
