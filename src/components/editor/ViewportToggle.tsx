@@ -12,6 +12,7 @@ export interface ViewportConfig {
   label: string;
   width: number | '100%';
   height: number | '100%';
+  icon: string;
 }
 
 /**
@@ -23,18 +24,21 @@ export const VIEWPORT_CONFIGS: Record<ViewportType, ViewportConfig> = {
     label: 'Mobile',
     width: 375,
     height: 667,
+    icon: '📱',
   },
   tablet: {
     type: 'tablet',
     label: 'Tablet',
     width: 768,
     height: 1024,
+    icon: '📱',
   },
   desktop: {
     type: 'desktop',
     label: 'Desktop',
     width: '100%',
     height: '100%',
+    icon: '🖥️',
   },
 };
 
@@ -88,7 +92,7 @@ export function ViewportToggle({
             key={viewport}
             onClick={() => onViewportChange(viewport)}
             className={`viewport-toggle-btn ${isSelected ? 'viewport-toggle-btn--active' : ''}`}
-            title={`${config.label} ${typeof config.width === 'number' ? `(${config.width}×${config.height})` : ''}`}
+            title={`${config.label} ${typeof config.width === 'number' ? `(${config.width}×${config.height})` : '(Full width)'}`}
             aria-pressed={isSelected}
             aria-label={config.label}
           >

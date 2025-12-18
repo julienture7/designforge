@@ -5,11 +5,28 @@ import { useAuth } from "@clerk/nextjs";
 import { EditorLayout } from "./EditorLayout";
 import { ChatPanel } from "./ChatPanel";
 import { SandboxedCanvas } from "./SandboxedCanvas";
-import { ViewportToggle, getViewportStyles, type ViewportType } from "./ViewportToggle";
+import { ViewportToggle, VIEWPORT_CONFIGS, getViewportStyles, type ViewportType } from "./ViewportToggle";
 import { RawHtmlViewer } from "@/components/ui/RawHtmlViewer";
 import { processHtmlForSandbox } from "@/server/lib/html-processor";
 import { api } from "~/trpc/react";
 import type { ConversationMessage } from "@/types/editor";
+
+function ensureViewportMeta(html: string): string {
+  const input = html ?? "";
+  if (!input) return input;
+
+  if (/name\s*=\s*["']viewport["']/i.test(input)) return input;
+
+  if (/<head[^>]*>/i.test(input)) {
+    return input.replace(
+      /<head[^>]*>/i,
+      (match) =>
+        `${match}\n<meta name="viewport" content="width=device-width, initial-scale=1.0">`
+    );
+  }
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body>${input}</body></html>`;
+}
 
 /**
  * Create a protected version of HTML for free users
@@ -160,6 +177,8 @@ export function ConnectedEditor({
   const [showRawHtml, setShowRawHtml] = useState(false);
   // Show full-page preview modal
   const [showFullPreview, setShowFullPreview] = useState(false);
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  const [previewContainerWidth, setPreviewContainerWidth] = useState(0);
 
   /**
    * Handle HTML generated (single-shot; no streaming)
@@ -211,6 +230,56 @@ export function ConnectedEditor({
 
   // Get viewport styles using the utility function
   const viewportStyles = getViewportStyles(viewportType);
+  const nonDesktopWidth =
+    viewportType === "desktop" ? 0 : (typeof VIEWPORT_CONFIGS[viewportType].width === "number" ? VIEWPORT_CONFIGS[viewportType].width : 0);
+  const nonDesktopHeight =
+    viewportType === "desktop" ? 0 : (typeof VIEWPORT_CONFIGS[viewportType].height === "number" ? VIEWPORT_CONFIGS[viewportType].height : 0);
+  const viewportScale = useMemo(() => {
+    if (viewportType === "desktop") return 1;
+
+    if (!nonDesktopWidth) return 1;
+
+    const available = Math.max(0, previewContainerWidth - 32);
+    if (!available) return 1;
+
+    return Math.min(1, available / nonDesktopWidth);
+  }, [nonDesktopWidth, previewContainerWidth, viewportType]);
+
+  const fullPreviewSrcDoc = useMemo(() => {
+    if (!processedHtml) return "";
+    const normalized = ensureViewportMeta(processedHtml);
+    return isPro ? normalized : createProtectedPreviewHtml(normalized);
+  }, [isPro, processedHtml]);
+
+  useEffect(() => {
+    const el = previewContainerRef.current;
+    if (!el) return;
+
+    const update = () => setPreviewContainerWidth(el.getBoundingClientRect().width);
+    update();
+
+    const observer = new ResizeObserver(() => update());
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!showFullPreview) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowFullPreview(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showFullPreview]);
 
   const progressLabel = useMemo(() => {
     if (isBuilding) return "Generating";
@@ -352,78 +421,115 @@ export function ConnectedEditor({
       </div>
 
       {/* Preview container with viewport sizing */}
-      <div className="flex-1 overflow-auto flex items-start justify-center p-4">
-        <div
-          style={viewportStyles}
-          className={`relative bg-white ${viewportType !== "desktop" ? "shadow-lg rounded-lg overflow-hidden" : ""}`}
-        >
-          {processedHtml ? (
-            <SandboxedCanvas 
-              html={processedHtml} 
-              className="h-full w-full" 
-              onRendered={() => {
-                setProgress(100);
-                window.setTimeout(() => setIsPreviewLoading(false), 120);
-              }}
-            />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center text-muted bg-surface animate-fade-in">
-              <div className="text-center animate-float">
-                <p className="text-lg mb-2">✨ No preview yet</p>
-                <p className="text-sm">Start a conversation to generate UI</p>
-              </div>
-            </div>
-          )}
-
-          {/* Modern loader overlay (shown during build + until iframe loads new HTML) */}
-          {(isBuilding || isPreviewLoading) && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm">
-              <div className="w-[min(520px,90%)] rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.35)]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">Building your page</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Compiling layout, styles, and assets — preview will snap in when ready.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="mt-0.5 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-semibold tabular-nums text-slate-900">{progress}%</span>
-                  </div>
-                </div>
-
-                <div className="relative mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                  <div className="absolute inset-0 opacity-50 [background:radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.75),transparent_40%)]" />
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-amber-400 transition-[width] duration-200 ease-out"
-                    style={{ width: `${Math.max(2, Math.min(progress, 100))}%` }}
-                  />
-                  <div className="absolute inset-y-0 left-0 w-[55%] rounded-full opacity-25 bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-amber-400 animate-[oflow_1.1s_ease-in-out_infinite]" />
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
-                  <div className="flex items-center gap-2">
-                  <span className="inline-flex h-4 w-4 items-center justify-center">
-                    <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                  </span>
-                  <span className="font-mono tracking-wide uppercase">
-                    {progressLabel}
-                    <span className="ml-1 inline-block w-6 text-left animate-pulse">...</span>
-                  </span>
-                  </div>
-                  <span className="hidden sm:inline text-slate-500">{progressDetail}</span>
-                </div>
-
-                <style>{`
-                  @keyframes oflow {
-                    0% { transform: translateX(-65%); }
-                    55% { transform: translateX(60%); }
-                    100% { transform: translateX(170%); }
+      <div ref={previewContainerRef} className="flex-1 overflow-auto p-4">
+        <div className="flex items-start justify-center">
+          <div
+            style={
+              viewportType === "desktop"
+                ? viewportStyles
+                : {
+                    width: `${Math.round((VIEWPORT_CONFIGS[viewportType].width as number) * viewportScale)}px`,
+                    height: `${Math.round((VIEWPORT_CONFIGS[viewportType].height as number) * viewportScale)}px`,
                   }
-                `}</style>
+            }
+            className={`relative bg-white ${viewportType !== "desktop" ? "shadow-lg rounded-lg overflow-hidden" : ""}`}
+          >
+            {viewportType === "desktop" ? (
+              processedHtml ? (
+                <SandboxedCanvas
+                  html={processedHtml}
+                  className="h-full w-full"
+                  onRendered={() => {
+                    setProgress(100);
+                    window.setTimeout(() => setIsPreviewLoading(false), 120);
+                  }}
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-muted bg-surface animate-fade-in">
+                  <div className="text-center animate-float">
+                    <p className="text-lg mb-2">✨ No preview yet</p>
+                    <p className="text-sm">Start a conversation to generate UI</p>
+                  </div>
+                </div>
+              )
+            ) : (
+              <div
+                style={{
+                  width: `${VIEWPORT_CONFIGS[viewportType].width}px`,
+                  height: `${VIEWPORT_CONFIGS[viewportType].height}px`,
+                  transform: `scale(${viewportScale})`,
+                  transformOrigin: "top left",
+                }}
+              >
+                {processedHtml ? (
+                  <SandboxedCanvas
+                    html={processedHtml}
+                    className="h-full w-full"
+                    onRendered={() => {
+                      setProgress(100);
+                      window.setTimeout(() => setIsPreviewLoading(false), 120);
+                    }}
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-muted bg-surface animate-fade-in">
+                    <div className="text-center animate-float">
+                      <p className="text-lg mb-2">✨ No preview yet</p>
+                      <p className="text-sm">Start a conversation to generate UI</p>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
+
+            {(isBuilding || isPreviewLoading) && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+                <div className="w-[min(520px,90%)] rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.35)]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Building your page</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Compiling layout, styles, and assets — preview will snap in when ready.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="mt-0.5 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-xs font-semibold tabular-nums text-slate-900">{progress}%</span>
+                    </div>
+                  </div>
+
+                  <div className="relative mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                    <div className="absolute inset-0 opacity-50 [background:radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.75),transparent_40%)]" />
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-amber-400 transition-[width] duration-200 ease-out"
+                      style={{ width: `${Math.max(2, Math.min(progress, 100))}%` }}
+                    />
+                    <div className="absolute inset-y-0 left-0 w-[55%] rounded-full opacity-25 bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-amber-400 animate-[oflow_1.1s_ease-in-out_infinite]" />
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-4 w-4 items-center justify-center">
+                        <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                      </span>
+                      <span className="font-mono tracking-wide uppercase">
+                        {progressLabel}
+                        <span className="ml-1 inline-block w-6 text-left animate-pulse">...</span>
+                      </span>
+                    </div>
+                    <span className="hidden sm:inline text-slate-500">{progressDetail}</span>
+                  </div>
+
+                  <style>{`
+                    @keyframes oflow {
+                      0% { transform: translateX(-65%); }
+                      55% { transform: translateX(60%); }
+                      100% { transform: translateX(170%); }
+                    }
+                  `}</style>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -447,7 +553,15 @@ export function ConnectedEditor({
       {/* Full-page preview modal */}
       {showFullPreview && processedHtml && (
         <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
-          {/* Header with back button - always visible */}
+          <button
+            onClick={() => setShowFullPreview(false)}
+            className="fixed top-3 right-3 z-20 text-gray-200 hover:text-white bg-gray-900/80 hover:bg-gray-800 transition-colors duration-200 p-3 rounded-xl border border-gray-700 active:scale-95"
+            title="Exit preview"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
           <div className="relative z-10 flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-700 shrink-0">
             <button
               onClick={() => setShowFullPreview(false)}
@@ -485,7 +599,7 @@ export function ConnectedEditor({
             onContextMenu={(e) => { if (!isPro) e.preventDefault(); }}
           >
             <iframe
-              srcDoc={isPro ? processedHtml : createProtectedPreviewHtml(processedHtml)}
+              srcDoc={fullPreviewSrcDoc}
               className="w-full h-full border-0"
               sandbox={isPro 
                 ? "allow-same-origin allow-scripts allow-forms allow-popups allow-modals" 
