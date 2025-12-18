@@ -116,6 +116,16 @@ export async function POST(req: NextRequest) {
       };
     }
 
+    // Deduplicate existing projects first (keep most recent)
+    const projectMap = new Map<string, AnonymousProject>();
+    for (const project of store.projects) {
+      const existing = projectMap.get(project.projectId);
+      if (!existing || new Date(project.updatedAt).getTime() > new Date(existing.updatedAt).getTime()) {
+        projectMap.set(project.projectId, project);
+      }
+    }
+    store.projects = Array.from(projectMap.values());
+
     // Check if updating existing project or creating new
     const existingProjectIndex = projectId 
       ? store.projects.findIndex(p => p.projectId === projectId)
@@ -134,7 +144,8 @@ export async function POST(req: NextRequest) {
       // Create new project
       // Check limit
       if (store.projects.length >= MAX_PROJECTS_PER_SESSION) {
-        // Remove oldest project to make room
+        // Remove oldest project to make room (sorted by updatedAt)
+        store.projects.sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
         store.projects.shift();
       }
 
@@ -250,8 +261,17 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Deduplicate projects by projectId (keep most recent if duplicates exist)
+    const projectMap = new Map<string, AnonymousProject>();
+    for (const project of store.projects) {
+      const existing = projectMap.get(project.projectId);
+      if (!existing || new Date(project.updatedAt).getTime() > new Date(existing.updatedAt).getTime()) {
+        projectMap.set(project.projectId, project);
+      }
+    }
+
     // Return all projects (sorted by updatedAt, newest first)
-    const sortedProjects = [...store.projects].sort(
+    const sortedProjects = Array.from(projectMap.values()).sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
 
@@ -265,7 +285,7 @@ export async function GET(req: NextRequest) {
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
       })),
-      projectCount: store.projects.length,
+      projectCount: sortedProjects.length,
       expiresAt,
     });
   } catch (error) {
