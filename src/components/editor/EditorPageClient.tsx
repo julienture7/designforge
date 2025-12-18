@@ -39,49 +39,70 @@ export function EditorPageClient({
   const latestHtmlRef = useRef<string>(providedInitialHtml);
   const latestHistoryRef = useRef<ConversationMessage[]>(providedInitialHistory);
   const promptRef = useRef<string>("");
+  const hasLoadedAnonymousProject = useRef(false); // Prevent multiple loads
 
   const toast = useToastContext();
   const { isSignedIn } = useAuth();
 
-  // Load anonymous project on mount
+  // Load anonymous project on mount - only if no new prompt in URL
   useEffect(() => {
-    if (isAnonymous && isNewProject) {
-      void (async () => {
-        try {
-          const result = await loadAnonymousProject();
-          if (result.success && result.project) {
-            setInitialHtml(result.project.html);
-            
-            // Map conversation history to correct type
-            const mappedHistory: ConversationMessage[] = result.project.conversationHistory.map(msg => ({
-              role: msg.role === "model" ? "model" : "user",
-              content: msg.content,
-            }));
-            
-            setInitialHistory(mappedHistory);
-            latestHtmlRef.current = result.project.html;
-            latestHistoryRef.current = mappedHistory;
-            
-            // Extract prompt
-            const firstUserMsg = mappedHistory.find(m => m.role === "user");
-            if (firstUserMsg) {
-              promptRef.current = firstUserMsg.content;
-            }
-            
-            if (result.expiresAt) {
-              setTempSaveExpiry(result.expiresAt);
-              setShowSavePrompt(true);
-            }
-            toast.info("Welcome back!", "Your temporary design has been restored.");
-          }
-        } catch (error) {
-          console.error("Failed to load anonymous project:", error);
-        } finally {
-          setIsDataLoaded(true);
-        }
-      })();
+    // Skip if already loaded, not anonymous, or not a new project
+    if (hasLoadedAnonymousProject.current || !isAnonymous || !isNewProject) {
+      setIsDataLoaded(true);
+      return;
     }
-  }, [isAnonymous, isNewProject, toast]);
+
+    // Check if user is starting a new generation (has prompt in URL)
+    const url = new URL(window.location.href);
+    const hasNewPrompt = url.searchParams.has("prompt");
+    
+    // If user has a new prompt, don't restore old project
+    if (hasNewPrompt) {
+      hasLoadedAnonymousProject.current = true;
+      setIsDataLoaded(true);
+      return;
+    }
+
+    hasLoadedAnonymousProject.current = true;
+
+    void (async () => {
+      try {
+        const result = await loadAnonymousProject();
+        if (result.success && result.project && result.project.html) {
+          setInitialHtml(result.project.html);
+          
+          // Map conversation history to correct type
+          const mappedHistory: ConversationMessage[] = result.project.conversationHistory.map(msg => ({
+            role: msg.role === "model" ? "model" : "user",
+            content: msg.content,
+          }));
+          
+          setInitialHistory(mappedHistory);
+          latestHtmlRef.current = result.project.html;
+          latestHistoryRef.current = mappedHistory;
+          
+          // Extract prompt
+          const firstUserMsg = mappedHistory.find(m => m.role === "user");
+          if (firstUserMsg) {
+            promptRef.current = firstUserMsg.content;
+          }
+          
+          if (result.expiresAt) {
+            setTempSaveExpiry(result.expiresAt);
+            setShowSavePrompt(true);
+          }
+          
+          // Only show toast if we actually restored something
+          toast.info("Welcome back!", "Your temporary design has been restored.");
+        }
+      } catch (error) {
+        console.error("Failed to load anonymous project:", error);
+      } finally {
+        setIsDataLoaded(true);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   const publishProject = api.project.update.useMutation();
   
