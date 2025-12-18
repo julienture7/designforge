@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      lockAcquired = await acquireGenerationLock(clerkId);
+      lockAcquired = await acquireGenerationLock(clerkId!);
       if (!lockAcquired) {
         return createErrorResponse(
           "GENERATION_IN_PROGRESS",
