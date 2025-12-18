@@ -422,11 +422,11 @@ export function EditorPageClient({
             </div>
             <button 
               onClick={() => setShowSavePrompt(false)} 
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold transition-all duration-200 hover:scale-110 active:scale-95 shadow-sm hover:shadow-md"
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg hover:shadow-xl border border-white/20 hover:border-white/40"
               aria-label="Close"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-5 h-5" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 18L18 6M6 6l12 12" stroke="white" />
               </svg>
             </button>
           </div>
