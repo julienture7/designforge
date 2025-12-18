@@ -420,7 +420,15 @@ export function EditorPageClient({
                 {" "}to save permanently!
               </span>
             </div>
-            <button onClick={() => setShowSavePrompt(false)} className="text-white/80 hover:text-white transition-colors duration-200 hover:scale-110 active:scale-95">✕</button>
+            <button 
+              onClick={() => setShowSavePrompt(false)} 
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold transition-all duration-200 hover:scale-110 active:scale-95 shadow-sm hover:shadow-md"
+              aria-label="Close"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
 
