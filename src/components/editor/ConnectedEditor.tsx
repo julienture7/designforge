@@ -188,11 +188,12 @@ export function ConnectedEditor({
    * Called by ChatPanel when generation completes.
    */
   const handleHtmlGenerated = useCallback((html: string) => {
-    // Only update if it's actually different to avoid triggering unnecessary renders
-    setRawHtml((prev) => {
-      if (prev === html) return prev;
-      return html;
-    });
+    console.log("[ConnectedEditor] handleHtmlGenerated called, html length:", html?.length);
+    if (html) {
+      setRawHtml(html);
+      // Also set preview loading to true so we show the loading state until iframe renders
+      setIsPreviewLoading(true);
+    }
   }, []);
 
   /**
@@ -205,17 +206,13 @@ export function ConnectedEditor({
     messages: ConversationMessage[],
     tokenUsage?: number
   ) => {
-    // We set isPreviewLoading only if the HTML is different from what's currently in rawHtml
-    // OR if rawHtml is empty (first generation).
-    // If rawHtml was already updated by handleHtmlGenerated, SandboxedCanvas won't trigger onRendered.
-    setRawHtml((prev) => {
-      if (prev !== html) {
-        setIsPreviewLoading(true);
-        return html;
-      }
-      // If HTML is same, don't set isPreviewLoading to true as onRendered won't be called
-      return prev;
-    });
+    console.log("[ConnectedEditor] handleGenerationComplete called, html length:", html?.length);
+    
+    // Ensure HTML is set (in case handleHtmlGenerated wasn't called)
+    if (html) {
+      setRawHtml(html);
+      setIsPreviewLoading(true);
+    }
     
     // Update conversation history ref
     conversationHistoryRef.current = messages;
@@ -318,22 +315,21 @@ export function ConnectedEditor({
       return;
     }
 
-    // Safety timeout: If we're stuck in isPreviewLoading for more than 15 seconds, 
-    // force it to false so the user can at least see the current state.
+    // Safety timeout: If we're stuck in isPreviewLoading for more than 3 seconds, 
+    // force it to false so the user can see the preview.
     let safetyTimer: NodeJS.Timeout | null = null;
     if (isPreviewLoading && !isBuilding) {
       safetyTimer = setTimeout(() => {
-        console.warn("Safety timeout triggered: forcing isPreviewLoading to false");
+        console.warn("[ConnectedEditor] Safety timeout: hiding loading overlay");
         setIsPreviewLoading(false);
         setProgress(100);
-      }, 15000);
+      }, 3000);
     }
 
     if (isBuilding && !buildStartRef.current) buildStartRef.current = Date.now();
     if (!isBuilding && isPreviewLoading && !previewStartRef.current) previewStartRef.current = Date.now();
 
     const tick = () => {
-      // ... same as before ...
       setProgress((prev) => {
         const now = Date.now();
         if (isBuilding) {
@@ -416,22 +412,17 @@ export function ConnectedEditor({
                 onError?.("NO_CONTENT", "Generate a design first to view raw HTML.");
                 return;
               }
-              if (!isPro) {
-                onError?.("UPGRADE_REQUIRED", "Upgrade to Pro to export HTML code.");
-                return;
-              }
               setShowRawHtml(true);
             }}
             disabled={!rawHtml}
-            className={`pro-feature-btn ${!isPro ? 'pro-feature-btn--locked' : ''}`}
-            title={!rawHtml ? "Generate a design first" : (isPro ? "View Raw HTML" : "Upgrade to Pro")}
+            className="pro-feature-btn"
+            title={!rawHtml ? "Generate a design first" : "View Raw HTML"}
           >
             <svg className="pro-feature-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="16 18 22 12 16 6" />
               <polyline points="8 6 2 12 8 18" />
             </svg>
             <span>HTML</span>
-            {!isPro && <span className="pro-feature-btn__badge">PRO</span>}
           </button>
           <ViewportToggle
             selectedViewport={viewportType}

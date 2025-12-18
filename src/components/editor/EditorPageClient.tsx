@@ -393,6 +393,12 @@ export function EditorPageClient({
             {isAnonymous ? (
               <div className="flex items-center gap-2">
                 <Link
+                  href="/my-design"
+                  className="inline-flex h-8 items-center justify-center rounded-full px-3 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-900 hover:bg-slate-100"
+                >
+                  My Design
+                </Link>
+                <Link
                   href="/sign-in"
                   className="inline-flex h-8 items-center justify-center rounded-full px-3 text-xs font-medium text-slate-600 transition-all duration-200 hover:text-slate-900 hover:bg-slate-100"
                 >

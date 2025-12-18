@@ -25,7 +25,8 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/contact(.*)",
-  "/editor/new",  // Anonymous generation - basic mode only
+  "/my-design",     // Anonymous user dashboard for temporary designs
+  "/editor/new",    // Anonymous generation - basic mode only
   "/api/cron(.*)",
   "/api/webhooks(.*)",
   "/api/proxy(.*)",
