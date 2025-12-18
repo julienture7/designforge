@@ -191,8 +191,9 @@ export function ConnectedEditor({
     console.log("[ConnectedEditor] handleHtmlGenerated called, html length:", html?.length);
     if (html) {
       setRawHtml(html);
-      // Don't set isPreviewLoading here - let handleGenerationComplete handle it
-      // This prevents double-setting and ensures proper state flow
+      // Immediately start preview loading phase since we have HTML
+      setIsPreviewLoading(true);
+      previewStartRef.current = Date.now();
     }
   }, []);
 
@@ -208,11 +209,10 @@ export function ConnectedEditor({
   ) => {
     console.log("[ConnectedEditor] handleGenerationComplete called, html length:", html?.length);
     
-    // Ensure HTML is set
+    // Ensure HTML is set - rawHtml should already be set by handleHtmlGenerated
+    // but set it again to be safe
     if (html) {
       setRawHtml(html);
-      // Set preview loading - the iframe will signal when it's ready via onRendered
-      setIsPreviewLoading(true);
     }
     
     // Update conversation history ref
@@ -242,15 +242,17 @@ export function ConnectedEditor({
   const processedHtml = rawHtml ? processHtmlForSandbox(rawHtml) : "";
 
   // Auto-hide loading overlay when HTML is ready and building is done
+  // The SandboxedCanvas onRendered callback is the primary mechanism,
+  // but we have a fallback timer in case it doesn't fire
   useEffect(() => {
     if (processedHtml && !isBuilding && isPreviewLoading) {
-      // If we have HTML and building is done, wait a short time then hide overlay
-      // This ensures the iframe has time to start loading
+      // Fallback: If onRendered doesn't fire within 2s, hide overlay anyway
+      // This prevents the user from being stuck on loading forever
       const timer = setTimeout(() => {
-        console.log("[ConnectedEditor] Auto-hiding overlay - HTML ready, building done");
+        console.log("[ConnectedEditor] Fallback: Auto-hiding overlay after timeout");
         setIsPreviewLoading(false);
         setProgress(100);
-      }, 500); // 500ms should be enough for iframe to start loading
+      }, 2000);
       
       return () => clearTimeout(timer);
     }
@@ -331,17 +333,6 @@ export function ConnectedEditor({
       return;
     }
 
-    // Safety timeout: If we're stuck in isPreviewLoading for more than 1 second, 
-    // force it to false so the user can see the preview.
-    let safetyTimer: NodeJS.Timeout | null = null;
-    if (isPreviewLoading && !isBuilding) {
-      safetyTimer = setTimeout(() => {
-        console.warn("[ConnectedEditor] Safety timeout: hiding loading overlay");
-        setIsPreviewLoading(false);
-        setProgress(100);
-      }, 1000);
-    }
-
     if (isBuilding && !buildStartRef.current) buildStartRef.current = Date.now();
     if (!isBuilding && isPreviewLoading && !previewStartRef.current) previewStartRef.current = Date.now();
 
@@ -351,6 +342,7 @@ export function ConnectedEditor({
         if (isBuilding) {
           const start = buildStartRef.current ?? now;
           const elapsed = Math.max(0, now - start);
+          // Slower progress during building phase (AI generation takes 15-30s)
           const target = 82 * (1 - Math.exp(-elapsed / 36000));
           return Math.round(Math.max(prev, Math.min(82, target)));
         }
@@ -358,7 +350,8 @@ export function ConnectedEditor({
           const start = previewStartRef.current ?? now;
           const elapsed = Math.max(0, now - start);
           const base = Math.max(prev, 82);
-          const target = base + (97 - base) * (1 - Math.exp(-elapsed / 1200));
+          // Faster progress during preview loading (should be quick)
+          const target = base + (97 - base) * (1 - Math.exp(-elapsed / 800));
           return Math.round(Math.min(97, Math.max(base, target)));
         }
         return prev;
@@ -368,7 +361,6 @@ export function ConnectedEditor({
     const id = window.setInterval(tick, 80);
     return () => {
       window.clearInterval(id);
-      if (safetyTimer) clearTimeout(safetyTimer);
     };
   }, [isBuilding, isPreviewLoading]);
 
@@ -383,22 +375,15 @@ export function ConnectedEditor({
       onLoadingChange={(loading) => {
         setIsBuilding(loading);
         if (loading) {
+          // Starting generation - show building overlay
           setIsPreviewLoading(true);
           buildStartRef.current = Date.now();
           previewStartRef.current = null;
           setProgress(1);
-        } else {
-          // When building is done, if we have HTML, start preview loading phase
-          // If no HTML yet, don't set preview loading (wait for HTML to arrive)
-          if (rawHtml) {
-            setIsPreviewLoading(true);
-            previewStartRef.current = Date.now();
-          } else {
-            // No HTML yet, but building is done - this shouldn't happen normally
-            // but if it does, don't show preview loading
-            setIsPreviewLoading(false);
-          }
         }
+        // When loading becomes false, don't change isPreviewLoading here
+        // Let handleHtmlGenerated manage the preview loading state
+        // This prevents race conditions where loading ends before HTML arrives
       }}
       onGenerationStart={onGenerationStart}
       onGenerationComplete={handleGenerationComplete}

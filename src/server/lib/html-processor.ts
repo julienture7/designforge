@@ -73,12 +73,14 @@ const BASE_HREF_INJECTOR_SCRIPT = `<script>
 /**
  * Image placeholder resolver.
  *
- * Enables a reliable, model-friendly contract for images:
- * - <img data-image-query="luxury dark restaurant interior grain" ...>
- * - <div data-bg-query="abstract neon gradient texture" ...>
+ * This is a FALLBACK script that only handles images NOT already resolved server-side.
+ * Server-side injection (injectUnsplashImages) marks resolved images with data-image-resolved="true".
+ * This script only processes images that:
+ * 1. Have data-image-query but no data-image-resolved attribute
+ * 2. Have placeholder.svg as src
+ * 3. Have no src at all
  *
- * The model can output stable markup, and we inject real image URLs at runtime.
- * This also means we can increase image count without relying on the model to craft perfect URLs.
+ * This prevents redundant processing and improves performance.
  */
 const IMAGE_PLACEHOLDER_RESOLVER_SCRIPT = `<script>
   (function () {
@@ -91,6 +93,8 @@ const IMAGE_PLACEHOLDER_RESOLVER_SCRIPT = `<script>
       'macro material texture detail'
     ];
     var fallbackIndex = 0;
+    var processed = new WeakSet();
+    
     function enc(q) {
       try { return encodeURIComponent(String(q || '').trim()); } catch (e) { return ''; }
     }
@@ -101,106 +105,75 @@ const IMAGE_PLACEHOLDER_RESOLVER_SCRIPT = `<script>
       src = norm(src).toLowerCase();
       return !src || src.indexOf('/images/placeholder.svg') !== -1 || src.indexOf('placeholder.svg') !== -1;
     }
+    function isAlreadyResolved(el) {
+      // Skip if already resolved by server or previous client run
+      return el.getAttribute('data-image-resolved') === 'true' || processed.has(el);
+    }
     function deriveQueryFromImg(el) {
       try {
-        var q =
-          el.getAttribute('data-image-query') ||
-          el.getAttribute('data-unsplash-query') ||
-          el.getAttribute('data-image') ||
-          el.getAttribute('data-query');
+        var q = el.getAttribute('data-image-query') || el.getAttribute('data-unsplash-query') || el.getAttribute('data-image');
         q = norm(q);
         if (q) return q;
         var alt = norm(el.getAttribute('alt'));
-        if (alt) return alt;
-        // Try nearby heading text (kept short)
-        var h = el.closest('section, article, header, main, footer, div');
-        if (h) {
-          var t = norm(h.textContent || '').replace(/\s+/g, ' ').slice(0, 80);
-          if (t) return t;
-        }
+        if (alt && alt.length > 3) return alt;
       } catch (e) {}
       var fb = FALLBACK_QUERIES[fallbackIndex % FALLBACK_QUERIES.length];
       fallbackIndex++;
       return fb;
     }
-    function attachFallback(el, q) {
-      try {
-        if (!el || el.getAttribute('data-image-fallback') === 'true') return;
-        el.addEventListener('error', function () {
-          try {
-            if (el.getAttribute('data-image-fallback') === 'true') return;
-            el.setAttribute('data-image-fallback', 'true');
-            var fb = FALLBACK_QUERIES[fallbackIndex % FALLBACK_QUERIES.length];
-            fallbackIndex++;
-            el.setAttribute('src', '/api/proxy/image?query=' + enc(fb));
-          } catch (e) {}
-        }, { once: true });
-        el.addEventListener('load', function () {
-          try {
-            // Proxy can redirect to placeholder.svg; treat that as a "failed" load and swap once.
-            var cur = (el.currentSrc || el.getAttribute('src') || '');
-            if (isPlaceholderSrc(cur) && el.getAttribute('data-image-fallback') !== 'true') {
-              el.setAttribute('data-image-fallback', 'true');
-              var fb = FALLBACK_QUERIES[fallbackIndex % FALLBACK_QUERIES.length];
-              fallbackIndex++;
-              el.setAttribute('src', '/api/proxy/image?query=' + enc(fb));
-            }
-          } catch (e) {}
-        }, { once: true });
-      } catch (e) {}
-    }
     function applyImg(el) {
       try {
+        if (isAlreadyResolved(el)) return;
+        var src = el.getAttribute('src') || '';
+        // Only process if src is missing, placeholder, or source.unsplash.com
+        if (src && !isPlaceholderSrc(src) && src.indexOf('source.unsplash.com') === -1 && src.indexOf('/api/proxy/image') !== -1) return;
+        
         var q = deriveQueryFromImg(el);
         if (!q) return;
-        if (el.getAttribute('data-image-resolved') === 'true') return;
+        
         var url = '/api/proxy/image?query=' + enc(q);
-        // Always resolve placeholder/missing srcs; don't overwrite a real src already present.
-        var src = el.getAttribute('src');
-        if (isPlaceholderSrc(src)) {
-          el.setAttribute('src', url);
-        }
+        el.setAttribute('src', url);
         el.setAttribute('loading', el.getAttribute('loading') || 'lazy');
         el.setAttribute('decoding', el.getAttribute('decoding') || 'async');
         el.setAttribute('data-image-resolved', 'true');
-        attachFallback(el, q);
+        processed.add(el);
       } catch (e) {}
     }
     function applyBg(el) {
       try {
-        var q =
-          el.getAttribute('data-bg-query') ||
-          el.getAttribute('data-background-query') ||
-          el.getAttribute('data-bg') ||
-          el.getAttribute('data-query');
+        if (el.getAttribute('data-bg-resolved') === 'true' || processed.has(el)) return;
+        var q = el.getAttribute('data-bg-query') || el.getAttribute('data-background-query') || el.getAttribute('data-bg');
         q = norm(q);
-        if (!q) q = FALLBACK_QUERIES[(fallbackIndex++) % FALLBACK_QUERIES.length];
-        if (el.getAttribute('data-bg-resolved') === 'true') return;
-        var url = \"url('/api/proxy/image?query=\" + enc(q) + \"')\";
-        // Force replace placeholder/empty backgrounds so we never show a missing background.
-        if (!el.style.backgroundImage || el.style.backgroundImage === 'none' || el.style.backgroundImage.indexOf('placeholder.svg') !== -1) {
-          el.style.backgroundImage = url;
-        }
+        if (!q) return;
+        
+        var currentBg = el.style.backgroundImage || '';
+        // Only apply if no background or placeholder
+        if (currentBg && currentBg !== 'none' && currentBg.indexOf('placeholder.svg') === -1 && currentBg.indexOf('/api/proxy/image') !== -1) return;
+        
+        var url = "url('/api/proxy/image?query=" + enc(q) + "')";
+        el.style.backgroundImage = url;
         if (!el.style.backgroundSize) el.style.backgroundSize = 'cover';
         if (!el.style.backgroundPosition) el.style.backgroundPosition = 'center';
         el.setAttribute('data-bg-resolved', 'true');
+        processed.add(el);
       } catch (e) {}
     }
     function run() {
       try {
-        // Resolve all declared placeholder-query images, plus any raw placeholder.svg <img>.
-        var imgs = document.querySelectorAll('img[data-image-query], img[data-unsplash-query], img[data-image], img[src*=\"placeholder.svg\"], img:not([src])');
+        // Only select unresolved images
+        var imgs = document.querySelectorAll('img[data-image-query]:not([data-image-resolved]), img[data-unsplash-query]:not([data-image-resolved]), img[src*="placeholder.svg"]:not([data-image-resolved]), img:not([src]):not([data-image-resolved])');
         for (var i = 0; i < imgs.length; i++) applyImg(imgs[i]);
-        var bgs = document.querySelectorAll('[data-bg-query], [data-background-query], [data-bg]');
+        var bgs = document.querySelectorAll('[data-bg-query]:not([data-bg-resolved]), [data-background-query]:not([data-bg-resolved])');
         for (var j = 0; j < bgs.length; j++) applyBg(bgs[j]);
       } catch (e) {}
     }
-    // Run now + keep applying as streaming updates mutate DOM.
-    run();
-    try {
-      new MutationObserver(function () { run(); })
-        .observe(document.documentElement, { childList: true, subtree: true, attributes: true });
-    } catch (e) {}
+    // Run once on DOMContentLoaded and load - no continuous MutationObserver needed
+    // since server-side injection handles the initial HTML
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run);
+    } else {
+      run();
+    }
     window.addEventListener('load', run);
   })();
 </script>`;

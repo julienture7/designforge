@@ -9,34 +9,39 @@ interface SandboxedCanvasProps {
 }
 
 /**
- * Inline image resolver that mirrors the server-side injection.
- * Keeping this client-side ensures fragments (or partially streamed HTML)
- * still resolve data-image/data-bg placeholders even before the full
- * document is complete.
+ * Lightweight image resolver for the sandbox.
+ * Only processes images that weren't already resolved server-side.
+ * Server-side injection marks resolved images with data-image-resolved="true".
  */
 const INLINE_IMAGE_RESOLVER = `(function () {
   function enc(q) { try { return encodeURIComponent(String(q || '').trim()); } catch (e) { return ''; } }
   function applyImg(el) {
     try {
+      // Skip if already resolved
+      if (el.getAttribute('data-image-resolved') === 'true') return;
       var q = el.getAttribute('data-image-query') || el.getAttribute('data-unsplash-query') || el.getAttribute('data-image');
       if (!q) return;
-      if (el.getAttribute('data-image-resolved') === 'true') return;
+      // Skip if already has a valid proxy URL
+      var src = el.getAttribute('src') || '';
+      if (src.indexOf('/api/proxy/image') !== -1) return;
       var url = '/api/proxy/image?query=' + enc(q);
       el.setAttribute('src', url);
-      el.setAttribute('loading', el.getAttribute('loading') || 'lazy');
-      el.setAttribute('decoding', el.getAttribute('decoding') || 'async');
+      el.setAttribute('loading', 'lazy');
+      el.setAttribute('decoding', 'async');
       el.setAttribute('data-image-resolved', 'true');
     } catch (e) {}
   }
   function applyBg(el) {
     try {
+      // Skip if already resolved
+      if (el.getAttribute('data-bg-resolved') === 'true') return;
       var q = el.getAttribute('data-bg-query') || el.getAttribute('data-background-query') || el.getAttribute('data-bg');
       if (!q) return;
-      if (el.getAttribute('data-bg-resolved') === 'true') return;
-      var url = \"url('/api/proxy/image?query=\" + enc(q) + \"')\";
-      if (!el.style.backgroundImage || el.style.backgroundImage === 'none') {
-        el.style.backgroundImage = url;
-      }
+      // Skip if already has a proxy URL
+      var bg = el.style.backgroundImage || '';
+      if (bg.indexOf('/api/proxy/image') !== -1) return;
+      var url = "url('/api/proxy/image?query=" + enc(q) + "')";
+      el.style.backgroundImage = url;
       if (!el.style.backgroundSize) el.style.backgroundSize = 'cover';
       if (!el.style.backgroundPosition) el.style.backgroundPosition = 'center';
       el.setAttribute('data-bg-resolved', 'true');
@@ -44,18 +49,19 @@ const INLINE_IMAGE_RESOLVER = `(function () {
   }
   function run() {
     try {
-      var imgs = document.querySelectorAll('img[data-image-query], img[data-unsplash-query], img[data-image]');
+      // Only select unresolved elements
+      var imgs = document.querySelectorAll('img[data-image-query]:not([data-image-resolved]), img[data-unsplash-query]:not([data-image-resolved])');
       for (var i = 0; i < imgs.length; i++) applyImg(imgs[i]);
-      var bgs = document.querySelectorAll('[data-bg-query], [data-background-query], [data-bg]');
+      var bgs = document.querySelectorAll('[data-bg-query]:not([data-bg-resolved]), [data-background-query]:not([data-bg-resolved])');
       for (var j = 0; j < bgs.length; j++) applyBg(bgs[j]);
     } catch (e) {}
   }
-  run();
-  try {
-    new MutationObserver(function () { run(); })
-      .observe(document.documentElement, { childList: true, subtree: true, attributes: true });
-  } catch (e) {}
-  window.addEventListener('load', run);
+  // Run once when DOM is ready - no MutationObserver needed since HTML is complete
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
 })();`;
 
 /**
@@ -142,11 +148,16 @@ export function SandboxedCanvas({ html, className = "", onRendered }: SandboxedC
     // Ignore loads not related to our most recent write.
     if (loadingTargetRef.current !== loaded) return;
 
+    console.log("[SandboxedCanvas] iframe loaded:", loaded);
+    
     // Swap visible iframe to the one that just loaded.
     setActive(loaded);
     loadingTargetRef.current = null;
-    onRendered?.();
-
+    
+    // Small delay to ensure content is painted before signaling ready
+    requestAnimationFrame(() => {
+      onRendered?.();
+    });
   }, [onRendered]);
 
   useEffect(() => {
