@@ -1,8 +1,8 @@
 /**
  * POST /api/generate
  * 
- * AI generation (non-streaming).
- * Returns the full HTML in one response so the client can swap the preview atomically.
+ * AI generation with SSE streaming for real-time code display.
+ * Streams HTML chunks as they're generated, then sends final complete HTML.
  * 
  * ANONYMOUS users can use:
  * - Basic mode: Devstral (FREE, unlimited, IP rate-limited)
@@ -20,7 +20,7 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createMistral } from "@ai-sdk/mistral";
 import { createDeepSeek } from "@ai-sdk/deepseek";
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "~/env";
@@ -155,23 +155,87 @@ export async function POST(req: NextRequest) {
         }, { status: 409 });
       }
 
-      // Generate with basic mode (Devstral) - no credits needed
-      const html = await generateBasicMode(prompt, currentHtml, messages);
-      
-      // Inject images
+      // Generate with streaming for anonymous users too
       const baseUrl = new URL(req.url).origin;
-      const htmlWithImages = await injectUnsplashImages(html, baseUrl);
+      const capturedClientIp = clientIp;
+      
+      // Step 1: Generate brief (non-streaming)
+      const userRequest = prompt || "";
+      const briefResult = await generateText({
+        model: mistral("devstral-2512"),
+        messages: [{ role: "user" as const, content: getBriefGeneratorPrompt(userRequest) }],
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      });
+      
+      let contextPrompt = "";
+      if (currentHtml) {
+        contextPrompt = `\n\nCURRENT HTML (modify this based on user request):\n${currentHtml}\n\n`;
+      }
+      const briefPrompt = getDevstralSystemPrompt(briefResult.text) + contextPrompt;
 
-      // Release lock
-      await releaseAnonymousLock(clientIp);
-      lockAcquired = false;
+      // Create SSE stream
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            let fullHtml = "";
+            
+            const result = streamText({
+              model: mistral("devstral-2512"),
+              messages: [{ role: "user" as const, content: briefPrompt }],
+              temperature: 1.0,
+              maxOutputTokens: 16384,
+            });
 
-      return NextResponse.json({
-        html: htmlWithImages,
-        finishReason: "stop",
-        generationMode: "basic",
-        creditCost: 0,
-        isAnonymous: true,
+            for await (const chunk of result.textStream) {
+              fullHtml += chunk;
+              const chunkData = JSON.stringify({ type: "chunk", content: chunk, partial: fullHtml });
+              controller.enqueue(encoder.encode(`data: ${chunkData}\n\n`));
+            }
+
+            // Clean up
+            fullHtml = fullHtml.replace(/^```html\s*/i, "").replace(/```\s*$/, "").trim();
+            if (!fullHtml.toLowerCase().startsWith("<!doctype")) {
+              const doctypeIndex = fullHtml.toLowerCase().indexOf("<!doctype");
+              if (doctypeIndex > 0) {
+                fullHtml = fullHtml.substring(doctypeIndex);
+              }
+            }
+
+            // Inject images
+            const htmlWithImages = await injectUnsplashImages(fullHtml, baseUrl);
+
+            // Release lock
+            await releaseAnonymousLock(capturedClientIp);
+
+            // Send complete
+            const completeData = JSON.stringify({
+              type: "complete",
+              html: htmlWithImages,
+              finishReason: "stop",
+              generationMode: "basic",
+              creditCost: 0,
+              isAnonymous: true,
+            });
+            controller.enqueue(encoder.encode(`data: ${completeData}\n\n`));
+            controller.close();
+          } catch (error) {
+            console.error("Anonymous streaming error:", error);
+            await releaseAnonymousLock(capturedClientIp).catch(console.error);
+            const errorData = JSON.stringify({ type: "error", message: "Generation failed", code: "STREAM_ERROR" });
+            controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
       });
     }
 
@@ -305,22 +369,10 @@ export async function POST(req: NextRequest) {
       maxOutputTokens = 16384;
     }
 
-    // Initial generation
-    let html = "";
-    
-    if (isHighMode) {
-      // High mode: Single call with user messages (Gemini)
-      const currentResult = await generateText({
-        model: selectedModel,
-        system: systemPrompt,
-        messages: aiMessages,
-        temperature: 1.0,
-        maxOutputTokens,
-      });
-      html = currentResult.text;
-    } else {
-      // Basic/Medium: 2-step process
-      // Step 1: Generate detailed brief from user's simple prompt
+    // For Basic/Medium modes, we need to generate the brief first (non-streaming)
+    // Then stream the HTML generation
+    let briefPrompt = "";
+    if (!isHighMode) {
       const userRequest = prompt || "";
       const briefResult = await generateText({
         model: selectedModel,
@@ -328,70 +380,109 @@ export async function POST(req: NextRequest) {
         temperature: 0.7,
         maxOutputTokens: 1024,
       });
-      const generatedBrief = briefResult.text;
-      
-      // Step 2: Generate HTML using the detailed brief
-      const fullPrompt = getDevstralSystemPrompt(generatedBrief) + contextPrompt;
-      const htmlResult = await generateText({
-        model: selectedModel,
-        messages: [{ role: "user" as const, content: fullPrompt }],
-        temperature: 1.0,
-        maxOutputTokens,
-      });
-      html = htmlResult.text;
+      briefPrompt = getDevstralSystemPrompt(briefResult.text) + contextPrompt;
     }
-    
-    // Clean up markdown code blocks if present (AI sometimes wraps output in ```html ... ```)
-    html = html.replace(/^```html\s*/i, "").replace(/```\s*$/, "").trim();
-    // Ensure it starts with <!DOCTYPE html>
-    if (!html.toLowerCase().startsWith("<!doctype")) {
-      const doctypeIndex = html.toLowerCase().indexOf("<!doctype");
-      if (doctypeIndex > 0) {
-        html = html.substring(doctypeIndex);
-      }
-    }
-    
-    const currentResult = { 
-      text: html, 
-      finishReason: "stop", 
-      usage: { totalTokens: 0 } 
-    };
 
-    // Inject real Unsplash images
+    // Create SSE stream for real-time code display
+    const encoder = new TextEncoder();
     const baseUrl = new URL(req.url).origin;
-    const htmlWithImages = await injectUnsplashImages(html, baseUrl);
+    
+    // Capture these for use in the stream
+    const capturedDbUserId = dbUserId;
+    const capturedClerkId = clerkId;
+    const capturedCreditVersion = creditVersion;
+    const capturedCreditCost = creditCost;
+    const capturedConsumeTrial = consumeTrial;
 
-    const result = {
-      text: htmlWithImages,
-      finishReason: currentResult.finishReason,
-      usage: currentResult.usage,
-    };
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          let fullHtml = "";
+          
+          // Stream the HTML generation
+          const streamConfig = isHighMode
+            ? {
+                model: selectedModel,
+                system: systemPrompt,
+                messages: aiMessages,
+                temperature: 1.0,
+                maxOutputTokens,
+              }
+            : {
+                model: selectedModel,
+                messages: [{ role: "user" as const, content: briefPrompt }],
+                temperature: 1.0,
+                maxOutputTokens,
+              };
 
-    // Charge credits + release lock only after a successful generation
-    if (dbUserId && clerkId) {
-      if (typeof creditVersion === "number" && creditCost > 0) {
-        // Decrement credits based on tier and mode
-        await decrementCredits(dbUserId, creditVersion, creditCost).catch(console.error);
-      }
-      
-      if (consumeTrial) {
-        await db.user.update({
-          where: { id: dbUserId },
-          data: { proTrialUsed: true },
-        }).catch(console.error);
-      }
-      
-      await releaseGenerationLock(clerkId).catch(console.error);
-      lockAcquired = false;
-    }
+          const result = streamText(streamConfig);
 
-    return NextResponse.json({
-      html: result.text,
-      finishReason: result.finishReason,
-      tokenUsage: typeof result.usage?.totalTokens === "number" ? result.usage.totalTokens : undefined,
-      usedProTrial: consumeTrial,
-      generationMode: selectedGenerationMode,
-      creditCost,
+          // Stream chunks as they arrive
+          for await (const chunk of result.textStream) {
+            fullHtml += chunk;
+            // Send streaming chunk
+            const chunkData = JSON.stringify({ type: "chunk", content: chunk, partial: fullHtml });
+            controller.enqueue(encoder.encode(`data: ${chunkData}\n\n`));
+          }
+
+          // Clean up markdown code blocks if present
+          fullHtml = fullHtml.replace(/^```html\s*/i, "").replace(/```\s*$/, "").trim();
+          // Ensure it starts with <!DOCTYPE html>
+          if (!fullHtml.toLowerCase().startsWith("<!doctype")) {
+            const doctypeIndex = fullHtml.toLowerCase().indexOf("<!doctype");
+            if (doctypeIndex > 0) {
+              fullHtml = fullHtml.substring(doctypeIndex);
+            }
+          }
+
+          // Inject real Unsplash images
+          const htmlWithImages = await injectUnsplashImages(fullHtml, baseUrl);
+
+          // Charge credits + release lock only after successful generation
+          if (capturedDbUserId && capturedClerkId) {
+            if (typeof capturedCreditVersion === "number" && capturedCreditCost > 0) {
+              await decrementCredits(capturedDbUserId, capturedCreditVersion, capturedCreditCost).catch(console.error);
+            }
+            
+            if (capturedConsumeTrial) {
+              await db.user.update({
+                where: { id: capturedDbUserId },
+                data: { proTrialUsed: true },
+              }).catch(console.error);
+            }
+            
+            await releaseGenerationLock(capturedClerkId).catch(console.error);
+          }
+
+          // Send final complete message
+          const completeData = JSON.stringify({
+            type: "complete",
+            html: htmlWithImages,
+            finishReason: "stop",
+            generationMode: selectedGenerationMode,
+            creditCost: capturedCreditCost,
+          });
+          controller.enqueue(encoder.encode(`data: ${completeData}\n\n`));
+          controller.close();
+        } catch (error) {
+          console.error("Streaming error:", error);
+          // Release locks on error
+          if (capturedClerkId) {
+            await releaseGenerationLock(capturedClerkId).catch(console.error);
+          }
+          const errorData = JSON.stringify({ type: "error", message: "Generation failed", code: "STREAM_ERROR" });
+          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
     });
 
   } catch (error) {

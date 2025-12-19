@@ -5,6 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import { EditorLayout } from "./EditorLayout";
 import { ChatPanel } from "./ChatPanel";
 import { SandboxedCanvas } from "./SandboxedCanvas";
+import { StreamingCodeView } from "./StreamingCodeView";
 import { ViewportToggle, VIEWPORT_CONFIGS, getViewportStyles, type ViewportType } from "./ViewportToggle";
 import { RawHtmlViewer } from "@/components/ui/RawHtmlViewer";
 import { processHtmlForSandbox } from "@/server/lib/html-processor";
@@ -159,6 +160,9 @@ export function ConnectedEditor({
   
   // Current HTML content (raw, unprocessed)
   const [rawHtml, setRawHtml] = useState<string>(initialHtml);
+  
+  // Streaming code content (shown during generation)
+  const [streamingCode, setStreamingCode] = useState<string>("");
 
   // Building state used to drive the preview loader overlay
   const [isBuilding, setIsBuilding] = useState(false);
@@ -191,10 +195,19 @@ export function ConnectedEditor({
     console.log("[ConnectedEditor] handleHtmlGenerated called, html length:", html?.length);
     if (html) {
       setRawHtml(html);
+      setStreamingCode(""); // Clear streaming code when final HTML arrives
       // Immediately start preview loading phase since we have HTML
       setIsPreviewLoading(true);
       previewStartRef.current = Date.now();
     }
+  }, []);
+
+  /**
+   * Handle streaming code updates
+   * Called by ChatPanel during generation to show code being written
+   */
+  const handleStreamingCode = useCallback((code: string) => {
+    setStreamingCode(code);
   }, []);
 
   /**
@@ -262,8 +275,6 @@ export function ConnectedEditor({
   const viewportStyles = getViewportStyles(viewportType);
   const nonDesktopWidth =
     viewportType === "desktop" ? 0 : (typeof VIEWPORT_CONFIGS[viewportType].width === "number" ? VIEWPORT_CONFIGS[viewportType].width : 0);
-  const nonDesktopHeight =
-    viewportType === "desktop" ? 0 : (typeof VIEWPORT_CONFIGS[viewportType].height === "number" ? VIEWPORT_CONFIGS[viewportType].height : 0);
   const viewportScale = useMemo(() => {
     if (viewportType === "desktop") return 1;
 
@@ -310,18 +321,6 @@ export function ConnectedEditor({
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [showFullPreview]);
-
-  const progressLabel = useMemo(() => {
-    if (isBuilding) return "Generating";
-    if (isPreviewLoading) return "Loading preview";
-    return "Idle";
-  }, [isBuilding, isPreviewLoading]);
-
-  const progressDetail = useMemo(() => {
-    if (isBuilding) return "Drafting layout, copy, and components";
-    if (isPreviewLoading) return "Applying styles, fonts, and images";
-    return "";
-  }, [isBuilding, isPreviewLoading]);
 
   // Smooth, phase-based progress approximation
   useEffect(() => {
@@ -372,6 +371,7 @@ export function ConnectedEditor({
       currentHtml={rawHtml}
       isAnonymous={isAnonymous}
       onHtmlGenerated={handleHtmlGenerated}
+      onStreamingCode={handleStreamingCode}
       onLoadingChange={(loading) => {
         setIsBuilding(loading);
         if (loading) {
@@ -380,6 +380,7 @@ export function ConnectedEditor({
           buildStartRef.current = Date.now();
           previewStartRef.current = null;
           setProgress(1);
+          setStreamingCode(""); // Clear previous streaming code
         }
         // When loading becomes false, don't change isPreviewLoading here
         // Let handleHtmlGenerated manage the preview loading state
@@ -514,45 +515,30 @@ export function ConnectedEditor({
           </div>
         </div>
 
-        {/* Loading Overlay - Positioned to cover visible area and stay centered */}
-        {(isBuilding || isPreviewLoading) && (
-          <div className="absolute top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm p-4">
-            <div className="w-[min(420px,90%)] rounded-3xl border border-slate-200/60 bg-white/95 p-8 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.25)] animate-fade-in-scale">
-              <div className="flex flex-col items-center text-center gap-6">
-                {/* Progress Ring / Icon */}
-                <div className="relative h-20 w-20 flex items-center justify-center">
-                  <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-indigo-100 border-t-indigo-600" />
-                  <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
-                    <svg className="w-6 h-6 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
-                  </div>
-                </div>
+        {/* Streaming Code View - Shows during generation */}
+        {isBuilding && (
+          <div className="absolute top-0 left-0 right-0 bottom-0 z-50 animate-fade-in">
+            <StreamingCodeView
+              code={streamingCode || "// Generating your design...\n// Please wait while the AI crafts your interface."}
+              isStreaming={true}
+            />
+          </div>
+        )}
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-slate-900">Building your design</h3>
-                  <p className="text-sm text-slate-500 max-w-[280px]">
-                    Our AI is crafting your interface. This typically takes 15-30 seconds.
-                  </p>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full space-y-3">
-                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    <span>{progressLabel}</span>
-                    <span className="text-indigo-600 tabular-nums">{progress}%</span>
-                  </div>
-                  <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-indigo-600 to-violet-500 transition-[width] duration-500 ease-out"
-                      style={{ width: `${Math.max(5, Math.min(progress, 100))}%` }}
-                    />
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-slate-400 italic">
-                  {progressDetail}
-                </p>
+        {/* Preview Loading Overlay - Shows after generation while preview loads */}
+        {!isBuilding && isPreviewLoading && (
+          <div className="absolute top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm p-4">
+            <div className="flex flex-col items-center gap-4 animate-fade-in">
+              <div className="relative h-16 w-16 flex items-center justify-center">
+                <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-indigo-100 border-t-indigo-600" />
+                <svg className="w-6 h-6 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-slate-700">Loading preview...</p>
+                <p className="text-xs text-slate-500 mt-1">Applying styles and rendering</p>
               </div>
             </div>
           </div>

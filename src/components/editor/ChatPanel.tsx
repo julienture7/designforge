@@ -13,6 +13,7 @@ interface ChatPanelProps {
   currentHtml?: string;
   isAnonymous?: boolean; // New prop to indicate anonymous user
   onHtmlGenerated?: (html: string) => void;
+  onStreamingCode?: (code: string) => void; // New: callback for streaming code display
   onLoadingChange?: (isLoading: boolean) => void;
   onGenerationStart?: () => Promise<string | null>; // Called before generation starts, returns project ID
   onGenerationComplete?: (
@@ -75,6 +76,7 @@ export function ChatPanel({
   currentHtml = "",
   isAnonymous = false,
   onHtmlGenerated,
+  onStreamingCode,
   onLoadingChange,
   onGenerationStart,
   onGenerationComplete,
@@ -197,6 +199,7 @@ export function ChatPanel({
       }
       
       if (isFirstGeneration) {
+        // Use SSE streaming for first generation to show code being written
         const response = await fetch("/api/generate", {
           method: "POST",
           headers,
@@ -221,15 +224,51 @@ export function ChatPanel({
           throw err;
         }
 
-        const data = (await response.json()) as {
-          html?: unknown;
-          finishReason?: unknown;
-          tokenUsage?: unknown;
-        };
+        // Parse SSE stream for real-time code display
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = "";
+        let finishReason = "stop";
+        let tokenUsage: number | undefined;
+        let buffer = "";
 
-        const fullContent = typeof data?.html === "string" ? data.html : "";
-        const finishReason = typeof data?.finishReason === "string" ? data.finishReason : "stop";
-        const tokenUsage = typeof data?.tokenUsage === "number" ? data.tokenUsage : undefined;
+        if (!reader) {
+          throw new Error("No response body");
+        }
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.type === "chunk") {
+                  // Stream partial code to display
+                  onStreamingCode?.(data.partial || "");
+                } else if (data.type === "complete") {
+                  fullContent = data.html || "";
+                  finishReason = data.finishReason || "stop";
+                  tokenUsage = data.tokenUsage;
+                } else if (data.type === "error") {
+                  const err = new Error(data.message ?? "Generation failed") as Error & { code?: string };
+                  err.code = data.code ?? "API_ERROR";
+                  throw err;
+                }
+              } catch (e) {
+                // Skip invalid JSON (but not errors thrown above)
+                if (e instanceof Error && e.name !== "SyntaxError") {
+                  throw e;
+                }
+              }
+            }
+          }
+        }
 
         if (!fullContent) {
           const err = new Error("Empty HTML response") as Error & { code?: string };
@@ -247,7 +286,7 @@ export function ChatPanel({
         setHasGenerated(true);
         currentHtmlRef.current = fullContent;
 
-        // Notify completion (no streaming updates; swap preview atomically)
+        // Notify completion with final HTML
         onHtmlGenerated?.(fullContent);
         
         const finalHistory: ConversationMessage[] = [
