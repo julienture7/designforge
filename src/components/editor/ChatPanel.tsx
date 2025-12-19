@@ -675,20 +675,50 @@ export function ChatPanel({
 
       {/* Sign up CTA for anonymous users - shown after first generation */}
       {isAnonymous && hasGenerated && (
-        <div className="upgrade-cta mx-2 mb-2">
-          <div className="upgrade-cta__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+        <div className="mx-2 mb-2 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-200/50 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-gray-900">Unlock Better Quality</span>
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full">FREE</span>
+              </div>
+              <p className="text-xs text-gray-600 mb-3">Sign up to access Medium mode with smarter AI and save your designs forever.</p>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex items-center gap-1.5 text-xs text-gray-700 bg-white/60 px-2 py-1 rounded-full">
+                  <svg className="w-3.5 h-3.5 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span>Medium AI Mode</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-gray-700 bg-white/60 px-2 py-1 rounded-full">
+                  <svg className="w-3.5 h-3.5 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span>Save Projects</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-gray-700 bg-white/60 px-2 py-1 rounded-full">
+                  <svg className="w-3.5 h-3.5 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span>40 Free Credits</span>
+                </div>
+              </div>
+              <Link 
+                href="/sign-up" 
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25 hover:-translate-y-0.5"
+              >
+                Sign Up Free
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </Link>
+            </div>
           </div>
-          <div className="upgrade-cta__text">
-            <div className="upgrade-cta__title">Save your design</div>
-            <div className="upgrade-cta__desc">Sign up to save permanently & unlock Medium mode</div>
-          </div>
-          <Link href="/sign-up" className="upgrade-cta__btn">
-            Sign Up Free
-          </Link>
         </div>
       )}
 
@@ -735,7 +765,7 @@ export function ChatPanel({
                     <path d="M2 12l10 5 10-5" />
                   </svg>
                   <span>Quality Mode</span>
-                  <span className="text-xs text-green-600 font-medium ml-auto">FREE</span>
+                  <span className="text-xs text-green-600 font-medium ml-auto">FREE TRIAL</span>
                 </div>
                 
                 <div className="refinement-options">
@@ -751,45 +781,78 @@ export function ChatPanel({
                   <button
                     type="button"
                     disabled={true}
-                    className="refinement-option opacity-50 cursor-not-allowed"
-                    title="Sign up to access Medium mode"
+                    className="refinement-option opacity-60 cursor-not-allowed relative group"
+                    title="Sign up to access Medium mode - Smarter AI, better designs"
                   >
                     <span className="refinement-option-label">Medium</span>
-                    <span className="text-xs">🔒</span>
+                    <span className="text-xs text-purple-500">🔒</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={true}
+                    className="refinement-option opacity-60 cursor-not-allowed relative"
+                    title="Pro mode - Award-winning designs with Gemini AI"
+                  >
+                    <span className="refinement-option-label">Pro</span>
+                    <span className="text-xs text-amber-500">👑</span>
                   </button>
                 </div>
               </div>
 
-              {/* Sign up prompt */}
-              <div className="pro-trial-info animate-fade-in" style={{ marginTop: '8px' }}>
-                <div className="pro-trial-info-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                  <span>Want more?</span>
+              {/* Compelling upgrade prompt */}
+              <div className="mt-3 rounded-lg bg-gradient-to-br from-slate-50 to-indigo-50/50 border border-indigo-100 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-800">Unlock Premium AI</span>
                 </div>
-                <ul className="pro-trial-benefits">
-                  <li>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    <span><strong>Medium mode</strong> - Better quality (sign up free)</span>
-                  </li>
-                  <li>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    <span><strong>Save projects</strong> - Access from anywhere</span>
-                  </li>
-                  <li>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    <span><strong>Pro mode</strong> - Award-winning designs</span>
-                  </li>
-                </ul>
-                <Link href="/sign-up" className="pro-trial-upgrade-link-btn">Create Free Account →</Link>
+                
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-start gap-2">
+                    <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-2.5 h-2.5 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-gray-800">Medium Mode</span>
+                      <span className="text-xs text-gray-500 ml-1">— Smarter AI, cleaner code</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-2.5 h-2.5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-gray-800">Pro Mode</span>
+                      <span className="text-xs text-gray-500 ml-1">— Awwwards-quality designs</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-2.5 h-2.5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-gray-800">Save & Export</span>
+                      <span className="text-xs text-gray-500 ml-1">— Keep your designs forever</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <Link 
+                  href="/sign-up" 
+                  className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold rounded-lg transition-all duration-200 hover:shadow-md hover:shadow-purple-500/20"
+                >
+                  <span>Create Free Account</span>
+                  <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px]">40 credits</span>
+                </Link>
               </div>
             </div>
           )}
