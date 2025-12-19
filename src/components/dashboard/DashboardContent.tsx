@@ -64,13 +64,16 @@ export function DashboardContent({
 
         if (response.ok) {
           const data = await response.json();
+          const projectCount = data.projectCount || 1;
           toast.success(
-            "Project imported!",
-            "Your design has been saved to your account."
+            projectCount > 1 ? "Projects imported!" : "Project imported!",
+            projectCount > 1 
+              ? `${projectCount} designs have been saved to your account.`
+              : "Your design has been saved to your account."
           );
           // Clear the anonymous session
           clearSession();
-          // Invalidate the project list to show the new project
+          // Invalidate the project list to show the new projects
           void utils.project.list.invalidate();
         } else {
           // Silently fail - the project might have expired

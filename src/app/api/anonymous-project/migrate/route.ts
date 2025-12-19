@@ -1,7 +1,7 @@
 /**
  * POST /api/anonymous-project/migrate
  * 
- * Migrates an anonymous project to the authenticated user's account.
+ * Migrates all anonymous projects to the authenticated user's account.
  * Called after a user signs up to preserve their work.
  */
 
@@ -12,17 +12,23 @@ import { db } from "~/server/db";
 import { getOrCreateUser } from "~/server/auth";
 
 interface AnonymousProject {
-  sessionId: string;
+  projectId: string;
   html: string;
   prompt: string;
   conversationHistory: Array<{ role: string; content: string }>;
   createdAt: string;
   updatedAt: string;
+}
+
+interface AnonymousProjectStore {
+  sessionId: string;
+  projects: AnonymousProject[];
   ip: string;
+  updatedAt: string;
 }
 
 function getProjectKey(sessionId: string): string {
-  return `anonymous:project:${sessionId}`;
+  return `anonymous:projects:${sessionId}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -56,58 +62,77 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get anonymous project from Redis
-    const projectData = await redis.get<string>(getProjectKey(sessionId));
-    if (!projectData) {
+    // Get anonymous projects store from Redis
+    const storeData = await redis.get<string>(getProjectKey(sessionId));
+    if (!storeData) {
       return NextResponse.json(
-        { error: "Anonymous project not found or expired", code: "NOT_FOUND" },
+        { error: "Anonymous projects not found or expired", code: "NOT_FOUND" },
         { status: 404 }
       );
     }
 
-    // Parse the project data
-    const anonProject: AnonymousProject = typeof projectData === "string" 
-      ? JSON.parse(projectData) 
-      : projectData;
+    // Parse the store data
+    const store: AnonymousProjectStore = typeof storeData === "string" 
+      ? JSON.parse(storeData) 
+      : storeData;
 
-    // Extract title from prompt (first 50 chars or use default)
-    const title = anonProject.prompt 
-      ? anonProject.prompt.slice(0, 50) + (anonProject.prompt.length > 50 ? "..." : "")
-      : "Imported Project";
+    if (!store.projects || store.projects.length === 0) {
+      return NextResponse.json(
+        { error: "No projects found in session", code: "NOT_FOUND" },
+        { status: 404 }
+      );
+    }
 
-    // Convert conversation history to the expected format
-    const conversationHistory = anonProject.conversationHistory.map(msg => ({
-      role: msg.role === "assistant" || msg.role === "model" ? "model" : "user",
-      content: msg.content,
-    }));
+    // Migrate all projects
+    const migratedProjects = [];
+    
+    for (const anonProject of store.projects) {
+      // Extract title from prompt (first 50 chars or use default)
+      const title = anonProject.prompt 
+        ? anonProject.prompt.slice(0, 50) + (anonProject.prompt.length > 50 ? "..." : "")
+        : "Imported Project";
 
-    // Create project in database
-    const project = await db.project.create({
-      data: {
-        userId: user.id,
-        title,
-        htmlContent: anonProject.html,
-        conversationHistory: conversationHistory,
-        status: "READY",
-        visibility: "PUBLIC", // Default to public for free users
-        generationCount: 1,
-      },
-    });
+      // Convert conversation history to the expected format
+      const conversationHistory = anonProject.conversationHistory.map(msg => ({
+        role: msg.role === "assistant" || msg.role === "model" ? "model" : "user",
+        content: msg.content,
+      }));
 
-    // Delete the anonymous project from Redis (successfully migrated)
+      // Create project in database
+      const project = await db.project.create({
+        data: {
+          userId: user.id,
+          title,
+          htmlContent: anonProject.html,
+          conversationHistory: conversationHistory,
+          status: "READY",
+          visibility: "PUBLIC", // Default to public for free users
+          generationCount: 1,
+        },
+      });
+
+      migratedProjects.push({
+        projectId: project.id,
+        title: project.title,
+      });
+    }
+
+    // Delete the anonymous projects store from Redis (successfully migrated)
     await redis.del(getProjectKey(sessionId));
 
     console.log({
-      event: "anonymous_project_migrated",
+      event: "anonymous_projects_migrated",
       sessionId,
       userId: user.id,
-      projectId: project.id,
+      projectCount: migratedProjects.length,
+      projectIds: migratedProjects.map(p => p.projectId),
     });
 
     return NextResponse.json({
       success: true,
-      projectId: project.id,
-      message: "Project migrated successfully",
+      projectCount: migratedProjects.length,
+      projects: migratedProjects,
+      message: `${migratedProjects.length} project${migratedProjects.length > 1 ? 's' : ''} migrated successfully`,
     });
   } catch (error) {
     console.error("Anonymous project migration error:", error);
